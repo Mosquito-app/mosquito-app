@@ -3,13 +3,19 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: Ludo Stake Game API. All wagering and balances are sandbox-only.
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: auth
+    description: Local email and password accounts
+  - name: wallet
+    description: Sandbox wallet and test deposits
+  - name: games
+    description: Two-player Ludo lobby and matches
 paths:
   /healthz:
     get:
@@ -24,6 +30,266 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /auth/register:
+    post:
+      operationId: register
+      tags: [auth]
+      summary: Register a local account
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterInput"
+      responses:
+        "201":
+          description: Account created and signed in
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "400":
+          description: Invalid account details
+        "409":
+          description: Email or username is already registered
+  /auth/login:
+    post:
+      operationId: login
+      tags: [auth]
+      summary: Sign in to a local account
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginInput"
+      responses:
+        "200":
+          description: Signed in
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "401":
+          description: Email or password is incorrect
+  /auth/logout:
+    post:
+      operationId: logout
+      tags: [auth]
+      summary: Sign out
+      responses:
+        "204":
+          description: Signed out
+  /auth/me:
+    get:
+      operationId: getCurrentUser
+      tags: [auth]
+      summary: Get the signed-in account
+      responses:
+        "200":
+          description: Current account
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "401":
+          description: Not signed in
+  /wallet:
+    get:
+      operationId: getWallet
+      tags: [wallet]
+      summary: Get sandbox balance, held stakes, and recent activity
+      responses:
+        "200":
+          description: Wallet overview
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WalletResponse"
+        "401":
+          description: Not signed in
+  /deposits/initialize:
+    post:
+      operationId: initializeDeposit
+      tags: [wallet]
+      summary: Start a Paystack test-mode deposit
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DepositInput"
+      responses:
+        "201":
+          description: Hosted test checkout initialized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DepositInitialization"
+        "400":
+          description: Invalid deposit amount
+        "401":
+          description: Not signed in
+        "503":
+          description: Paystack test configuration is unavailable
+  /deposits/verify:
+    post:
+      operationId: verifyDeposit
+      tags: [wallet]
+      summary: Verify a Paystack test deposit and credit it once
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DepositVerificationInput"
+      responses:
+        "200":
+          description: Deposit verification result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DepositVerification"
+        "401":
+          description: Not signed in
+        "404":
+          description: Deposit reference not found for this account
+  /lobby:
+    get:
+      operationId: getLobby
+      tags: [games]
+      summary: List available two-player matches and stake counts
+      responses:
+        "200":
+          description: Lobby rooms and counts
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LobbyResponse"
+        "401":
+          description: Not signed in
+  /rooms:
+    post:
+      operationId: joinRoom
+      tags: [games]
+      summary: Join an open match at a fixed stake or create a waiting room
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/JoinRoomInput"
+      responses:
+        "201":
+          description: Match found or waiting room created; stake is reserved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Room"
+        "400":
+          description: Unsupported stake or insufficient sandbox balance
+        "401":
+          description: Not signed in
+  /rooms/{roomId}:
+    get:
+      operationId: getRoom
+      tags: [games]
+      summary: Get match details and current board state
+      parameters:
+        - name: roomId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Match details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Room"
+        "401":
+          description: Not signed in
+        "404":
+          description: Match not found
+  /rooms/{roomId}/roll:
+    post:
+      operationId: rollDice
+      tags: [games]
+      summary: Roll the die for the current player's turn
+      parameters:
+        - name: roomId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Updated match and board state
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Room"
+        "400":
+          description: Match is not active or the die was already rolled
+        "401":
+          description: Not signed in
+        "404":
+          description: Match not found
+  /rooms/{roomId}/move:
+    post:
+      operationId: moveToken
+      tags: [games]
+      summary: Move a Ludo token using the current die roll
+      parameters:
+        - name: roomId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MoveInput"
+      responses:
+        "200":
+          description: Updated match and board state
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Room"
+        "400":
+          description: Illegal token move
+        "401":
+          description: Not signed in
+        "404":
+          description: Match not found
+  /rooms/{roomId}/cancel:
+    post:
+      operationId: cancelRoom
+      tags: [games]
+      summary: Cancel a waiting room and return the reserved sandbox stake
+      parameters:
+        - name: roomId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Cancelled waiting room
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Room"
+        "400":
+          description: Only the owner of a waiting room can cancel it
+        "401":
+          description: Not signed in
+        "404":
+          description: Match not found
 components:
   schemas:
     HealthStatus:
@@ -33,4 +299,216 @@ components:
           type: string
       required:
         - status
+    UserProfile:
+      type: object
+      required: [id, username, email, balanceNaira]
+      properties:
+        id:
+          type: string
+        username:
+          type: string
+        email:
+          type: string
+        balanceNaira:
+          type: integer
+          minimum: 0
+    AuthResponse:
+      type: object
+      required: [user]
+      properties:
+        user:
+          $ref: "#/components/schemas/UserProfile"
+    RegisterInput:
+      type: object
+      required: [username, email, password]
+      properties:
+        username:
+          type: string
+          minLength: 3
+          maxLength: 24
+        email:
+          type: string
+          format: email
+          maxLength: 254
+        password:
+          type: string
+          minLength: 8
+          maxLength: 72
+    LoginInput:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+          maxLength: 254
+        password:
+          type: string
+          minLength: 1
+          maxLength: 72
+    WalletTransaction:
+      type: object
+      required: [id, type, amountNaira, description, createdAt]
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+          enum: [deposit, stake_lock, stake_release, prize]
+        amountNaira:
+          type: integer
+        description:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+    WalletResponse:
+      type: object
+      required: [balanceNaira, escrowedNaira, transactions]
+      properties:
+        balanceNaira:
+          type: integer
+        escrowedNaira:
+          type: integer
+        transactions:
+          type: array
+          items:
+            $ref: "#/components/schemas/WalletTransaction"
+    DepositInput:
+      type: object
+      required: [amountNaira]
+      properties:
+        amountNaira:
+          type: integer
+          minimum: 500
+          maximum: 500000
+    DepositInitialization:
+      type: object
+      required: [authorizationUrl, reference, amountNaira]
+      properties:
+        authorizationUrl:
+          type: string
+          format: uri
+        reference:
+          type: string
+        amountNaira:
+          type: integer
+    DepositVerificationInput:
+      type: object
+      required: [reference]
+      properties:
+        reference:
+          type: string
+          minLength: 8
+          maxLength: 120
+    DepositVerification:
+      type: object
+      required: [status, amountNaira, balanceNaira]
+      properties:
+        status:
+          type: string
+          enum: [success, pending, failed]
+        amountNaira:
+          type: integer
+        balanceNaira:
+          type: integer
+    LobbyRoom:
+      type: object
+      required: [id, stakeNaira, hostUsername, createdAt]
+      properties:
+        id:
+          type: string
+        stakeNaira:
+          type: integer
+          enum: [500, 1000]
+        hostUsername:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+    StakeCount:
+      type: object
+      required: [stakeNaira, waitingPlayers]
+      properties:
+        stakeNaira:
+          type: integer
+          enum: [500, 1000]
+        waitingPlayers:
+          type: integer
+    LobbyResponse:
+      type: object
+      required: [rooms, stakeCounts]
+      properties:
+        rooms:
+          type: array
+          items:
+            $ref: "#/components/schemas/LobbyRoom"
+        stakeCounts:
+          type: array
+          items:
+            $ref: "#/components/schemas/StakeCount"
+    JoinRoomInput:
+      type: object
+      required: [stakeNaira]
+      properties:
+        stakeNaira:
+          type: integer
+          enum: [500, 1000]
+    BoardState:
+      type: object
+      required: [turnUserId, dice, hasRolled, redTokens, greenTokens, winnerUserId]
+      properties:
+        turnUserId:
+          type: string
+        dice:
+          type: ["integer", "null"]
+        hasRolled:
+          type: boolean
+        redTokens:
+          type: array
+          items:
+            type: integer
+        greenTokens:
+          type: array
+          items:
+            type: integer
+        winnerUserId:
+          type: ["string", "null"]
+    Room:
+      type: object
+      required:
+        [id, stakeNaira, status, hostUserId, hostUsername, opponentUserId, opponentUsername, myColor, board, createdAt]
+      properties:
+        id:
+          type: string
+        stakeNaira:
+          type: integer
+          enum: [500, 1000]
+        status:
+          type: string
+          enum: [waiting, active, completed, cancelled]
+        hostUserId:
+          type: string
+        hostUsername:
+          type: string
+        opponentUserId:
+          type: ["string", "null"]
+        opponentUsername:
+          type: ["string", "null"]
+        myColor:
+          type: string
+          enum: [red, green]
+        board:
+          $ref: "#/components/schemas/BoardState"
+        createdAt:
+          type: string
+          format: date-time
+    MoveInput:
+      type: object
+      required: [tokenIndex]
+      properties:
+        tokenIndex:
+          type: integer
+          minimum: 0
+          maximum: 3
 
