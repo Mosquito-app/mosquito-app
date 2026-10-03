@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "Ludo Stake Game"
+description = "A two-player Ludo game with simple account registration, fixed-stake matchmaking, escrow-style sandbox balances, and Paystack test deposits."
+version = "1.0.0"
+id = "artifacts/ludo-stake-game"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 23275
+
+[services.development]
+run = "pnpm --filter @workspace/ludo-stake-game run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/ludo-stake-game", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/ludo-stake-game/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "23275"
+BASE_PATH = "/"
