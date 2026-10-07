@@ -1,0 +1,55 @@
+import { useState, type FormEvent } from 'react';
+import { Link, useLocation } from 'wouter';
+import { ArrowRight } from 'lucide-react';
+import { getGetCurrentUserQueryKey, useLogin, useRegister } from '@workspace/api-client-react';
+import type { AuthResponse } from '@workspace/api-client-react';
+import { queryClient } from '@/lib/query-client';
+import { AuthFrame, InlineError } from '@/components/common';
+
+const signedIn = (result: AuthResponse) => { queryClient.clear(); queryClient.setQueryData(getGetCurrentUserQueryKey(), result); };
+
+export function LoginPage() {
+  const [, setLocation] = useLocation();
+  const login = useLogin();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const submit = (event: FormEvent) => {
+    event.preventDefault(); setError('');
+    login.mutate({ data: { email: email.trim(), password } }, {
+      onSuccess: result => { signedIn(result); setLocation('/'); },
+      onError: () => setError('That sign-in did not work. Check your details and try again.'),
+    });
+  };
+  return <AuthFrame mode="login" heading="Welcome back." copy="Take your seat. Your next match is waiting.">
+    <form className="auth-form" onSubmit={submit}>
+      <label>Email address<input type="email" autoComplete="email" required value={email} onChange={e => setEmail(e.target.value)} placeholder="you@example.com" data-testid="input-email" /></label>
+      <label>Password<input type="password" autoComplete="current-password" required value={password} onChange={e => setPassword(e.target.value)} placeholder="Your password" data-testid="input-password" /></label>
+      {error && <InlineError>{error}</InlineError>}
+      <button className="primary-btn full" type="submit" disabled={login.isPending} data-testid="button-login">{login.isPending ? 'Finding your seat…' : 'Sign in'} <ArrowRight size={17} /></button>
+    </form>
+  </AuthFrame>;
+}
+
+export function RegisterPage() {
+  const [, setLocation] = useLocation();
+  const register = useRegister();
+  const [username, setUsername] = useState(''); const [email, setEmail] = useState(''); const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const submit = (event: FormEvent) => {
+    event.preventDefault(); setError('');
+    register.mutate({ data: { username: username.trim(), email: email.trim(), password } }, {
+      onSuccess: result => { signedIn(result); setLocation('/'); },
+      onError: () => setError('Could not create that account. Check the details or try another email.'),
+    });
+  };
+  return <AuthFrame mode="register" heading="Pull up a chair." copy="Create a local account and get straight to the board.">
+    <form className="auth-form" onSubmit={submit}>
+      <label>Player name<input autoComplete="nickname" required minLength={3} maxLength={24} value={username} onChange={e => setUsername(e.target.value)} placeholder="How players will know you" data-testid="input-username" /></label>
+      <label>Email address<input type="email" autoComplete="email" required value={email} onChange={e => setEmail(e.target.value)} placeholder="you@example.com" data-testid="input-email" /></label>
+      <label>Password<input type="password" autoComplete="new-password" required minLength={8} maxLength={72} value={password} onChange={e => setPassword(e.target.value)} placeholder="At least 8 characters" data-testid="input-password" /></label>
+      {error && <InlineError>{error}</InlineError>}
+      <button className="primary-btn full" type="submit" disabled={register.isPending} data-testid="button-register">{register.isPending ? 'Setting up your seat…' : 'Create account'} <ArrowRight size={17} /></button>
+    </form>
+  </AuthFrame>;
+}

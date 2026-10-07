@@ -1,5 +1,5 @@
 import { randomInt } from "node:crypto";
-import { and, asc, desc, eq, ne, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, ne, or, sql } from "drizzle-orm";
 import { Router, type IRouter, type Request, type Response } from "express";
 import {
   CancelRoomParams,
@@ -20,13 +20,17 @@ import {
   roomsTable,
   usersTable,
   walletTransactionsTable,
+  platformWalletTable,
+  commissionLedgerTable,
   type LudoBoardState,
   type RoomStatus,
 } from "@workspace/db";
 import { getAuthenticatedUser } from "../lib/ludo-auth";
+import { publishRoomUpdate } from "../lib/ludo-events";
+import { deadline, nextPlayerId, splitPot, turnExpired } from "../lib/ludo-turns";
 
 const router: IRouter = Router();
-const STAKES_NAIRA = [500, 1000] as const;
+const STAKES_NAIRA = [500, 1000, 2000] as const;
 const RED_START = 0;
 const GREEN_START = 26;
 const SAFE_SQUARES = new Set([0, 8, 13, 21, 26, 34, 39, 47]);
@@ -57,6 +61,7 @@ function startBoard(hostUserId: string): LudoBoardState {
     redTokens: [-1, -1, -1, -1],
     greenTokens: [-1, -1, -1, -1],
     winnerUserId: null,
+    turnDeadlineAt: null,
   };
 }
 
@@ -114,6 +119,9 @@ async function getRoomForViewer(roomId: string, viewerId: string) {
   return GetRoomResponse.parse({
     id: room.id,
     stakeNaira: Math.floor(room.stakeKobo / 100),
+    potNaira: room.stakeKobo * 2 / 100,
+    prizeNaira: splitPot(room.stakeKobo * 2).prizeKobo / 100,
+    commissionNaira: splitPot(room.stakeKobo * 2).commissionKobo / 100,
     status: room.status as RoomStatus,
     hostUserId: room.hostUserId,
     hostUsername: host?.username ?? "Player",
@@ -155,17 +163,22 @@ async function settleWinner(
   winnerUserId: string,
   amountKobo: number,
 ) {
+  const { prizeKobo, commissionKobo } = splitPot(amountKobo);
   await tx
     .update(usersTable)
-    .set({ balanceKobo: sql`${usersTable.balanceKobo} + ${amountKobo}` })
+    .set({ balanceKobo: sql`${usersTable.balanceKobo} + ${prizeKobo}` })
     .where(eq(usersTable.id, winnerUserId));
   await tx.insert(walletTransactionsTable).values({
     userId: winnerUserId,
     type: "prize",
-    amountKobo,
+    amountKobo: prizeKobo,
     description: `Sandbox match prize — room ${roomId.slice(0, 8)}`,
     roomId,
   });
+  await tx.insert(commissionLedgerTable).values({ roomId, amountKobo: commissionKobo });
+  await tx.insert(platformWalletTable).values({ id: "commission", balanceKobo: commissionKobo })
+    .onConflictDoUpdate({ target: platformWalletTable.id,
+      set: { balanceKobo: sql`${platformWalletTable.balanceKobo} + ${commissionKobo}` } });
 }
 
 function sendGameError(
@@ -203,6 +216,10 @@ router.get("/lobby", async (req, res): Promise<void> => {
   const count500 = waitingRooms.filter((entry) => entry.room.stakeKobo === 50000).length;
   const count1000 = waitingRooms.filter((entry) => entry.room.stakeKobo === 100000).length;
   const payload = {
+    myRoomId: (await db.select({ id: roomsTable.id }).from(roomsTable).where(and(
+      inArray(roomsTable.status, ["waiting", "active"]),
+      or(eq(roomsTable.hostUserId, user.id), eq(roomsTable.opponentUserId, user.id)),
+    )).limit(1))[0]?.id ?? null,
     rooms: waitingRooms.map(({ room, hostUsername }) => ({
       id: room.id,
       stakeNaira: Math.floor(room.stakeKobo / 100),
@@ -212,6 +229,7 @@ router.get("/lobby", async (req, res): Promise<void> => {
     stakeCounts: [
       { stakeNaira: 500, waitingPlayers: count500 },
       { stakeNaira: 1000, waitingPlayers: count1000 },
+      { stakeNaira: 2000, waitingPlayers: waitingRooms.filter(entry => entry.room.stakeKobo === 200000).length },
     ],
   };
 
@@ -226,8 +244,8 @@ router.post("/rooms", async (req, res): Promise<void> => {
   }
 
   const parsed = JoinRoomBody.safeParse(req.body);
-  if (!parsed.success || !STAKES_NAIRA.includes(parsed.data.stakeNaira as 500 | 1000)) {
-    res.status(400).json({ error: "Choose a ₦500 or ₦1,000 sandbox match." });
+  if (!parsed.success || !STAKES_NAIRA.includes(parsed.data.stakeNaira as 500 | 1000 | 2000)) {
+    res.status(400).json({ error: "Choose a ₦500, ₦1,000 or ₦2,000 sandbox match." });
     return;
   }
 
@@ -236,12 +254,20 @@ router.post("/rooms", async (req, res): Promise<void> => {
 
   try {
     await db.transaction(async (tx) => {
+      // Serialize this stake's queue check so simultaneous arrivals pair,
+      // rather than both reserving separate waiting rooms.
+      await tx.execute(sql`select pg_advisory_xact_lock(1280656463, ${stakeKobo})`);
       const [lockedUser] = await tx
         .select({ balanceKobo: usersTable.balanceKobo })
         .from(usersTable)
         .where(eq(usersTable.id, user.id))
         .for("update")
         .limit(1);
+      const [existingRoom] = await tx.select({ id: roomsTable.id }).from(roomsTable).where(and(
+        inArray(roomsTable.status, ["waiting", "active"]),
+        or(eq(roomsTable.hostUserId, user.id), eq(roomsTable.opponentUserId, user.id)),
+      )).limit(1);
+      if (existingRoom) { joinedRoomId = existingRoom.id; return; }
       if (!lockedUser || lockedUser.balanceKobo < stakeKobo) {
         throw new GameActionError(400, "Your available sandbox balance is too low for this stake.");
       }
@@ -254,11 +280,13 @@ router.post("/rooms", async (req, res): Promise<void> => {
             eq(roomsTable.status, "waiting"),
             eq(roomsTable.stakeKobo, stakeKobo),
             ne(roomsTable.hostUserId, user.id),
+            ...(parsed.data.roomId ? [eq(roomsTable.id, parsed.data.roomId)] : []),
           ),
         )
         .orderBy(asc(roomsTable.createdAt))
         .for("update", { skipLocked: true })
         .limit(1);
+      if (parsed.data.roomId && !openRoom) throw new GameActionError(400, "That waiting table is no longer available.");
 
       await tx
         .update(usersTable)
@@ -268,6 +296,7 @@ router.post("/rooms", async (req, res): Promise<void> => {
       if (openRoom) {
         const board = startBoard(openRoom.hostUserId);
         board.turnUserId = openRoom.hostUserId;
+        board.turnDeadlineAt = deadline();
         await tx
           .update(roomsTable)
           .set({
@@ -299,6 +328,7 @@ router.post("/rooms", async (req, res): Promise<void> => {
       });
     });
 
+    publishRoomUpdate(joinedRoomId);
     const room = await getRoomForViewer(joinedRoomId, user.id);
     if (!room) {
       res.status(500).json({ error: "The match was created but could not be loaded." });
@@ -348,6 +378,7 @@ router.post("/rooms/:roomId/roll", async (req, res): Promise<void> => {
       if (room.status !== "active") {
         throw new GameActionError(400, "This match is not active.");
       }
+      if (turnExpired(room.board)) throw new GameActionError(400, "Your turn timer expired. Refresh the board.");
       if (room.board.turnUserId !== user.id) {
         throw new GameActionError(400, "Wait for your turn to roll.");
       }
@@ -359,14 +390,15 @@ router.post("/rooms/:roomId/roll", async (req, res): Promise<void> => {
       const color = currentPlayerColor(room, user.id);
       if (!color) throw new GameActionError(404, "Match not found.");
       const movable = validTokens(room.board, color, die);
-      const board = { ...room.board, dice: die, hasRolled: true };
+      const board: LudoBoardState = { ...room.board, dice: die, hasRolled: true };
 
       if (movable.length === 0) {
         board.dice = null;
         board.hasRolled = false;
         if (die !== 6 && room.opponentUserId) {
-          board.turnUserId = room.opponentUserId;
+          board.turnUserId = nextPlayerId(room, user.id);
         }
+        board.turnDeadlineAt = deadline();
       }
 
       await tx
@@ -375,6 +407,7 @@ router.post("/rooms/:roomId/roll", async (req, res): Promise<void> => {
         .where(eq(roomsTable.id, room.id));
     });
 
+    publishRoomUpdate(params.data.roomId);
     const room = await getRoomForViewer(params.data.roomId, user.id);
     if (!room) {
       res.status(404).json({ error: "Match not found." });
@@ -405,6 +438,7 @@ router.post("/rooms/:roomId/move", async (req, res): Promise<void> => {
       if (room.status !== "active" || !room.opponentUserId) {
         throw new GameActionError(400, "This match is not active.");
       }
+      if (turnExpired(room.board)) throw new GameActionError(400, "Your turn timer expired. Refresh the board.");
       if (room.board.turnUserId !== user.id) {
         throw new GameActionError(400, "Wait for your turn.");
       }
@@ -446,6 +480,7 @@ router.post("/rooms/:roomId/move", async (req, res): Promise<void> => {
       const won = ownTokens.every((tokenPosition) => tokenPosition >= 57);
       if (won) {
         board.winnerUserId = user.id;
+        board.turnDeadlineAt = null;
         await tx
           .update(roomsTable)
           .set({ status: "completed", board, updatedAt: new Date() })
@@ -455,13 +490,15 @@ router.post("/rooms/:roomId/move", async (req, res): Promise<void> => {
       }
 
       board.turnUserId =
-        room.board.dice === 6 ? user.id : room.opponentUserId;
+        room.board.dice === 6 ? user.id : nextPlayerId(room, user.id);
+      board.turnDeadlineAt = deadline();
       await tx
         .update(roomsTable)
         .set({ board, updatedAt: new Date() })
         .where(eq(roomsTable.id, room.id));
     });
 
+    publishRoomUpdate(params.data.roomId);
     const room = await getRoomForViewer(params.data.roomId, user.id);
     if (!room) {
       res.status(404).json({ error: "Match not found." });
@@ -509,6 +546,7 @@ router.post("/rooms/:roomId/cancel", async (req, res): Promise<void> => {
       });
     });
 
+    publishRoomUpdate(params.data.roomId);
     const room = await getRoomForViewer(params.data.roomId, user.id);
     if (!room) {
       res.status(404).json({ error: "Match not found." });

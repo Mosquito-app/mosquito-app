@@ -154,6 +154,53 @@ paths:
           description: Not signed in
         "404":
           description: Deposit reference not found for this account
+  /withdrawals:
+    post:
+      operationId: createWithdrawal
+      tags: [wallet]
+      summary: Reserve sandbox funds and initiate a Paystack test bank transfer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WithdrawalInput"
+      responses:
+        "201":
+          description: Test withdrawal initiated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Withdrawal"
+        "400":
+          description: Invalid test destination or insufficient available balance
+        "401":
+          description: Not signed in
+        "502":
+          description: Paystack test transfer unavailable
+  /withdrawals/{withdrawalId}/verify:
+    post:
+      operationId: verifyWithdrawal
+      tags: [wallet]
+      summary: Reconcile a test withdrawal without debiting twice
+      parameters:
+        - name: withdrawalId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Current test withdrawal status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Withdrawal"
+        "401":
+          description: Not signed in
+        "404":
+          description: Withdrawal not found
   /lobby:
     get:
       operationId: getLobby
@@ -201,6 +248,7 @@ paths:
           required: true
           schema:
             type: string
+            format: uuid
       responses:
         "200":
           description: Match details
@@ -223,6 +271,7 @@ paths:
           required: true
           schema:
             type: string
+            format: uuid
       responses:
         "200":
           description: Updated match and board state
@@ -247,6 +296,7 @@ paths:
           required: true
           schema:
             type: string
+            format: uuid
       requestBody:
         required: true
         content:
@@ -277,6 +327,7 @@ paths:
           required: true
           schema:
             type: string
+            format: uuid
       responses:
         "200":
           description: Cancelled waiting room
@@ -354,7 +405,7 @@ components:
           type: string
         type:
           type: string
-          enum: [deposit, stake_lock, stake_release, prize]
+          enum: [deposit, stake_lock, stake_release, prize, withdrawal_lock, withdrawal_release]
         amountNaira:
           type: integer
         description:
@@ -364,12 +415,20 @@ components:
           format: date-time
     WalletResponse:
       type: object
-      required: [balanceNaira, escrowedNaira, transactions]
+      required: [balanceNaira, totalBalanceNaira, escrowedNaira, withdrawalHeldNaira, transactions, withdrawals]
       properties:
         balanceNaira:
           type: integer
+        totalBalanceNaira:
+          type: integer
         escrowedNaira:
           type: integer
+        withdrawalHeldNaira:
+          type: integer
+        withdrawals:
+          type: array
+          items:
+            $ref: "#/components/schemas/Withdrawal"
         transactions:
           type: array
           items:
@@ -412,6 +471,43 @@ components:
           type: integer
         balanceNaira:
           type: integer
+    WithdrawalInput:
+      type: object
+      required: [amountNaira, requestId, recipientName, accountNumber, bankCode]
+      properties:
+        amountNaira:
+          type: integer
+          minimum: 500
+          maximum: 500000
+        requestId:
+          type: string
+          format: uuid
+        recipientName:
+          type: string
+          minLength: 2
+          maxLength: 100
+        accountNumber:
+          type: string
+          pattern: "^[0-9]{10}$"
+        bankCode:
+          type: string
+          pattern: "^[0-9]{3,6}$"
+    Withdrawal:
+      type: object
+      required: [id, reference, amountNaira, status, createdAt]
+      properties:
+        id:
+          type: string
+        reference:
+          type: string
+        amountNaira:
+          type: integer
+        status:
+          type: string
+          enum: [pending, success, failed]
+        createdAt:
+          type: string
+          format: date-time
     LobbyRoom:
       type: object
       required: [id, stakeNaira, hostUsername, createdAt]
@@ -420,7 +516,7 @@ components:
           type: string
         stakeNaira:
           type: integer
-          enum: [500, 1000]
+          enum: [500, 1000, 2000]
         hostUsername:
           type: string
         createdAt:
@@ -432,13 +528,15 @@ components:
       properties:
         stakeNaira:
           type: integer
-          enum: [500, 1000]
+          enum: [500, 1000, 2000]
         waitingPlayers:
           type: integer
     LobbyResponse:
       type: object
-      required: [rooms, stakeCounts]
+      required: [rooms, stakeCounts, myRoomId]
       properties:
+        myRoomId:
+          type: ["string", "null"]
         rooms:
           type: array
           items:
@@ -451,15 +549,21 @@ components:
       type: object
       required: [stakeNaira]
       properties:
+        roomId:
+          type: string
+          format: uuid
         stakeNaira:
           type: integer
-          enum: [500, 1000]
+          enum: [500, 1000, 2000]
     BoardState:
       type: object
-      required: [turnUserId, dice, hasRolled, redTokens, greenTokens, winnerUserId]
+      required: [turnUserId, dice, hasRolled, redTokens, greenTokens, winnerUserId, turnDeadlineAt]
       properties:
         turnUserId:
           type: string
+        turnDeadlineAt:
+          type: ["string", "null"]
+          format: date-time
         dice:
           type: ["integer", "null"]
         hasRolled:
@@ -477,13 +581,19 @@ components:
     Room:
       type: object
       required:
-        [id, stakeNaira, status, hostUserId, hostUsername, opponentUserId, opponentUsername, myColor, board, createdAt]
+        [id, stakeNaira, potNaira, prizeNaira, commissionNaira, status, hostUserId, hostUsername, opponentUserId, opponentUsername, myColor, board, createdAt]
       properties:
         id:
           type: string
         stakeNaira:
           type: integer
-          enum: [500, 1000]
+          enum: [500, 1000, 2000]
+        potNaira:
+          type: integer
+        prizeNaira:
+          type: integer
+        commissionNaira:
+          type: integer
         status:
           type: string
           enum: [waiting, active, completed, cancelled]

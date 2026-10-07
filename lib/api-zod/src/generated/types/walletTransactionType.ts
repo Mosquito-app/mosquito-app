@@ -14,4 +14,6 @@ export const WalletTransactionType = {
   stake_lock: 'stake_lock',
   stake_release: 'stake_release',
   prize: 'prize',
+  withdrawal_lock: 'withdrawal_lock',
+  withdrawal_release: 'withdrawal_release',
 } as const;

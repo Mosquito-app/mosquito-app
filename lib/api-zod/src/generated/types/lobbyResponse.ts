@@ -9,6 +9,8 @@ import type { LobbyRoom } from './lobbyRoom';
 import type { StakeCount } from './stakeCount';
 
 export interface LobbyResponse {
+  /** @nullable */
+  myRoomId: string | null;
   rooms: LobbyRoom[];
   stakeCounts: StakeCount[];
 }

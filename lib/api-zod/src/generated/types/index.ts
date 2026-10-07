@@ -32,3 +32,6 @@ export * from './userProfile';
 export * from './walletResponse';
 export * from './walletTransaction';
 export * from './walletTransactionType';
+export * from './withdrawal';
+export * from './withdrawalInput';
+export * from './withdrawalStatus';

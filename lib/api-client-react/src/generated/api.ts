@@ -32,7 +32,9 @@ import type {
   MoveInput,
   RegisterInput,
   Room,
-  WalletResponse
+  WalletResponse,
+  Withdrawal,
+  WithdrawalInput
 } from './api.schemas';
 
 import { customFetch } from '../custom-fetch';
@@ -718,6 +720,168 @@ export const useVerifyDeposit = <TError = ErrorType<void>,
         TContext
       > => {
       return useMutation(getVerifyDepositMutationOptions(options));
+    }
+
+export const getCreateWithdrawalUrl = () => {
+
+
+
+
+  return `/api/withdrawals`
+}
+
+/**
+ * @summary Reserve sandbox funds and initiate a Paystack test bank transfer
+ */
+export const createWithdrawal = async (withdrawalInput: WithdrawalInput, options?: Parameters<typeof customFetch>[1]): Promise<Withdrawal> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<Withdrawal>(getCreateWithdrawalUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(withdrawalInput)
+  }
+);}
+
+
+
+
+
+export const getCreateWithdrawalMutationKey = () => ['createWithdrawal'] as const;
+
+export const getCreateWithdrawalMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createWithdrawal>>, TError,CreateWithdrawalMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createWithdrawal>>, TError,CreateWithdrawalMutationVariables, TContext> => {
+
+const mutationKey = getCreateWithdrawalMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createWithdrawal>>, CreateWithdrawalMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  createWithdrawal(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateWithdrawalMutationResult = NonNullable<Awaited<ReturnType<typeof createWithdrawal>>>
+    export type CreateWithdrawalMutationBody = BodyType<WithdrawalInput>
+    export type CreateWithdrawalMutationError = ErrorType<void>
+    export type CreateWithdrawalMutationVariables = {data: BodyType<WithdrawalInput>}
+
+    /**
+ * @summary Reserve sandbox funds and initiate a Paystack test bank transfer
+ */
+export const useCreateWithdrawal = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createWithdrawal>>, TError,CreateWithdrawalMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createWithdrawal>>,
+        TError,
+        CreateWithdrawalMutationVariables,
+        TContext
+      > => {
+      return useMutation(getCreateWithdrawalMutationOptions(options));
+    }
+
+export const getVerifyWithdrawalUrl = (withdrawalId: string,) => {
+
+
+
+
+  return `/api/withdrawals/${withdrawalId}/verify`
+}
+
+/**
+ * @summary Reconcile a test withdrawal without debiting twice
+ */
+export const verifyWithdrawal = async (withdrawalId: string, options?: Parameters<typeof customFetch>[1]): Promise<Withdrawal> => {
+
+  return customFetch<Withdrawal>(getVerifyWithdrawalUrl(withdrawalId),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getVerifyWithdrawalMutationKey = () => ['verifyWithdrawal'] as const;
+
+export const getVerifyWithdrawalMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof verifyWithdrawal>>, TError,VerifyWithdrawalMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof verifyWithdrawal>>, TError,VerifyWithdrawalMutationVariables, TContext> => {
+
+const mutationKey = getVerifyWithdrawalMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof verifyWithdrawal>>, VerifyWithdrawalMutationVariables> = (props) => {
+          const {withdrawalId} = props ?? {};
+
+          return  verifyWithdrawal(withdrawalId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type VerifyWithdrawalMutationResult = NonNullable<Awaited<ReturnType<typeof verifyWithdrawal>>>
+
+    export type VerifyWithdrawalMutationError = ErrorType<void>
+    export type VerifyWithdrawalMutationVariables = {withdrawalId: string}
+
+    /**
+ * @summary Reconcile a test withdrawal without debiting twice
+ */
+export const useVerifyWithdrawal = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof verifyWithdrawal>>, TError,VerifyWithdrawalMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof verifyWithdrawal>>,
+        TError,
+        VerifyWithdrawalMutationVariables,
+        TContext
+      > => {
+      return useMutation(getVerifyWithdrawalMutationOptions(options));
     }
 
 export const getGetLobbyUrl = () => {

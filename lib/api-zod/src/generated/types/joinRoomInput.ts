@@ -8,5 +8,6 @@
 import type { JoinRoomInputStakeNaira } from './joinRoomInputStakeNaira';
 
 export interface JoinRoomInput {
+  roomId?: string;
   stakeNaira: JoinRoomInputStakeNaira;
 }

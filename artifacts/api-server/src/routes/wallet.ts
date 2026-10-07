@@ -14,6 +14,7 @@ import {
   roomsTable,
   usersTable,
   walletTransactionsTable,
+  withdrawalsTable,
 } from "@workspace/db";
 import { getAuthenticatedUser } from "../lib/ludo-auth";
 
@@ -60,14 +61,15 @@ router.get("/wallet", async (req, res): Promise<void> => {
     return;
   }
 
-  const [transactionRows, openRooms] = await Promise.all([
-    db
+  const { transactionRows, openRooms, withdrawalRows, balanceKobo } = await db.transaction(async tx => {
+    const [currentUser] = await tx.select({ balanceKobo: usersTable.balanceKobo }).from(usersTable).where(eq(usersTable.id, user.id)).limit(1);
+    const transactionRows = await tx
       .select()
       .from(walletTransactionsTable)
       .where(eq(walletTransactionsTable.userId, user.id))
       .orderBy(desc(walletTransactionsTable.createdAt))
-      .limit(20),
-    db
+      .limit(20);
+    const openRooms = await tx
       .select({
         stakeKobo: roomsTable.stakeKobo,
         status: roomsTable.status,
@@ -78,16 +80,24 @@ router.get("/wallet", async (req, res): Promise<void> => {
           inArray(roomsTable.status, ["waiting", "active"]),
           sql`(${roomsTable.hostUserId} = ${user.id} or ${roomsTable.opponentUserId} = ${user.id})`,
         ),
-      ),
-  ]);
+      );
+    const withdrawalRows = await tx.select().from(withdrawalsTable).where(eq(withdrawalsTable.userId, user.id)).orderBy(desc(withdrawalsTable.createdAt));
+    return { transactionRows, openRooms, withdrawalRows, balanceKobo: currentUser.balanceKobo };
+  }, { isolationLevel: "repeatable read" });
 
   const escrowedKobo = openRooms.reduce(
-    (total, room) => total + room.stakeKobo * (room.status === "active" ? 2 : 1),
+    (total, room) => total + room.stakeKobo,
     0,
   );
+  const withdrawalHeldKobo = withdrawalRows.filter(row => row.status === "pending").reduce((sum, row) => sum + row.amountKobo, 0);
   const response = {
-    balanceNaira: Math.floor(user.balanceKobo / 100),
+    balanceNaira: Math.floor(balanceKobo / 100),
+    totalBalanceNaira: (balanceKobo + escrowedKobo + withdrawalHeldKobo) / 100,
     escrowedNaira: Math.floor(escrowedKobo / 100),
+    withdrawalHeldNaira: withdrawalHeldKobo / 100,
+    withdrawals: withdrawalRows.slice(0, 20).map(row => ({
+      id: row.id, reference: row.reference, amountNaira: row.amountKobo / 100, status: row.status, createdAt: row.createdAt,
+    })),
     transactions: transactionRows.map((transaction) => ({
       id: transaction.id,
       type: transaction.type,
@@ -246,6 +256,7 @@ router.post("/deposits/verify", async (req, res): Promise<void> => {
 
     const isSuccess =
       data.status === "success" &&
+      data.domain === "test" &&
       data.currency === "NGN" &&
       data.amount === intent.amountKobo &&
       data.reference === intent.reference;

@@ -106,10 +106,19 @@ export const GetCurrentUserResponse = zod.object({
  */
 export const GetWalletResponse = zod.object({
   "balanceNaira": zod.number().int(),
+  "totalBalanceNaira": zod.number().int(),
   "escrowedNaira": zod.number().int(),
+  "withdrawalHeldNaira": zod.number().int(),
+  "withdrawals": zod.array(zod.object({
+  "id": zod.string(),
+  "reference": zod.string(),
+  "amountNaira": zod.number().int(),
+  "status": zod.enum(['pending', 'success', 'failed']),
+  "createdAt": zod.coerce.date()
+})),
   "transactions": zod.array(zod.object({
   "id": zod.string(),
-  "type": zod.enum(['deposit', 'stake_lock', 'stake_release', 'prize']),
+  "type": zod.enum(['deposit', 'stake_lock', 'stake_release', 'prize', 'withdrawal_lock', 'withdrawal_release']),
   "amountNaira": zod.number().int(),
   "description": zod.string(),
   "createdAt": zod.coerce.date()
@@ -156,17 +165,64 @@ export const VerifyDepositResponse = zod.object({
 
 
 /**
+ * @summary Reserve sandbox funds and initiate a Paystack test bank transfer
+ */
+export const createWithdrawalBodyAmountNairaMin = 500;
+export const createWithdrawalBodyAmountNairaMax = 500000;
+
+export const createWithdrawalBodyRecipientNameMin = 2;
+export const createWithdrawalBodyRecipientNameMax = 100;
+
+export const createWithdrawalBodyAccountNumberRegExp = new RegExp('^[0-9]{10}$');
+export const createWithdrawalBodyBankCodeRegExp = new RegExp('^[0-9]{3,6}$');
+
+
+export const CreateWithdrawalBody = zod.object({
+  "amountNaira": zod.number().int().min(createWithdrawalBodyAmountNairaMin).max(createWithdrawalBodyAmountNairaMax),
+  "requestId": zod.string().uuid(),
+  "recipientName": zod.string().min(createWithdrawalBodyRecipientNameMin).max(createWithdrawalBodyRecipientNameMax),
+  "accountNumber": zod.string().regex(createWithdrawalBodyAccountNumberRegExp),
+  "bankCode": zod.string().regex(createWithdrawalBodyBankCodeRegExp)
+})
+
+export const CreateWithdrawalResponse = zod.object({
+  "id": zod.string(),
+  "reference": zod.string(),
+  "amountNaira": zod.number().int(),
+  "status": zod.enum(['pending', 'success', 'failed']),
+  "createdAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Reconcile a test withdrawal without debiting twice
+ */
+export const VerifyWithdrawalParams = zod.object({
+  "withdrawalId": zod.coerce.string().uuid()
+})
+
+export const VerifyWithdrawalResponse = zod.object({
+  "id": zod.string(),
+  "reference": zod.string(),
+  "amountNaira": zod.number().int(),
+  "status": zod.enum(['pending', 'success', 'failed']),
+  "createdAt": zod.coerce.date()
+})
+
+
+/**
  * @summary List available two-player matches and stake counts
  */
 export const GetLobbyResponse = zod.object({
+  "myRoomId": zod.string().nullable(),
   "rooms": zod.array(zod.object({
   "id": zod.string(),
-  "stakeNaira": zod.union([zod.literal(500),zod.literal(1000)]),
+  "stakeNaira": zod.union([zod.literal(500),zod.literal(1000),zod.literal(2000)]),
   "hostUsername": zod.string(),
   "createdAt": zod.coerce.date()
 })),
   "stakeCounts": zod.array(zod.object({
-  "stakeNaira": zod.union([zod.literal(500),zod.literal(1000)]),
+  "stakeNaira": zod.union([zod.literal(500),zod.literal(1000),zod.literal(2000)]),
   "waitingPlayers": zod.number().int()
 }))
 })
@@ -176,12 +232,16 @@ export const GetLobbyResponse = zod.object({
  * @summary Join an open match at a fixed stake or create a waiting room
  */
 export const JoinRoomBody = zod.object({
-  "stakeNaira": zod.union([zod.literal(500),zod.literal(1000)])
+  "roomId": zod.string().uuid().optional(),
+  "stakeNaira": zod.union([zod.literal(500),zod.literal(1000),zod.literal(2000)])
 })
 
 export const JoinRoomResponse = zod.object({
   "id": zod.string(),
-  "stakeNaira": zod.union([zod.literal(500),zod.literal(1000)]),
+  "stakeNaira": zod.union([zod.literal(500),zod.literal(1000),zod.literal(2000)]),
+  "potNaira": zod.number().int(),
+  "prizeNaira": zod.number().int(),
+  "commissionNaira": zod.number().int(),
   "status": zod.enum(['waiting', 'active', 'completed', 'cancelled']),
   "hostUserId": zod.string(),
   "hostUsername": zod.string(),
@@ -190,6 +250,7 @@ export const JoinRoomResponse = zod.object({
   "myColor": zod.enum(['red', 'green']),
   "board": zod.object({
   "turnUserId": zod.string(),
+  "turnDeadlineAt": zod.coerce.date().nullable(),
   "dice": zod.number().int().nullable(),
   "hasRolled": zod.boolean(),
   "redTokens": zod.array(zod.number().int()),
@@ -204,12 +265,15 @@ export const JoinRoomResponse = zod.object({
  * @summary Get match details and current board state
  */
 export const GetRoomParams = zod.object({
-  "roomId": zod.coerce.string()
+  "roomId": zod.coerce.string().uuid()
 })
 
 export const GetRoomResponse = zod.object({
   "id": zod.string(),
-  "stakeNaira": zod.union([zod.literal(500),zod.literal(1000)]),
+  "stakeNaira": zod.union([zod.literal(500),zod.literal(1000),zod.literal(2000)]),
+  "potNaira": zod.number().int(),
+  "prizeNaira": zod.number().int(),
+  "commissionNaira": zod.number().int(),
   "status": zod.enum(['waiting', 'active', 'completed', 'cancelled']),
   "hostUserId": zod.string(),
   "hostUsername": zod.string(),
@@ -218,6 +282,7 @@ export const GetRoomResponse = zod.object({
   "myColor": zod.enum(['red', 'green']),
   "board": zod.object({
   "turnUserId": zod.string(),
+  "turnDeadlineAt": zod.coerce.date().nullable(),
   "dice": zod.number().int().nullable(),
   "hasRolled": zod.boolean(),
   "redTokens": zod.array(zod.number().int()),
@@ -232,12 +297,15 @@ export const GetRoomResponse = zod.object({
  * @summary Roll the die for the current player's turn
  */
 export const RollDiceParams = zod.object({
-  "roomId": zod.coerce.string()
+  "roomId": zod.coerce.string().uuid()
 })
 
 export const RollDiceResponse = zod.object({
   "id": zod.string(),
-  "stakeNaira": zod.union([zod.literal(500),zod.literal(1000)]),
+  "stakeNaira": zod.union([zod.literal(500),zod.literal(1000),zod.literal(2000)]),
+  "potNaira": zod.number().int(),
+  "prizeNaira": zod.number().int(),
+  "commissionNaira": zod.number().int(),
   "status": zod.enum(['waiting', 'active', 'completed', 'cancelled']),
   "hostUserId": zod.string(),
   "hostUsername": zod.string(),
@@ -246,6 +314,7 @@ export const RollDiceResponse = zod.object({
   "myColor": zod.enum(['red', 'green']),
   "board": zod.object({
   "turnUserId": zod.string(),
+  "turnDeadlineAt": zod.coerce.date().nullable(),
   "dice": zod.number().int().nullable(),
   "hasRolled": zod.boolean(),
   "redTokens": zod.array(zod.number().int()),
@@ -260,7 +329,7 @@ export const RollDiceResponse = zod.object({
  * @summary Move a Ludo token using the current die roll
  */
 export const MoveTokenParams = zod.object({
-  "roomId": zod.coerce.string()
+  "roomId": zod.coerce.string().uuid()
 })
 
 export const moveTokenBodyTokenIndexMin = 0;
@@ -274,7 +343,10 @@ export const MoveTokenBody = zod.object({
 
 export const MoveTokenResponse = zod.object({
   "id": zod.string(),
-  "stakeNaira": zod.union([zod.literal(500),zod.literal(1000)]),
+  "stakeNaira": zod.union([zod.literal(500),zod.literal(1000),zod.literal(2000)]),
+  "potNaira": zod.number().int(),
+  "prizeNaira": zod.number().int(),
+  "commissionNaira": zod.number().int(),
   "status": zod.enum(['waiting', 'active', 'completed', 'cancelled']),
   "hostUserId": zod.string(),
   "hostUsername": zod.string(),
@@ -283,6 +355,7 @@ export const MoveTokenResponse = zod.object({
   "myColor": zod.enum(['red', 'green']),
   "board": zod.object({
   "turnUserId": zod.string(),
+  "turnDeadlineAt": zod.coerce.date().nullable(),
   "dice": zod.number().int().nullable(),
   "hasRolled": zod.boolean(),
   "redTokens": zod.array(zod.number().int()),
@@ -297,12 +370,15 @@ export const MoveTokenResponse = zod.object({
  * @summary Cancel a waiting room and return the reserved sandbox stake
  */
 export const CancelRoomParams = zod.object({
-  "roomId": zod.coerce.string()
+  "roomId": zod.coerce.string().uuid()
 })
 
 export const CancelRoomResponse = zod.object({
   "id": zod.string(),
-  "stakeNaira": zod.union([zod.literal(500),zod.literal(1000)]),
+  "stakeNaira": zod.union([zod.literal(500),zod.literal(1000),zod.literal(2000)]),
+  "potNaira": zod.number().int(),
+  "prizeNaira": zod.number().int(),
+  "commissionNaira": zod.number().int(),
   "status": zod.enum(['waiting', 'active', 'completed', 'cancelled']),
   "hostUserId": zod.string(),
   "hostUsername": zod.string(),
@@ -311,6 +387,7 @@ export const CancelRoomResponse = zod.object({
   "myColor": zod.enum(['red', 'green']),
   "board": zod.object({
   "turnUserId": zod.string(),
+  "turnDeadlineAt": zod.coerce.date().nullable(),
   "dice": zod.number().int().nullable(),
   "hasRolled": zod.boolean(),
   "redTokens": zod.array(zod.number().int()),

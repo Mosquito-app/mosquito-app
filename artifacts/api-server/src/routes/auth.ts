@@ -66,17 +66,18 @@ router.post("/auth/register", async (req, res): Promise<void> => {
     await createSession(user.id, res);
     res.status(201).json(RegisterResponse.parse({ user: toUserResponse(user) }));
   } catch (error) {
+    const cause = typeof error === "object" && error !== null && "cause" in error ? error.cause : error;
     if (
-      typeof error === "object" &&
-      error !== null &&
-      "code" in error &&
-      error.code === "23505"
+      typeof cause === "object" &&
+      cause !== null &&
+      "code" in cause &&
+      cause.code === "23505"
     ) {
       res.status(409).json({ error: "That email or username is already registered." });
       return;
     }
 
-    req.log.error({ err: error }, "Unable to register local account");
+    req.log.error("Unable to register local account");
     res.status(500).json({ error: "Unable to create account right now." });
   }
 });

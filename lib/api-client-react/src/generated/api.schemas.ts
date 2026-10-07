@@ -54,6 +54,8 @@ export const WalletTransactionType = {
   stake_lock: 'stake_lock',
   stake_release: 'stake_release',
   prize: 'prize',
+  withdrawal_lock: 'withdrawal_lock',
+  withdrawal_release: 'withdrawal_release',
 } as const;
 
 export interface WalletTransaction {
@@ -64,9 +66,29 @@ export interface WalletTransaction {
   createdAt: string;
 }
 
+export type WithdrawalStatus = typeof WithdrawalStatus[keyof typeof WithdrawalStatus];
+
+
+export const WithdrawalStatus = {
+  pending: 'pending',
+  success: 'success',
+  failed: 'failed',
+} as const;
+
+export interface Withdrawal {
+  id: string;
+  reference: string;
+  amountNaira: number;
+  status: WithdrawalStatus;
+  createdAt: string;
+}
+
 export interface WalletResponse {
   balanceNaira: number;
+  totalBalanceNaira: number;
   escrowedNaira: number;
+  withdrawalHeldNaira: number;
+  withdrawals: Withdrawal[];
   transactions: WalletTransaction[];
 }
 
@@ -107,12 +129,31 @@ export interface DepositVerification {
   balanceNaira: number;
 }
 
+export interface WithdrawalInput {
+  /**
+     * @minimum 500
+     * @maximum 500000
+     */
+  amountNaira: number;
+  requestId: string;
+  /**
+     * @minLength 2
+     * @maxLength 100
+     */
+  recipientName: string;
+  /** @pattern ^[0-9]{10}$ */
+  accountNumber: string;
+  /** @pattern ^[0-9]{3,6}$ */
+  bankCode: string;
+}
+
 export type LobbyRoomStakeNaira = typeof LobbyRoomStakeNaira[keyof typeof LobbyRoomStakeNaira];
 
 
 export const LobbyRoomStakeNaira = {
   NUMBER_500: 500,
   NUMBER_1000: 1000,
+  NUMBER_2000: 2000,
 } as const;
 
 export interface LobbyRoom {
@@ -128,6 +169,7 @@ export type StakeCountStakeNaira = typeof StakeCountStakeNaira[keyof typeof Stak
 export const StakeCountStakeNaira = {
   NUMBER_500: 500,
   NUMBER_1000: 1000,
+  NUMBER_2000: 2000,
 } as const;
 
 export interface StakeCount {
@@ -136,6 +178,8 @@ export interface StakeCount {
 }
 
 export interface LobbyResponse {
+  /** @nullable */
+  myRoomId: string | null;
   rooms: LobbyRoom[];
   stakeCounts: StakeCount[];
 }
@@ -146,14 +190,18 @@ export type JoinRoomInputStakeNaira = typeof JoinRoomInputStakeNaira[keyof typeo
 export const JoinRoomInputStakeNaira = {
   NUMBER_500: 500,
   NUMBER_1000: 1000,
+  NUMBER_2000: 2000,
 } as const;
 
 export interface JoinRoomInput {
+  roomId?: string;
   stakeNaira: JoinRoomInputStakeNaira;
 }
 
 export interface BoardState {
   turnUserId: string;
+  /** @nullable */
+  turnDeadlineAt: string | null;
   /** @nullable */
   dice: number | null;
   hasRolled: boolean;
@@ -169,6 +217,7 @@ export type RoomStakeNaira = typeof RoomStakeNaira[keyof typeof RoomStakeNaira];
 export const RoomStakeNaira = {
   NUMBER_500: 500,
   NUMBER_1000: 1000,
+  NUMBER_2000: 2000,
 } as const;
 
 export type RoomStatus = typeof RoomStatus[keyof typeof RoomStatus];
@@ -192,6 +241,9 @@ export const RoomMyColor = {
 export interface Room {
   id: string;
   stakeNaira: RoomStakeNaira;
+  potNaira: number;
+  prizeNaira: number;
+  commissionNaira: number;
   status: RoomStatus;
   hostUserId: string;
   hostUsername: string;

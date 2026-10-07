@@ -1,0 +1,3 @@
+- [Product boundaries](product-boundaries.md) — Local accounts, test-only money movement, and the requested 90/10 match settlement.
+- [Scoped dependency installs](scoped-installs.md) — The package callback can reject pnpm workspace-root installs; scope additions to their package.
+- [Paystack test recipients](paystack-test-recipients.md) — Sample payment accounts are not guaranteed to resolve as transfer recipients, even with a valid test key.

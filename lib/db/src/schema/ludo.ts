@@ -1,5 +1,6 @@
 import {
   index,
+  check,
   integer,
   jsonb,
   pgTable,
@@ -15,7 +16,9 @@ export type WalletTransactionType =
   | "deposit"
   | "stake_lock"
   | "stake_release"
-  | "prize";
+  | "prize"
+  | "withdrawal_lock"
+  | "withdrawal_release";
 export type DepositStatus = "pending" | "success" | "failed";
 
 export type LudoBoardState = {
@@ -25,6 +28,7 @@ export type LudoBoardState = {
   redTokens: number[];
   greenTokens: number[];
   winnerUserId: string | null;
+  turnDeadlineAt: string | null;
 };
 
 export const usersTable = pgTable(
@@ -41,6 +45,7 @@ export const usersTable = pgTable(
       .defaultNow(),
   },
   (table) => [
+    check("ludo_users_balance_nonnegative", sql`${table.balanceKobo} >= 0`),
     uniqueIndex("ludo_users_email_unique").on(table.email),
     uniqueIndex("ludo_users_username_unique").on(table.username),
   ],
@@ -116,6 +121,9 @@ export const walletTransactionsTable = pgTable(
     uniqueIndex("ludo_wallet_transactions_deposit_ref_unique")
       .on(table.depositReference)
       .where(sql`${table.depositReference} is not null`),
+    uniqueIndex("ludo_wallet_match_action_unique")
+      .on(table.roomId, table.userId, table.type)
+      .where(sql`${table.roomId} is not null`),
   ],
 );
 

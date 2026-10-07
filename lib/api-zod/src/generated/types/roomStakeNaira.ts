@@ -12,4 +12,5 @@ export type RoomStakeNaira = typeof RoomStakeNaira[keyof typeof RoomStakeNaira];
 export const RoomStakeNaira = {
   NUMBER_500: 500,
   NUMBER_1000: 1000,
+  NUMBER_2000: 2000,
 } as const;

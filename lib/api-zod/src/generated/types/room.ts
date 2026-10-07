@@ -13,6 +13,9 @@ import type { RoomStatus } from './roomStatus';
 export interface Room {
   id: string;
   stakeNaira: RoomStakeNaira;
+  potNaira: number;
+  prizeNaira: number;
+  commissionNaira: number;
   status: RoomStatus;
   hostUserId: string;
   hostUsername: string;

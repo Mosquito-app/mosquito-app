@@ -9,6 +9,8 @@
 export interface BoardState {
   turnUserId: string;
   /** @nullable */
+  turnDeadlineAt: Date | null;
+  /** @nullable */
   dice: number | null;
   hasRolled: boolean;
   redTokens: number[];

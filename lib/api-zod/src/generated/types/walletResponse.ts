@@ -6,9 +6,13 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { WalletTransaction } from './walletTransaction';
+import type { Withdrawal } from './withdrawal';
 
 export interface WalletResponse {
   balanceNaira: number;
+  totalBalanceNaira: number;
   escrowedNaira: number;
+  withdrawalHeldNaira: number;
+  withdrawals: Withdrawal[];
   transactions: WalletTransaction[];
 }

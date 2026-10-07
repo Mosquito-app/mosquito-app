@@ -728,3 +728,42 @@ button, a, input { -webkit-tap-highlight-color: transparent; }
     inset: -1px;
   }
 }
+
+/* v2 additions */
+.wallet-clean { grid-column:1/-1; margin-bottom:18px; }
+.wallet-split { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin:14px 0; }
+.wallet-split div { display:flex; flex-direction:column; gap:3px; } .wallet-split span { font-size:9px; letter-spacing:.12em; opacity:.7; } .wallet-split strong { font-size:15px; }
+.wallet-actions { display:flex; flex-wrap:wrap; gap:10px; align-items:center; }
+.wallet-actions .primary-btn, .wallet-actions .dark-btn { height:40px; padding:0 16px; display:inline-flex; align-items:center; gap:8px; }
+.wallet-deposit { margin-top:14px; display:flex; flex-wrap:wrap; gap:10px; }
+.resume-banner { display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; margin:0 0 18px; padding:14px 16px; border-radius:10px; background:#f5c94e; color:#18372f; font-weight:700; }
+.resume-banner .primary-btn { display:inline-flex; gap:8px; align-items:center; padding:9px 14px; text-decoration:none; }
+.games-section { margin-bottom:22px; }
+.game-cards { display:grid; grid-template-columns:repeat(auto-fill,minmax(160px,1fr)); gap:12px; margin-top:12px; }
+.game-card { display:flex; flex-direction:column; gap:5px; padding:16px; border-radius:12px; border:1px solid #d8cfba; background:#fffaf0; }
+.game-card b { font-size:15px; } .game-card small { color:#806f5f; }
+.game-card.active { background:#18372f; color:#f4f0df; border-color:#18372f; box-shadow:4px 4px 0 #cd714e; }
+.game-card.active small { color:#cfd8c8; }
+.game-card.soon { opacity:.55; cursor:not-allowed; filter:grayscale(.4); }
+.game-badge { margin-top:6px; font-size:9px; letter-spacing:.12em; text-transform:uppercase; font-weight:700; }
+.game-card.active .game-badge { color:#f5c94e; }
+.modal-back { position:fixed; inset:0; background:#18372f99; display:grid; place-items:center; z-index:50; padding:16px; }
+.modal-card { width:min(440px,100%); max-height:92dvh; overflow:auto; background:#fffaf0; border-radius:14px; padding:22px; box-shadow:6px 6px 0 #cd714e; }
+.modal-head { display:flex; justify-content:space-between; align-items:flex-start; gap:10px; }
+.modal-note { font-size:12px; line-height:1.5; color:#5a6a60; margin:10px 0 14px; }
+.two-col { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+.wd-status { font-size:9px; font-weight:700; letter-spacing:.1em; padding:3px 7px; border-radius:99px; }
+.wd-pending { background:#f5e6b3; color:#7a5a10; } .wd-success { background:#cce0cc; color:#255a3c; } .wd-failed { background:#f7e7df; color:#9a392e; }
+.wd-result { display:flex; flex-direction:column; gap:8px; align-items:flex-start; } .wd-result b { font-size:24px; } .wd-result p { font-size:12px; }
+.wd-actions { display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+.wd-list { display:flex; flex-direction:column; gap:8px; margin-bottom:12px; }
+.wd-row { display:flex; align-items:center; gap:8px; justify-content:space-between; padding:9px 10px; border:1px solid #e0d8c4; border-radius:8px; font-size:12px; }
+.wd-row small { display:block; color:#806f5f; font-size:10px; word-break:break-all; }
+.verify-note { margin:0 0 12px; padding:10px 14px; background:#f4e9bb; font-size:12px; display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+.board-cell.lane-red { background:#e8a995; } .board-cell.lane-green { background:#9ccaa8; }
+.turn-timer { position:relative; display:flex; justify-content:space-between; align-items:center; padding:8px 12px; margin:10px 0; border-radius:8px; background:#18372f; color:#f4f0df; font-size:10px; letter-spacing:.1em; overflow:hidden; }
+.turn-timer b { font-size:16px; z-index:1; } .turn-timer span { z-index:1; }
+.turn-timer i { position:absolute; left:0; bottom:0; height:3px; width:100%; background:#f5c94e; transform-origin:left; transition:transform .25s linear; }
+.turn-timer.urgent { background:#9a392e; }
+.conn-reconnecting { background:#f7e7df; color:#9a392e; } .conn-connecting { background:#f4e9bb; }
+@media (max-width:560px) { .wallet-split { grid-template-columns:1fr 1fr; } }
