@@ -1,0 +1,30 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "S5D7K7a_OjT646JjF9gdV"
+uri = "file://artifacts/api-server/test-results/player-1-match.png"
+type = "image"
+title = "QA evidence: Player 1 match start"
+description = "Authenticated Player 1 screen showing the active two-player Ludo match and ₦4,000 test pot."
+logical_id = "e15f7d2c-aad3-4bfe-96fc-0703c1166e20"
+content_hash = "sha256:67c8881a4c382e94a612ec16f99fc55fbd076eacf39000a1929c3412024e5063"
+size = 759497
+mtime_ms = 1791411926750
+storage_uri = "gcs://replit-rams-assets-worf/rams/assets/repl:f23f81b4-fa1a-4306-8385-1a065af07af6/e15f7d2c-aad3-4bfe-96fc-0703c1166e20/546ff66a-d0e1-49e6-bd33-31c14954ec6e"
+storage_version_token = "1791412005143748"
+content_type = "image/png"
+
+[[outputs]]
+id = "fgJfHnrRgtWy5GCWcQbE1"
+uri = "file://artifacts/api-server/test-results/player-2-match.png"
+type = "image"
+title = "QA evidence: Player 2 match start"
+description = "Authenticated Player 2 screen showing the same active match, with the opponent's turn and roll disabled."
+logical_id = "e8962f95-3864-426e-893e-0725656e5420"
+content_hash = "sha256:29dc4a6c047a3cd644990f014389a17d70b68d8031c8d1ce204fa9c62032dee3"
+size = 758089
+mtime_ms = 1791411927278
+storage_uri = "gcs://replit-rams-assets-worf/rams/assets/repl:f23f81b4-fa1a-4306-8385-1a065af07af6/e8962f95-3864-426e-893e-0725656e5420/a1f9c6d4-d759-43f1-a794-d10e9e24092d"
+storage_version_token = "1791412005614249"
+content_type = "image/png"

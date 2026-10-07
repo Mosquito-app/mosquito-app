@@ -2,16 +2,22 @@ import { chromium } from "playwright-core";
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 const base = `https://${process.env.REPLIT_DEV_DOMAIN}`;
-const stateFile = join(tmpdir(), "ludo-browser-qa-state.json");
+const privateDir = new URL("../../../.local/browser-qa/", import.meta.url).pathname;
+await mkdir(privateDir, { recursive: true, mode: 0o700 });
+const stateFile = join(privateDir, "state.json");
 const results = new URL("../test-results/", import.meta.url).pathname;
 await mkdir(results, { recursive: true });
 let state;
 try { state = JSON.parse(await readFile(stateFile, "utf8")); }
-catch { state = { players: [], evidence: [] }; }
+catch {
+  if (process.argv.includes("--continue-paid")) {
+    throw new Error("The original QA sessions must be restored before verifying their payments.");
+  }
+  state = { players: [], evidence: [] };
+}
 const browser = await chromium.launch({
   executablePath: "/repl/tools/bin/chromium", headless: true,
   args: ["--no-sandbox", "--disable-dev-shm-usage"],

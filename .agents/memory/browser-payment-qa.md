@@ -14,3 +14,9 @@ Distinguish Paystack hosted-card browser verification from API initialization or
 **Why:** Hosted Paystack checkout displayed Cloudflare security verification in automated Chromium and did not clear after a normal wait, even though API checkout initialization worked.
 
 **How to apply:** Report the external blocker honestly. If a user completes card entry in their ordinary browser, continue using the authenticated QA session and verify the actual transaction reference before asserting credit or matchmaking success.
+
+Do not rely on temporary filesystem storage for browser QA sessions that must survive a user-input pause. Keep any necessary session material in an ignored, access-restricted workspace location; never commit or log cookies.
+
+**Why:** Temporary browser session state was missing after the user completed the hosted checkouts. The actual QA accounts and payment intents remained intact in PostgreSQL.
+
+**How to apply:** Save private state with restrictive permissions before handing off hosted checkout. If session recovery is necessary, restore only disposable QA accounts and sign in through the normal UI; do not bypass authentication or modify financial records. Manual checkout followed by authenticated automatic reference verification successfully completed the provider-backed flow.
