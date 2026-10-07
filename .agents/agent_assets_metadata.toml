@@ -28,3 +28,17 @@ mtime_ms = 1791411927278
 storage_uri = "gcs://replit-rams-assets-worf/rams/assets/repl:f23f81b4-fa1a-4306-8385-1a065af07af6/e8962f95-3864-426e-893e-0725656e5420/a1f9c6d4-d759-43f1-a794-d10e9e24092d"
 storage_version_token = "1791412005614249"
 content_type = "image/png"
+
+[[outputs]]
+id = "XftQv0dSX7tzcOSgtQV3m"
+uri = "file://artifacts/api-server/test-results/player-2-settled-wallet.png"
+type = "image"
+title = "Winner wallet after completed match"
+description = "Player 2's authenticated lobby shows ₦3,600 available, ₦0 in match escrow, and the prize ledger entry. PostgreSQL independently confirmed one ₦3,600 prize and one ₦400 commission."
+logical_id = "d2dc5d95-0c08-4621-9230-9901f040312f"
+content_hash = "sha256:849ed22ed48dbbc160af211c06e4cb27f6e23f3419432d34b999f43ee17f3a1f"
+size = 794254
+mtime_ms = 1791413593245
+storage_uri = "gcs://replit-rams-assets-worf/rams/assets/repl:f23f81b4-fa1a-4306-8385-1a065af07af6/d2dc5d95-0c08-4621-9230-9901f040312f/90da9987-d33a-4c4e-99fa-6547742b4a79"
+storage_version_token = "1791413663719349"
+content_type = "image/png"
