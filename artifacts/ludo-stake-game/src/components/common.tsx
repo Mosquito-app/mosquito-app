@@ -6,9 +6,9 @@ export const money = (value: number) => `₦${value.toLocaleString('en-NG')}`;
 export const dateLabel = (value: string) => new Intl.DateTimeFormat('en-NG', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }).format(new Date(value));
 
 export function Brand({ compact = false }: { compact?: boolean }) {
-  return <Link href="/" className="brand-lockup" data-testid="link-home">
-    <span className="brand-mark"><Gamepad2 size={19} strokeWidth={2.5} /></span>
-    {!compact && <span className="brand-word">LUDO<span>ROOM</span></span>}
+  return <Link href="/" className="brand-lockup" aria-label="Mosquito App home" data-testid="link-home">
+    <span className="brand-mark"><img src={`${import.meta.env.BASE_URL}mosquito-mark.svg`} width="25" height="25" alt="" /></span>
+    {!compact && <span className="brand-word">Mosquito<span> App</span></span>}
   </Link>;
 }
 
@@ -22,7 +22,7 @@ export function Shell({ children, user, onLogout }: { children: ReactNode; user?
       <div className="rail-foot">
         <div className="sandbox-mini"><span className="pulse-dot" /> SANDBOX MODE</div>
         <div className="rail-user">
-          <div className="avatar">{user?.username?.slice(0, 1).toUpperCase() || 'L'}</div>
+          <div className="avatar">{user?.username?.slice(0, 1).toUpperCase() || 'M'}</div>
           <div className="rail-user-meta"><strong>{user?.username || 'Guest player'}</strong><small>Local account</small></div>
           {onLogout && <button className="icon-btn rail-logout" onClick={onLogout} aria-label="Sign out" data-testid="button-logout"><LogOut size={16} /></button>}
         </div>
@@ -32,7 +32,7 @@ export function Shell({ children, user, onLogout }: { children: ReactNode; user?
     <main className="main-stage">
       <header className="topbar">
         <div className="mobile-brand"><Brand /></div>
-        <div className="crumb"><span>PLAY</span><span className="crumb-slash">/</span><b>LOBBY</b></div>
+        <div className="crumb"><span>Mosquito App</span><span className="crumb-slash">/</span><b>LOBBY</b></div>
         <div className="topbar-right"><span className="sandbox-pill"><ShieldCheck size={14} /> TEST PLAY ONLY</span><span className="topbar-time">LAGOS · WAT</span></div>
       </header>
       {children}
@@ -53,10 +53,10 @@ export function AuthFrame({ children, heading, copy, mode }: { children: ReactNo
     <div className="auth-layout">
       <section className="auth-aside">
         <div className="auth-eyebrow"><span className="eyebrow-dash" /> THE GAME IS ON</div>
-        <h1>Every move<br />has a <em>moment.</em></h1>
+        <h1>Welcome to<br /><em>Mosquito App.</em></h1>
         <p>Two players. One board. Just you, your tactics, and a little luck.</p>
         <div className="auth-board">
-          <div className="auth-board-center"><span>LR</span></div>
+          <div className="auth-board-center"><span>M</span></div>
           <i className="auth-token token-coral" /><i className="auth-token token-green" /><i className="auth-token token-yellow" />
           <div className="auth-board-caption">A GOOD GAME STARTS HERE</div>
         </div>
@@ -69,6 +69,6 @@ export function AuthFrame({ children, heading, copy, mode }: { children: ReactNo
         <div className="auth-note"><ShieldCheck size={15} /> Local account. Sandbox balance. No live money.</div>
       </section>
     </div>
-    <footer className="auth-footer"><span>LUDOROOM · A GAME OF GOOD JUDGMENT</span><span>PAYSTACK TEST MODE ONLY</span></footer>
+    <footer className="auth-footer"><span>MOSQUITO APP · A GAME OF GOOD JUDGMENT</span><span>PAYSTACK TEST MODE ONLY</span></footer>
   </div>;
 }

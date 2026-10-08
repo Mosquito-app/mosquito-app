@@ -26,7 +26,7 @@ function TransactionRow({ transaction }: { transaction: WalletTransaction }) {
   const positive = transaction.amountNaira >= 0;
   return <div className="transaction-row" data-testid={`row-transaction-${transaction.id}`}>
     <span className={`tx-icon ${positive ? 'tx-in' : 'tx-out'}`}>{positive ? <ArrowDownLeft size={16} /> : <Coins size={16} />}</span>
-    <span className="tx-description"><b>{transaction.description || transaction.type.replace(/_/g, ' ')}</b><small>{dateLabel(transaction.createdAt)}</small></span>
+    <span className="tx-description"><b>{transaction.description || transaction.type.replace(/_/g, ' ')}</b><small>Mosquito Wallet · {dateLabel(transaction.createdAt)}</small></span>
     <span className={`tx-amount ${positive ? 'positive' : ''}`}>{positive ? '+' : '−'}{money(Math.abs(transaction.amountNaira))}</span>
   </div>;
 }
@@ -67,10 +67,10 @@ export default function LobbyPage() {
   return <Shell user={user} onLogout={() => logout.mutate(undefined, { onSettled: () => { queryClient.clear(); setLocation('/login'); } })}>
     <DepositReturn />
     <div className="page-content page-in">
-      <div className="welcome-line"><div><div className="section-overline"><span className="live-dot" /> TABLE IS OPEN · {conn === 'live' ? 'LIVE' : conn === 'connecting' ? 'CONNECTING' : 'RECONNECTING'}</div><h1>Good evening, <em>{user.username}</em><span className="period">.</span></h1></div></div>
+      <div className="welcome-line"><div><div className="section-overline"><span className="live-dot" /> MOSQUITO APP · {conn === 'live' ? 'LIVE' : conn === 'connecting' ? 'CONNECTING' : 'RECONNECTING'}</div><h1>Good evening, <em>{user.username}</em><span className="period">.</span></h1></div></div>
       {lobby.isError && <div className="error-banner"><InlineError>Lobby updates paused. <button onClick={() => void lobby.refetch()} data-testid="button-retry-lobby">Retry</button></InlineError></div>}
       <section className="balance-panel wallet-clean">
-        <div className="balance-top"><div><div className="panel-kicker">YOUR SANDBOX WALLET</div><div className="balance-label">Total balance</div></div><span className="wallet-stamp"><Wallet size={17} /></span></div>
+        <div className="balance-top"><div><div className="panel-kicker">MOSQUITO WALLET · SANDBOX</div><div className="balance-label">Total balance</div></div><span className="wallet-stamp"><Wallet size={17} /></span></div>
         {wallet.isLoading ? <div className="balance-value skeleton-line wide" /> : wallet.isError ? <div className="balance-value">— <button className="quiet-btn" onClick={() => void wallet.refetch()} data-testid="button-retry-wallet">Retry</button></div> : <div className="balance-value" data-testid="text-wallet-total">{money(w?.totalBalanceNaira ?? user.balanceNaira)}</div>}
         <div className="wallet-split">
           <div><span>AVAILABLE</span><strong data-testid="text-wallet-balance">{money(w?.balanceNaira ?? 0)}</strong></div>
@@ -83,6 +83,7 @@ export default function LobbyPage() {
           <span className="sandbox-caption"><ShieldCheck size={14} /> Test balance only. Not real bank money.</span>
         </div>
         {depositOpen && <form className="deposit-form wallet-deposit" onSubmit={deposit}>
+          <div className="wallet-deposit-heading">Mosquito Wallet · Test deposit</div>
           <label className="amount-field"><span>₦</span><input aria-label="Test deposit amount in naira" type="number" min="500" max="500000" step="100" value={depositAmount} onChange={e => setDepositAmount(e.target.value)} data-testid="input-deposit-amount" /></label>
           <button type="submit" className="dark-btn" disabled={initialize.isPending} data-testid="button-deposit">{initialize.isPending ? 'Opening checkout…' : 'Continue to Paystack test'} <ArrowRight size={16} /></button>
           {depositError && <InlineError>{depositError}</InlineError>}
@@ -113,7 +114,7 @@ export default function LobbyPage() {
           </div>
         </section>
         <section className="activity-section">
-          <div className="section-head"><div><div className="section-overline">YOUR LEDGER</div><h2>Recent activity.</h2></div><button className="refresh-button" onClick={() => void wallet.refetch()} aria-label="Refresh wallet" data-testid="button-refresh-wallet"><RefreshCw size={15} /></button></div>
+          <div className="section-head"><div><div className="section-overline">MOSQUITO WALLET LEDGER</div><h2>Recent activity.</h2></div><button className="refresh-button" onClick={() => void wallet.refetch()} aria-label="Refresh Mosquito Wallet" data-testid="button-refresh-wallet"><RefreshCw size={15} /></button></div>
           {w?.withdrawals?.length ? <div className="wd-list">{w.withdrawals.slice(0, 4).map(x => <div className="wd-row" key={x.id} data-testid={`row-withdrawal-${x.id}`}><span><b>{money(x.amountNaira)}</b><small>{dateLabel(x.createdAt)} · {x.reference}</small></span><StatusPill status={x.status} />{x.status === 'pending' && <VerifyButton id={x.id} />}</div>)}</div> : null}
           {wallet.isLoading ? <LoadingBlock label="Loading activity" /> : wallet.isError ? <div className="empty-activity"><InlineError>Wallet activity unavailable. <button onClick={() => void wallet.refetch()}>Retry</button></InlineError></div> : w?.transactions?.length ? <div className="transaction-list">{w.transactions.slice(0, 8).map(tx => <TransactionRow key={tx.id} transaction={tx} />)}</div> : <div className="empty-activity"><Sparkles size={18} /><b>A clean slate.</b><span>Your sandbox activity will show here.</span></div>}
           <div className="pay-note"><div className="pay-note-mark">₦</div><div><b>Test balances, always.</b><span>Deposits and withdrawals run through Paystack test mode. No real bank money.</span></div></div>

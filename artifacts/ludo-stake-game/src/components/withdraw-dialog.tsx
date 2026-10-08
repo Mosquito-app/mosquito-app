@@ -49,11 +49,12 @@ export function WithdrawDialog({ available, onClose }: { available: number; onCl
       },
     });
   };
-  return <div className="modal-back" role="dialog" aria-modal="true" aria-label="Test withdrawal" data-testid="dialog-withdraw">
+  return <div className="modal-back" role="dialog" aria-modal="true" aria-label="Mosquito Wallet test withdrawal" data-testid="dialog-withdraw">
     <div className="modal-card">
-      <div className="modal-head"><div><div className="panel-kicker">TEST WITHDRAWAL · SANDBOX ONLY</div><h2>Withdraw test funds</h2></div><button className="icon-btn" onClick={onClose} aria-label="Close" data-testid="button-close-withdraw"><X size={16} /></button></div>
+      <div className="modal-head"><div><div className="panel-kicker">MOSQUITO WALLET · SANDBOX ONLY</div><h2>Withdraw test funds</h2></div><button className="icon-btn" onClick={onClose} aria-label="Close" data-testid="button-close-withdraw"><X size={16} /></button></div>
       <p className="modal-note">Paystack still needs bank details it can resolve, even in test mode. Transfers are simulated: no real bank money moves. Available: <b>{money(available)}</b></p>
       {result ? <div className="wd-result" data-testid="status-withdraw-result">
+        <small>Mosquito Wallet · Test withdrawal receipt</small>
         <StatusPill status={result.status} />
         <b>{money(result.amountNaira)}</b><small>Ref {result.reference}</small>
         <p>{result.status === 'pending' ? 'Transfer is pending. Verify to reconcile it; you will not be debited twice.' : result.status === 'success' ? 'Test transfer succeeded. Sandbox balance only.' : 'Test transfer failed. Held funds are released back to your balance.'}</p>

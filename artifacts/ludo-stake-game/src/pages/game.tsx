@@ -120,7 +120,7 @@ export default function GamePage() {
           </div>
           {isWaiting && isHost && <div className="waiting-controls"><div><span className="pulse-dot" /> ROOM OPEN · SHARE THE STAKE WITH A FRIEND</div><button className="quiet-btn" disabled={cancel.isPending} onClick={() => cancel.mutate({ roomId }, { onSuccess: next => { patch(next); setLocation('/'); }, onError: () => setActionError('Could not cancel this room. Try again.') })} data-testid="button-cancel-room">{cancel.isPending ? 'Closing table…' : 'Cancel table'}</button></div>}
           {isWaiting && !isHost && <div className="waiting-banner"><Clock3 size={17} /> Waiting for the match to start.</div>}
-          {isDone && <div className="completed-banner"><BadgeCheck size={18} /> Match closed. Settlement shows in your wallet.</div>}
+          {isDone && <div className="completed-banner"><BadgeCheck size={18} /> Match closed. Settlement shows in your Mosquito Wallet.</div>}
         </section>
         <aside className="match-sidebar">
           <div className="sidebar-card match-status-card"><div className="section-overline">PRIZE SPLIT</div><h3>{isWaiting ? 'Seat open.' : isDone ? 'Match finished.' : 'In play.'}</h3>

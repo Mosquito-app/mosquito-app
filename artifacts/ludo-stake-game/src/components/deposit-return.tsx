@@ -3,6 +3,7 @@ import { getGetWalletQueryKey, useVerifyDeposit } from '@workspace/api-client-re
 import { queryClient } from '@/lib/query-client';
 import { money } from '@/components/common';
 
+// Preserve the legacy key so checkouts started before the rebrand still verify.
 const KEY = 'ludoroom.pendingDeposit';
 export const rememberDeposit = (reference: string) => { try { sessionStorage.setItem(KEY, reference); } catch { /* storage unavailable */ } };
 
@@ -21,7 +22,7 @@ export function DepositReturn() {
         void queryClient.invalidateQueries({ queryKey: getGetWalletQueryKey() });
         if (result.status === 'pending') { setRetryable(true); setMessage('Test deposit is still pending. Check again in a moment.'); return; }
         try { sessionStorage.removeItem(KEY); } catch { /* ignore */ }
-        setMessage(result.status === 'success' ? `Test deposit confirmed: ${money(result.amountNaira)} added to your sandbox balance.` : `Test deposit ${result.status}. Your balance has not been changed.`);
+        setMessage(result.status === 'success' ? `Test deposit receipt — confirmed: ${money(result.amountNaira)} added to your sandbox balance.` : `Test deposit ${result.status}. Your balance has not been changed.`);
       },
       onError: () => { setRetryable(true); setMessage('We could not verify that test deposit yet. Your balance has not been changed.'); },
     });
@@ -33,5 +34,5 @@ export function DepositReturn() {
     run();
   }, [run]);
   if (!verify.isPending && !message) return null;
-  return <div className="verify-note" data-testid="status-deposit">{verify.isPending ? 'Verifying test checkout securely…' : message}{retryable && !verify.isPending && <> <button className="quiet-btn" onClick={run} data-testid="button-retry-deposit">Retry verification</button></>}{!retryable && !verify.isPending && <button className="quiet-btn" onClick={() => setMessage('')} data-testid="button-dismiss-deposit">Dismiss</button>}</div>;
+  return <div className="verify-note" data-testid="status-deposit"><strong>Mosquito Wallet · </strong>{verify.isPending ? 'Verifying test checkout securely…' : message}{retryable && !verify.isPending && <> <button className="quiet-btn" onClick={run} data-testid="button-retry-deposit">Retry verification</button></>}{!retryable && !verify.isPending && <button className="quiet-btn" onClick={() => setMessage('')} data-testid="button-dismiss-deposit">Dismiss</button>}</div>;
 }

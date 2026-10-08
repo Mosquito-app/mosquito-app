@@ -1,6 +1,6 @@
 ---
 name: Product boundaries
-description: User-requested account, money-mode and commission rules for the Ludo platform.
+description: User-requested Mosquito branding, account, money-mode and commission rules.
 ---
 
 Use PostgreSQL-backed local accounts; the user explicitly said “Bypass Clerk.”
@@ -20,3 +20,9 @@ Distribute 90% of the combined match stakes to the winner and 10% to the platfor
 **Why:** The user specified ₦2,000 per player → ₦4,000 pot, ₦3,600 winner prize and ₦400 commission.
 
 **How to apply:** Apply the same split to every supported stake and settle atomically, once per match.
+
+Use “Mosquito App” for the application name (“Mosquito” is an acceptable short form), and “Mosquito Wallet” for wallet branding.
+
+**Why:** The user explicitly requested a full rebrand to these names while preserving the existing game and escrow rules.
+
+**How to apply:** Use these names for future customer-facing headers, wallet dialogs, receipt labels, metadata and logo assets.
