@@ -16,12 +16,15 @@ export function cellFor(color: Color, position: number, index: number): [number,
   if (position <= 56) return color === 'red' ? [7, 1 + (position - 52)] : [7, 13 - (position - 52)];
   return [7, 7];
 }
-export const canMoveToken = (position: number, die: number | null) => die !== null && (position === -1 ? die === 6 : position >= 0 && position < 57 && position + die <= 57);
+export const canMoveToken = (position: number, die: number | null) => die !== null && position >= 0 && position < 57 && position + die <= 57;
 
-/** Destination for a token using the selected die values, or null if illegal. */
-export function destination(position: number, values: number[]): number | null {
+/** Destination for selected die values, or null if illegal. Entry needs a full 6-6 or 6-1 roll; a single selected 6 enters at 0. */
+export function destination(position: number, values: number[], fullRoll?: number[] | null): number | null {
   if (!values.length || position >= 57) return null;
   if (position === -1) {
+    if (!fullRoll || fullRoll.length !== 2) return null;
+    const [x, y] = fullRoll;
+    if (!((x === 6 && y === 6) || (x === 6 && y === 1) || (x === 1 && y === 6))) return null;
     const i = values.indexOf(6);
     if (i < 0) return null;
     const rest = values.filter((_, k) => k !== i);
@@ -33,8 +36,8 @@ export function destination(position: number, values: number[]): number | null {
 }
 
 const PIPS: Record<number, number[]> = { 1: [4], 2: [2, 6], 3: [2, 4, 6], 4: [0, 2, 6, 8], 5: [0, 2, 4, 6, 8], 6: [0, 2, 3, 5, 6, 8] };
-export function DiceFace({ value, used, selected }: { value: number | null; used?: boolean; selected?: boolean }) {
-  return <span className={`lb-die ${used ? 'used' : ''} ${selected ? 'selected' : ''} ${value ? 'lb-die-roll' : 'empty'}`} aria-hidden="true">
+export function DiceFace({ value, used, selected, rolling }: { value: number | null; used?: boolean; selected?: boolean; rolling?: boolean }) {
+  return <span className={`lb-die ${used ? 'used' : ''} ${selected ? 'selected' : ''} ${rolling ? 'lb-die-tumble' : value ? 'lb-die-roll' : 'empty'}`} aria-hidden="true">
     {Array.from({ length: 9 }, (_, i) => <i key={i} className={value && PIPS[value].includes(i) ? 'pip' : ''} />)}
   </span>;
 }

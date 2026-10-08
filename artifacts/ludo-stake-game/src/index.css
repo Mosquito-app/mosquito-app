@@ -771,3 +771,54 @@ button, a, input { -webkit-tap-highlight-color: transparent; }
 .turn-timer.urgent { background:#9a392e; }
 .conn-reconnecting { background:#f7e7df; color:#9a392e; } .conn-connecting { background:#f4e9bb; }
 @media (max-width:560px) { .wallet-split { grid-template-columns:1fr 1fr; } }
+
+/* Uncle Joe wooden lounge: dark / gold / green */
+.app-shell { background:radial-gradient(circle at 80% -10%,#1f4a3a,#0e2019 60%); color:#f3ead2; }
+.main-stage { background:transparent; }
+.topbar { background:#0c1a14; border-color:#2c4a3c; }
+.page-content,.game-page { color:#f3ead2; }
+.welcome-line h1,.game-title-row h1,.section-head h2,.open-head h3,.deposit-panel h2 { color:#fbf1d3; }
+.welcome-line h1 em,.game-title-row h1 em { color:#f2b632; }
+.welcome-sub,.section-intro,.stake-foot,.section-overline,.panel-kicker,.tx-description small,.stake-explain { color:#a9bba9; }
+.balance-panel { background:linear-gradient(135deg,#17402f,#0f2a1f); border:1px solid #d9a63a66; box-shadow:0 10px 30px #0008, inset 0 0 0 1px #ffffff08; }
+.balance-value { color:#f6c64a; font-size:clamp(34px,6vw,48px); }
+.wallet-actions { display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin-top:14px; }
+.wallet-actions .primary-btn,.wallet-actions .dark-btn { min-height:42px; padding:0 18px; }
+.primary-btn { background:linear-gradient(#f2b632,#d9962a); color:#2a1708; box-shadow:0 3px 0 #8a5a14; }
+.primary-btn:hover { background:linear-gradient(#f8c64e,#e3a233); }
+.primary-btn:active,.dark-btn:active { transform:translateY(1px); }
+.dark-btn { background:#2d6b4a; color:#fff6dc; border:1px solid #4c9468; }
+.room-pulse { display:flex; flex-wrap:wrap; gap:10px; margin:14px 0; }
+.room-pulse span { padding:8px 14px; border-radius:999px; background:#13291f; border:1px solid #2f5744; font-size:12px; color:#c8d6c4; }
+.room-pulse b { color:#f6c64a; font-family:var(--app-font-mono); }
+.room-pulse .live { border-color:#f2b632; color:#f6c64a; }
+.game-cards { display:grid; grid-template-columns:repeat(auto-fill,minmax(170px,1fr)); gap:12px; }
+.game-card { display:flex; flex-direction:column; gap:6px; text-align:left; padding:16px; border-radius:14px; background:linear-gradient(160deg,#18382b,#102419); border:1px solid #2f5744; color:#f3ead2; cursor:pointer; position:relative; transition:transform .18s,border-color .18s,box-shadow .18s; overflow:hidden; }
+.game-card::before { content:""; position:absolute; inset:0 0 auto 0; height:4px; background:repeating-linear-gradient(90deg,#f2b632 0 14px,#2d9a5e 14px 28px,#c8472f 28px 42px); }
+.game-card:hover:not(:disabled) { transform:translateY(-3px); border-color:#f2b632; }
+.game-card.chosen { border-color:#f2b632; box-shadow:0 0 0 2px #f2b63255,0 10px 24px #0007; }
+.game-card.soon { opacity:.55; cursor:not-allowed; }
+.game-card small { color:#a9bba9; }
+.game-badge { margin-top:auto; font:500 9px var(--app-font-mono); letter-spacing:.1em; text-transform:uppercase; color:#f6c64a; }
+.stake-option,.deposit-panel,.pay-note { background:#13291f; border-color:#2f5744; color:#f3ead2; }
+.stake-option.selected { border-color:#f2b632; background:#1b3a2b; }
+.stake-radio i { background:#f2b632; } .selected .stake-radio { border-color:#f2b632; }
+.stake-arrow,.selected .stake-arrow { color:#f2b632; }
+.room-list,.room-row,.open-rooms,.activity-section,.transaction-row { border-color:#2c4a3c; }
+.room-row { padding:6px 4px; transition:background .15s; } .room-row:hover { background:#16301f; }
+.join-btn { color:#f6c64a; } .join-btn:hover { color:#fff2b8; }
+.empty-rooms { background:#13291f; border-color:#3a6450; } .empty-symbol { background:#1f4232; color:#f6c64a; }
+.tx-description b,.tx-amount { color:#f3ead2; } .tx-amount.positive { color:#7fd69c; }
+.amount-field { background:#0e2019; border-color:#3a6450; } .amount-field input { color:#fbf1d3; }
+.resume-banner { display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; padding:12px 16px; margin:14px 0; border-radius:12px; background:#2a2410; color:#fbf1d3; border:1px solid #f2b632; }
+.modal-card { color:#19372d; }
+.modal-card input,.modal-card select { min-width:0; max-width:100%; width:100%; }
+.modal-card .field { min-width:0; }
+.modal-card .two-col { grid-template-columns:repeat(2,minmax(0,1fr)); }
+@media (max-width:480px) { .modal-card .two-col { grid-template-columns:minmax(0,1fr); } }
+.game-page .sidebar-card { background:#13291f; border-color:#2c4a3c; color:#fbf1d3; }
+.game-page .sidebar-card h3,.game-page .status-line b { color:#fbf1d3; }
+.game-page .status-line { border-color:#2c4a3c; color:#afc7b7; }
+.game-page .how-card li { color:#afc7b7; }
+@media (max-width:760px) { .content-grid,.dashboard-grid { grid-template-columns:1fr; } .activity-section { border-left:0; padding-left:0; } .game-cards { grid-template-columns:1fr 1fr; } }
+@media (prefers-reduced-motion:reduce) { .game-card,.stake-option,.primary-btn { transition:none; } }

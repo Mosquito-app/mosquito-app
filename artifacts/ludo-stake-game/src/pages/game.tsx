@@ -51,6 +51,7 @@ export default function GamePage() {
     void queryClient.invalidateQueries({ queryKey: getGetLobbyQueryKey() });
   };
   const fail = () => { setActionError('That move could not be completed. The board is refreshing.'); void queryClient.invalidateQueries({ queryKey: getGetRoomQueryKey(roomId) }); };
+  const [rollNonce, setRollNonce] = useState(0);
   type Pick = 'd0' | 'd1' | 'both';
   const [pick, setPick] = useState<Pick | null>(null);
   const remKey = room ? `${room.board.dice?.join(',')}|${room.board.remainingDice.join(',')}` : '';
@@ -75,12 +76,12 @@ export default function GamePage() {
   const sel: Pick | null = valid(pick) ? pick : defaultPick;
   const indicesFor = (p: Pick | null): (0 | 1)[] => p === 'both' ? [0, 1] : p === 'd0' ? [0] : p === 'd1' ? [1] : [];
   const valuesFor = (p: Pick | null) => dice ? indicesFor(p).map(i => dice[i]) : [];
-  const legalFor = (p: Pick | null) => new Set(canMove ? mine.map((pos, i) => (destination(pos, valuesFor(p)) !== null ? i : -1)).filter(i => i >= 0) : []);
+  const legalFor = (p: Pick | null) => new Set(canMove ? mine.map((pos, i) => (destination(pos, valuesFor(p), dice) !== null ? i : -1)).filter(i => i >= 0) : []);
   const legalTokens = legalFor(sel);
   const anyLegal = (['d0', 'd1', 'both'] as Pick[]).some(p => valid(p) && legalFor(p).size > 0);
   const dieAvail = (i: number) => remaining.includes(i as 0 | 1);
   const msg = room.board.turnMessage;
-  const notice = msg === 'third_double' ? 'Third double in a row. The turn is forfeited before any movement.' : msg === 'double_bonus' ? 'Double rolled. Roll again after your dice are used.' : msg === 'no_moves' ? 'No legal move for that roll. Turn passed.' : msg === 'timeout' ? 'The turn clock ran out. Turn passed.' : '';
+  const notice = msg === 'third_double' ? 'Third double in a row. The turn is forfeited before any movement.' : msg === 'capture_bonus' ? (isDone ? 'Capture +10. Match completed.' : room.board.hasRolled ? 'Capture +10. Remaining dice first; bonus roll next.' : 'Capture +10. Bonus roll ready.') : msg === 'double_bonus' ? 'Double rolled. Roll again after your dice are used.' : msg === 'no_moves' ? 'No legal move for that roll. Turn passed.' : msg === 'timeout' ? 'The turn clock ran out. Turn passed.' : '';
   const onMove = (index: number) => { if (!sel) return; setActionError(''); move.mutate({ roomId, data: { tokenIndex: index, diceIndices: indicesFor(sel) } }, { onSuccess: patch, onError: fail }); };
   const optBtn = (p: Pick, label: string, faces: number[], sum?: number) => <button key={p} type="button" className={`lb-opt ${sel === p ? 'active' : ''}`} disabled={!canMove || !valid(p)} aria-pressed={sel === p} onClick={() => setPick(p)} data-testid={p === 'both' ? 'button-dice-combine' : `button-die-${p === 'd0' ? 0 : 1}`}>
     {faces.map((v, k) => <DiceFace key={k} value={v} used={false} />)}<span>{label}{sum !== undefined && <span className="sum"> {sum}</span>}<small>{!valid(p) ? 'USED' : sel === p ? 'SELECTED' : 'AVAILABLE'}</small></span></button>;
@@ -105,17 +106,18 @@ export default function GamePage() {
             <div className="lb-dice-panel" data-testid="panel-dice">
             <p className={`lb-turn ${isMyTurn ? '' : 'wait'}`}>{isDone ? (room.board.winnerUserId === user.id ? 'You took the table.' : 'Match complete.') : isWaiting ? 'Waiting for a challenger.' : isMyTurn ? (room.board.hasRolled ? (anyLegal ? 'Pick a die, or both as a sum, then tap a glowing cap.' : 'No legal move. Waiting on the server.') : 'Your turn. Roll both dice.') : `Waiting on ${opponent || 'opponent'} to play.`}</p>
             <div className="lb-dice-row">
-              {[0, 1].map(i => <span key={i} className="lb-opt" style={{ cursor: 'default' }} data-testid={`text-die-${i}`}><DiceFace value={dice ? dice[i] : null} used={!!dice && !dieAvail(i)} selected={false} /><span>Die {i + 1}: <b data-testid={`text-dice-value-${i}`}>{dice ? dice[i] : '-'}</b><small>{!dice ? 'NOT ROLLED' : dieAvail(i) ? 'AVAILABLE' : 'USED'}</small></span></span>)}
+              {[0, 1].map(i => <button key={i} type="button" className={`lb-opt ${sel === (i === 0 ? 'd0' : 'd1') ? 'active' : ''}`} disabled={!canMove || !dieAvail(i)} aria-pressed={sel === (i === 0 ? 'd0' : 'd1')} onClick={() => setPick(i === 0 ? 'd0' : 'd1')} data-testid={`text-die-${i}`}><DiceFace key={`${rollNonce}-${i}`} rolling={roll.isPending} value={dice ? dice[i] : null} used={!!dice && !dieAvail(i)} selected={sel === (i === 0 ? 'd0' : 'd1')} /><span>Die {i + 1}: <b data-testid={`text-dice-value-${i}`}>{dice ? dice[i] : '-'}</b><small>{!dice ? 'NOT ROLLED' : dieAvail(i) ? 'SELECT TO MOVE' : 'USED'}</small></span></button>)}
               {dice && <>
                 {optBtn('d0', 'Move die 1', [dice[0]])}
                 {optBtn('d1', 'Move die 2', [dice[1]])}
                 {optBtn('both', 'Both, sum', [dice[0], dice[1]], dice[0] + dice[1])}
               </>}
-              <button className={`roll-btn ${clockAllowsPlay && isMyTurn && !room.board.hasRolled ? 'roll-ready' : ''}`} disabled={!clockAllowsPlay || !isMyTurn || room.board.hasRolled || roll.isPending} onClick={() => { setActionError(''); roll.mutate({ roomId }, { onSuccess: patch, onError: fail }); }} data-testid="button-roll-dice">{roll.isPending ? 'Rolling...' : 'Roll dice'} <ArrowRight size={16} /></button>
+              <button className={`roll-btn ${clockAllowsPlay && isMyTurn && !room.board.hasRolled ? 'roll-ready' : ''}`} disabled={!clockAllowsPlay || !isMyTurn || room.board.hasRolled || roll.isPending} onClick={() => { setActionError(''); roll.mutate({ roomId }, { onSuccess: next => { setRollNonce(n => n + 1); patch(next); }, onError: fail }); }} data-testid="button-roll-dice">{roll.isPending ? 'Rolling...' : 'Roll dice'} <ArrowRight size={16} /></button>
             </div>
             {isActive && <div className="lb-doubles" data-testid="text-doubles">DOUBLES IN A ROW <b className={room.board.consecutiveDoubles > 0 ? 'on' : ''} /><b className={room.board.consecutiveDoubles > 1 ? 'on' : ''} /> {room.board.consecutiveDoubles}/2</div>}
+            {room.board.captureBonusPending && msg !== 'capture_bonus' && <div className="lb-notice" role="status" data-testid="text-capture-bonus">Capture +10 earned. Bonus roll coming after your dice.</div>}
             {notice && <div className={`lb-notice ${msg === 'third_double' || msg === 'timeout' ? 'bad' : ''}`} role="status" data-testid="text-turn-notice">{notice}</div>}
-            <p className="lb-help"><b>Rules.</b> Pick die 1 or die 2 to move one token, or move both as a sum. Leave home only with a 6; that 6 is spent on entry and a second chosen die then moves the token on. A 1 + 5 sum cannot exit. Split dice between two tokens by choosing one die at a time. A double gives a bonus roll once both dice are used; a third double in a row forfeits the turn.</p>
+            <p className="lb-help"><b>Rules.</b> Pick die 1 or die 2 to move one token, or move both as a sum. Leave home only on a 6-6 or 6-1 roll. A single 6 enters the token and keeps the other die; combine both to enter and advance. Split dice between two tokens by choosing one die at a time. A double gives a bonus roll once both dice are used; a third double in a row forfeits the turn.</p>
             </div>
           </div>
           {isWaiting && isHost && <div className="waiting-controls"><div><span className="pulse-dot" /> ROOM OPEN · SHARE THE STAKE WITH A FRIEND</div><button className="quiet-btn" disabled={cancel.isPending} onClick={() => cancel.mutate({ roomId }, { onSuccess: next => { patch(next); setLocation('/'); }, onError: () => setActionError('Could not cancel this room. Try again.') })} data-testid="button-cancel-room">{cancel.isPending ? 'Closing table…' : 'Cancel table'}</button></div>}
@@ -129,7 +131,7 @@ export default function GamePage() {
             <div className="status-line"><span>Winner prize (90%)</span><b data-testid="text-prize">{money(room.prizeNaira)}</b></div>
             <div className="status-line"><span>Commission (10%)</span><b data-testid="text-commission">{money(room.commissionNaira)}</b></div>
             <div className="status-foot"><ShieldCheck size={14} /> TEST BALANCES ONLY</div></div>
-          <div className="sidebar-card how-card"><div className="section-overline">RULES</div><h3>Play it smart.</h3><ol><li><span>01</span>A six brings a token out of base.</li><li><span>02</span>Finish needs an exact count to 57.</li><li><span>03</span>Miss the 30 second clock and the server moves on.</li></ol></div>
+          <div className="sidebar-card how-card"><div className="section-overline">RULES</div><h3>Play it smart.</h3><ol><li><span>01</span>A 6-6 or 6-1 brings a token out.</li><li><span>02</span>Finish needs an exact count to 57.</li><li><span>03</span>Miss the 30 second clock and the server moves on.</li></ol></div>
         </aside>
       </div>
     </div>

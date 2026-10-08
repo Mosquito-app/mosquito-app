@@ -555,6 +555,7 @@ export type BoardStateTurnMessage = typeof BoardStateTurnMessage[keyof typeof Bo
 export const BoardStateTurnMessage = {
   third_double: 'third_double',
   double_bonus: 'double_bonus',
+  capture_bonus: 'capture_bonus',
   no_moves: 'no_moves',
   timeout: 'timeout',
 } as const;
@@ -585,6 +586,8 @@ export interface BoardState {
   consecutiveDoubles: number;
   /** @nullable */
   turnMessage: BoardStateTurnMessage;
+  /** A capture earned a bonus roll after the current dice are consumed. */
+  captureBonusPending?: boolean;
   hasRolled: boolean;
   redTokens: number[];
   greenTokens: number[];

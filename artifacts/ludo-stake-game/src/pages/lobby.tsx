@@ -123,6 +123,11 @@ export default function LobbyPage() {
       {myRoomId && <div className="resume-banner" data-testid="banner-resume"><div><span className="pulse-dot" /> You have an open table.</div><Link href={`/game/${myRoomId}`} className="primary-btn" data-testid="link-resume-room"><Play size={15} /> Resume table</Link></div>}
       {footballRoom && <div className="resume-banner" data-testid="banner-resume-football"><div><span className="pulse-dot" /> Your 11v11 football room is {footballRoom.status}.</div><Link href={`/football/${footballRoom.id}`} className="primary-btn" data-testid="link-resume-football"><Play size={15} /> Resume football</Link></div>}
 
+      <div className="room-pulse" data-testid="strip-room-pulse">
+        <span><b>{openRooms?.length ?? 0}</b> open {mode === 'football' ? 'football rooms' : 'tables'}</span>
+        <span><b>{STAKES.reduce((n, v) => n + waiting(v), 0)}</b> players waiting</span>
+        <span className={currentRoomId ? 'live' : ''}>{currentRoomId ? 'Your table is active' : 'No active table'}</span>
+      </div>
       <section className="games-section">
         <div className="section-head"><div><div className="section-overline">GAMES</div><h2>Choose a game.</h2></div></div>
         <div className="game-cards">{GAMES.map(game => <button type="button" key={game.name} className={`game-card ${game.active ? 'active' : 'soon'} ${game.active && ((mode === 'ludo') === (game.name === 'Ludo Duel')) ? 'chosen' : ''}`} disabled={!game.active} aria-pressed={game.active && ((mode === 'ludo') === (game.name === 'Ludo Duel'))} onClick={() => { setMode(game.name === 'Ludo Duel' ? 'ludo' : 'football'); setRoomError(''); }} data-testid={`card-game-${game.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`}>

@@ -101,7 +101,7 @@ async function credit(seat: Seat, amount = 10000) {
 async function fixture(roomId: string, board: Partial<LudoBoardState>) {
   const [room] = await db.select().from(roomsTable).where(eq(roomsTable.id, roomId));
   await db.update(roomsTable).set({
-    board: { ...room.board, dice: null, remainingDice: [], consecutiveDoubles: 0, turnMessage: null, hasRolled: false, turnUserId: room.hostUserId,
+    board: { ...room.board, dice: null, remainingDice: [], consecutiveDoubles: 0, turnMessage: null, captureBonusPending: false, hasRolled: false, turnUserId: room.hostUserId,
       turnDeadlineAt: new Date(Date.now() + 30_000).toISOString(), ...board },
   }).where(eq(roomsTable.id, roomId));
 }
@@ -182,11 +182,13 @@ try {
   await fixture(roomId, { redTokens: [5, -1, -1, -1], greenTokens: [32, -1, -1, -1], dice: [1, 2], remainingDice: [0], hasRolled: true });
   event = messageOf(socket, "room.updated");
   const captured = (await request(`/rooms/${roomId}/move`, host, { tokenIndex: 0, diceIndices: [0] })).data;
-  assert.equal(captured.board.redTokens[0], 6); assert.equal(captured.board.greenTokens[0], -1); assert.equal(captured.board.turnUserId, green.id);
+  assert.equal(captured.board.redTokens[0], 16); assert.equal(captured.board.greenTokens[0], -1); assert.equal(captured.board.turnUserId, host.id);
+  assert.equal(captured.board.turnMessage, "capture_bonus"); assert.equal(captured.board.hasRolled, false);
   await event;
   await fixture(roomId, { turnUserId: green.id, greenTokens: [5, -1, -1, -1], redTokens: [32, -1, -1, -1], dice: [1, 2], remainingDice: [0], hasRolled: true });
   const greenMove = (await request(`/rooms/${roomId}/move`, green, { tokenIndex: 0, diceIndices: [0] })).data;
-  assert.equal(greenMove.board.turnUserId, host.id); assert.equal(greenMove.board.redTokens[0], -1);
+  assert.equal(greenMove.board.turnUserId, green.id); assert.equal(greenMove.board.redTokens[0], -1);
+  assert.equal(greenMove.board.greenTokens[0], 16);
   await fixture(roomId, { redTokens: [7, -1, -1, -1], greenTokens: [34, -1, -1, -1], dice: [1, 2], remainingDice: [0], hasRolled: true });
   assert.equal((await request(`/rooms/${roomId}/move`, host, { tokenIndex: 0, diceIndices: [0] })).data.board.greenTokens[0], 34);
   await fixture(roomId, { redTokens: [-1, -1, -1, -1], dice: [6, 6], remainingDice: [0], consecutiveDoubles: 1, hasRolled: true });
@@ -214,8 +216,18 @@ try {
   await fixture(roomId, { redTokens: [-1, -1, -1, -1], dice: [1, 5], remainingDice: [0, 1], hasRolled: true });
   await request(`/rooms/${roomId}/move`, host, { tokenIndex: 0, diceIndices: [0, 1] }, 400);
   await fixture(roomId, { redTokens: [-1, -1, -1, -1], dice: [6, 3], remainingDice: [0, 1], hasRolled: true });
+  await request(`/rooms/${roomId}/move`, host, { tokenIndex: 0, diceIndices: [0, 1] }, 400);
+  await request(`/rooms/${roomId}/move`, host, { tokenIndex: 0, diceIndices: [0] }, 400);
+  await fixture(roomId, { redTokens: [-1, -1, -1, -1], dice: [6, 1], remainingDice: [0, 1], hasRolled: true });
   const entered = (await request(`/rooms/${roomId}/move`, host, { tokenIndex: 0, diceIndices: [0, 1] })).data;
-  assert.equal(entered.board.redTokens[0], 3); assert.equal(entered.board.turnUserId, green.id);
+  assert.equal(entered.board.redTokens[0], 1); assert.equal(entered.board.turnUserId, green.id);
+  await fixture(roomId, { redTokens: [5, 10, -1, -1], greenTokens: [32, -1, -1, -1], dice: [1, 2], remainingDice: [0, 1], hasRolled: true });
+  const firstCapture = (await request(`/rooms/${roomId}/move`, host, { tokenIndex: 0, diceIndices: [0] })).data;
+  assert.equal(firstCapture.board.captureBonusPending, true); assert.equal(firstCapture.board.redTokens[0], 16);
+  await request(`/rooms/${roomId}/roll`, host, {}, 400);
+  const lastDie = (await request(`/rooms/${roomId}/move`, host, { tokenIndex: 1, diceIndices: [1] })).data;
+  assert.equal(lastDie.board.turnUserId, host.id); assert.equal(lastDie.board.hasRolled, false);
+  assert.equal(lastDie.board.turnMessage, "capture_bonus"); assert.equal(lastDie.board.captureBonusPending, false);
 
   // Only this isolated test process controls server randomness, never the client.
   const actualRandomInt = crypto.randomInt;
@@ -252,11 +264,13 @@ try {
   socket.terminate();
   console.log("PASS WebSocket delivery and authorization, both-player turns, capture, safe cells, six, overshoot and timeout");
 
-  await fixture(roomId, { redTokens: [57, 57, 57, 56], dice: [1, 2], remainingDice: [0], hasRolled: true });
+  await fixture(roomId, { redTokens: [57, 57, 57, 49], greenTokens: [24, -1, -1, -1], dice: [1, 2], remainingDice: [0], hasRolled: true });
   const endings = await Promise.all([1, 2].map(() => request(`/rooms/${roomId}/move`, host, { tokenIndex: 3, diceIndices: [0] }, [200, 400])));
   assert.deepEqual(endings.map(x => x.response.status).sort(), [200, 400]);
   const winner = endings.find(x => x.response.status === 200)!.data;
   assert.equal(winner.status, "completed"); assert.equal(winner.board.winnerUserId, host.id);
+  assert.deepEqual(winner.board.redTokens, [57, 57, 57, 57]);
+  assert.equal(winner.board.greenTokens[0], -1);
   assert.equal((await request("/wallet", host)).data.balanceNaira, 11600);
   const [commission] = await db.select().from(platformWalletTable);
   assert.equal(commission.balanceKobo, 40000);

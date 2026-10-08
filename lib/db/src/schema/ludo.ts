@@ -26,7 +26,8 @@ export type LudoBoardState = {
   dice: number[] | null;
   remainingDice: number[];
   consecutiveDoubles: number;
-  turnMessage: "third_double" | "double_bonus" | "no_moves" | "timeout" | null;
+  turnMessage: "third_double" | "double_bonus" | "capture_bonus" | "no_moves" | "timeout" | null;
+  captureBonusPending?: boolean;
   hasRolled: boolean;
   redTokens: number[];
   greenTokens: number[];

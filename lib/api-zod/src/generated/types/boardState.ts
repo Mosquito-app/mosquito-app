@@ -35,6 +35,8 @@ export interface BoardState {
   consecutiveDoubles: number;
   /** @nullable */
   turnMessage: BoardStateTurnMessage;
+  /** A capture earned a bonus roll after the current dice are consumed. */
+  captureBonusPending?: boolean;
   hasRolled: boolean;
   redTokens: number[];
   greenTokens: number[];

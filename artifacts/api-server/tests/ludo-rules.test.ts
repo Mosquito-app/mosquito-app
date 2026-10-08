@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import type { LudoBoardState } from "@workspace/db";
-import { applyRoll, finishRoll, hasLegalMove, moveDestination, normalizeBoard } from "../src/lib/ludo-rules";
+import { applyCaptureBonus, applyRoll, finishRoll, hasLegalMove, moveDestination, normalizeBoard } from "../src/lib/ludo-rules";
 
 const initial = (): LudoBoardState => ({
   turnUserId: "red", dice: null, remainingDice: [], hasRolled: false, consecutiveDoubles: 0,
@@ -11,10 +11,13 @@ const nextDeadline = new Date(Date.now() + 30000).toISOString();
 let checks = 0;
 const check = (actual: unknown, expected: unknown) => { assert.deepEqual(actual, expected); checks++; };
 
-check(moveDestination(-1, [6]), 0);
+check(moveDestination(-1, [6], [6, 1]), 0);
+check(moveDestination(-1, [6]), null);
 check(moveDestination(-1, [6, 6]), 6);
-check(moveDestination(-1, [6, 3]), 3);
-check(moveDestination(-1, [3, 6]), 3);
+check(moveDestination(-1, [6, 3]), null);
+check(moveDestination(-1, [3, 6]), null);
+check(moveDestination(-1, [6, 1]), 1);
+check(moveDestination(-1, [1, 6]), 1);
 check(moveDestination(-1, [1, 5]), null);
 check(moveDestination(-1, [5, 5]), null);
 check(moveDestination(10, [3, 4]), 17);
@@ -29,10 +32,11 @@ check(moveDestination(-2, [6]), null);
 // All 36 roll combinations obey the entry and movement rules.
 for (let a = 1; a <= 6; a++) for (let b = 1; b <= 6; b++) {
   const home = applyRoll(initial(), "red", [a, b], "green", nextDeadline);
+  const permitted = (a === 6 && (b === 6 || b === 1)) || (a === 1 && b === 6);
   check(home.dice, [a, b]);
-  check(home.hasRolled, a === 6 || b === 6);
-  check(home.turnUserId, a === 6 || b === 6 || a === b ? "red" : "green");
-  check(moveDestination(-1, [a, b]), a === 6 || b === 6 ? a + b - 6 : null);
+  check(home.hasRolled, permitted);
+  check(home.turnUserId, permitted || a === b ? "red" : "green");
+  check(moveDestination(-1, [a, b]), permitted ? a + b - 6 : null);
 }
 let board = { ...initial(), redTokens: [0, -1, -1, -1] };
 board = applyRoll(board, "red", [5, 5], "green", nextDeadline);
@@ -62,4 +66,26 @@ check(hasLegalMove({ ...initial(), dice: [1, 6], remainingDice: [0], redTokens: 
 const legacy = normalizeBoard({ ...initial(), dice: 6, hasRolled: true } as unknown as LudoBoardState);
 check(legacy.dice, null); check(legacy.hasRolled, false);
 check(legacy.redTokens, [-1, -1, -1, -1]);
+check(legacy.captureBonusPending, false);
+const cap = applyCaptureBonus({ ...initial(), dice: [1, 2], remainingDice: [1], hasRolled: true,
+  redTokens: [6, -1, -1, -1], greenTokens: [32, 42, -1, -1] }, "red", 0);
+check(cap.redTokens, [16, -1, -1, -1]); check(cap.greenTokens, [-1, -1, -1, -1]);
+check(cap.captureBonusPending, true); check(cap.remainingDice, [1]);
+const capDone = finishRoll(cap, "green", nextDeadline);
+check(capDone.turnUserId, "red"); check(capDone.turnMessage, "capture_bonus");
+check(capDone.captureBonusPending, false); check(capDone.hasRolled, false);
+const nextCapRoll = applyRoll(capDone, "red", [1, 2], "green", nextDeadline);
+check(nextCapRoll.captureBonusPending, false);
+check(finishRoll(nextCapRoll, "green", nextDeadline).turnUserId, "green");
+const greenCap = applyCaptureBonus({ ...initial(), turnUserId: "green", redTokens: [32, -1, -1, -1],
+  greenTokens: [6, -1, -1, -1] }, "green", 0);
+check(greenCap.greenTokens[0], 16); check(greenCap.redTokens[0], -1);
+for (const safe of [0, 8, 13, 21, 26, 34, 39, 47]) {
+  const safeBoard = { ...initial(), redTokens: [safe, -1, -1, -1], greenTokens: [(safe + 26) % 52, -1, -1, -1] };
+  check(applyCaptureBonus(safeBoard, "red", 0), safeBoard);
+}
+const finishCap = applyCaptureBonus({ ...initial(), redTokens: [50, 57, 57, 57], greenTokens: [24, -1, -1, -1] }, "red", 0);
+check(finishCap.redTokens, [57, 57, 57, 57]); check(finishCap.greenTokens[0], -1);
+const doubleCap = finishRoll({ ...cap, dice: [1, 1], consecutiveDoubles: 1 }, "green", nextDeadline);
+check(doubleCap.turnUserId, "red"); check(doubleCap.consecutiveDoubles, 1);
 console.log(`PASS ${checks} deterministic two-dice rule checks, including all 36 rolls and third-double forfeiture.`);

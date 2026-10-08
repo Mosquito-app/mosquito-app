@@ -909,7 +909,10 @@ components:
           maximum: 2
         turnMessage:
           type: ["string", "null"]
-          enum: [third_double, double_bonus, no_moves, timeout, null]
+          enum: [third_double, double_bonus, capture_bonus, no_moves, timeout, null]
+        captureBonusPending:
+          type: boolean
+          description: A capture earned a bonus roll after the current dice are consumed.
         hasRolled:
           type: boolean
         redTokens:

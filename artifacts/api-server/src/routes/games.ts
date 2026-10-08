@@ -26,15 +26,12 @@ import {
 import { getAuthenticatedUser } from "../lib/ludo-auth";
 import { publishRoomUpdate } from "../lib/ludo-events";
 import { deadline, nextPlayerId, splitPot, turnExpired } from "../lib/ludo-turns";
-import { applyRoll, finishRoll, hasLegalMove, moveDestination, normalizeBoard, tokensFor } from "../lib/ludo-rules";
+import { applyCaptureBonus, applyRoll, finishRoll, hasLegalMove, moveDestination, normalizeBoard, tokensFor } from "../lib/ludo-rules";
 import { completeMatch, matchDeadline, resolveMatchClock } from "../lib/ludo-match";
 import { boardScores, leadingColor } from "../lib/ludo-ranking";
 
 const router: IRouter = Router();
 const STAKES_NAIRA = [500, 1000, 2000] as const;
-const RED_START = 0;
-const GREEN_START = 26;
-const SAFE_SQUARES = new Set([0, 8, 13, 21, 26, 34, 39, 47]);
 
 class GameActionError extends Error {
   constructor(
@@ -61,6 +58,7 @@ function startBoard(hostUserId: string): LudoBoardState {
     remainingDice: [],
     consecutiveDoubles: 0,
     turnMessage: null,
+    captureBonusPending: false,
     hasRolled: false,
     redTokens: [-1, -1, -1, -1],
     greenTokens: [-1, -1, -1, -1],
@@ -70,15 +68,6 @@ function startBoard(hostUserId: string): LudoBoardState {
   };
 }
 
-function trackSquare(color: "red" | "green", position: number): number | null {
-  if (position < 0 || position > 51) return null;
-  const start = color === "red" ? RED_START : GREEN_START;
-  return (start + position) % 52;
-}
-
-function opponentColor(color: "red" | "green"): "red" | "green" {
-  return color === "red" ? "green" : "red";
-}
 
 async function getRoomForViewer(roomId: string, viewerId: string) {
   const [room] = await db
@@ -419,7 +408,7 @@ router.post("/rooms/:roomId/move", async (req, res): Promise<void> => {
       }
       const values = indices.map(index => room.board.dice![index]);
       const position = ownTokens[selected];
-      const destination = position === undefined ? null : moveDestination(position, values);
+      const destination = position === undefined ? null : moveDestination(position, values, room.board.dice);
       if (destination === null) {
         throw new GameActionError(400, "That token cannot move with this roll.");
       }
@@ -433,19 +422,8 @@ router.post("/rooms/:roomId/move", async (req, res): Promise<void> => {
         remainingDice: room.board.remainingDice.filter(index => !indices.includes(index)),
       };
 
-      const landedSquare = trackSquare(color, nextPosition);
-      if (landedSquare !== null && !SAFE_SQUARES.has(landedSquare)) {
-        const otherColor = opponentColor(color);
-        const otherTokens = [...tokensFor(board, otherColor)];
-        const captured = otherTokens.map((otherPosition) => {
-          const otherSquare = trackSquare(otherColor, otherPosition);
-          return otherSquare === landedSquare ? -1 : otherPosition;
-        });
-        if (otherColor === "red") board.redTokens = captured;
-        else board.greenTokens = captured;
-      }
-
-      const won = ownTokens.every((tokenPosition) => tokenPosition >= 57);
+      board = applyCaptureBonus(board, color, selected);
+      const won = tokensFor(board, color).every((tokenPosition) => tokenPosition >= 57);
       const overtimeLeader = board.isOvertime ? leadingColor(board) : null;
       if (won || overtimeLeader) {
         const winner = overtimeLeader ? overtimeLeader === "red" ? room.hostUserId : room.opponentUserId! : user.id;

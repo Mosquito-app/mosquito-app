@@ -15,6 +15,18 @@ Doubles and captures earn a bonus roll after movement is consumed; a lone six do
 
 **How to apply:** Do not retain the old six-only bonus when extending two-dice gameplay.
 
+An unsafe-square capture returns opposing caps to base and advances the capturing cap another ten spaces, stopping at finish. It earns a bonus roll after the current dice are consumed; a simultaneous double and capture grant one bonus roll, not two.
+
+**Why:** The user explicitly chose physical ten-space advancement, capped at finish, rather than timeout-ranking points.
+
+**How to apply:** Keep bonuses server-owned, carry the capture entitlement across a split roll, and clear it on the next roll or turn timeout. Current-position ranking automatically includes the bonus movement.
+
+Visible dice faces must be real selections with a clear selected state, not inert controls that look selectable.
+
+**Why:** A mistaken single-die selection can silently leave the summed move selected, changing the landing square, capture result and turn ownership in a wagered match.
+
+**How to apply:** Verify the selected dice sent to the server, not just the displayed face values, when testing split movements and captures.
+
 Rule upgrades must preserve saved token positions, room ownership and stakes. A legacy single-die roll may be cleared so the player rolls a fresh pair; never recreate a paid room or discard its escrow to change rule versions.
 
 **Why:** Existing completed and funded rooms must remain accessible after the dice response shape changes.
