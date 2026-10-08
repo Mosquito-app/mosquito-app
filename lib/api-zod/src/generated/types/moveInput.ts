@@ -5,6 +5,7 @@
  * Ludo Stake Game API. All wagering and balances are sandbox-only.
  * OpenAPI spec version: 0.1.0
  */
+import type { MoveInputDiceIndicesItem } from './moveInputDiceIndicesItem';
 
 export interface MoveInput {
   /**
@@ -12,4 +13,9 @@ export interface MoveInput {
      * @maximum 3
      */
   tokenIndex: number;
+  /**
+     * @minItems 1
+     * @maxItems 2
+     */
+  diceIndices: MoveInputDiceIndicesItem[];
 }

@@ -20,3 +20,9 @@ Do not rely on temporary filesystem storage for browser QA sessions that must su
 **Why:** Temporary browser session state was missing after the user completed the hosted checkouts. The actual QA accounts and payment intents remained intact in PostgreSQL.
 
 **How to apply:** Save private state with restrictive permissions before handing off hosted checkout. If session recovery is necessary, restore only disposable QA accounts and sign in through the normal UI; do not bypass authentication or modify financial records. Manual checkout followed by authenticated automatic reference verification successfully completed the provider-backed flow.
+
+Keep clickable token hit areas stationary while highlighting legal moves.
+
+**Why:** Continuous translation of the token buttons prevented normal Playwright clicks from becoming stable. A fixed highlight preserves both reliable interaction and testability.
+
+**How to apply:** Prefer outlines or visual effects that do not continuously change a control's bounding box. Do not bypass normal hit-testing to conceal an interaction problem.

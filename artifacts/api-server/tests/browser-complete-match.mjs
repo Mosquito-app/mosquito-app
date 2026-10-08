@@ -60,13 +60,20 @@ try {
         console.log(`Progress: ${evidence.rolls} server rolls, ${evidence.moves} legal moves; red=${room.board.redTokens}, green=${room.board.greenTokens}`);
       }
     } else {
-      assert.ok(room.board.dice >= 1 && room.board.dice <= 6);
+      assert.equal(room.board.dice.length, 2);
+      assert.ok(room.board.dice.every(value => value >= 1 && value <= 6));
       const color = seat.player.id === room.hostUserId ? "red" : "green";
       const tokens = color === "red" ? room.board.redTokens : room.board.greenTokens;
-      const legal = tokens.map((position, index) => ({ position, index }))
-        .filter(t => t.position === -1 ? room.board.dice === 6 : t.position < 57 && t.position + room.board.dice <= 57)
-        .sort((a, b) => b.position - a.position);
+      const options = room.board.remainingDice.map(index => [index]);
+      if (room.board.remainingDice.length === 2) options.push([...room.board.remainingDice]);
+      const legal = tokens.flatMap((position, index) => options.flatMap(diceIndices => {
+        const values = diceIndices.map(i => room.board.dice[i]);
+        const sum = values.reduce((total, value) => total + value, 0);
+        const destination = position === -1 ? values.includes(6) ? sum - 6 : null : position < 57 && position + sum <= 57 ? position + sum : null;
+        return destination === null ? [] : [{ position, index, diceIndices, destination }];
+      })).sort((a, b) => b.position - a.position || b.diceIndices.length - a.diceIndices.length);
       assert.ok(legal.length, "Server must not leave a rolled turn with no legal moves");
+      await seat.page.getByTestId(legal[0].diceIndices.length === 2 ? "button-dice-combine" : `button-die-${legal[0].diceIndices[0]}`).click();
       room = await uiAction(seat, "move", `button-token-${color}-${legal[0].index}`);
       evidence.moves++;
     }
@@ -87,7 +94,7 @@ try {
     // Replaying a finished room must be rejected, without awarding again.
     const roll = await seat.context.request.post(`${roomUrl}/roll`);
     assert.equal(roll.status(), 400);
-    const move = await seat.context.request.post(`${roomUrl}/move`, { data: { tokenIndex: 0 } });
+    const move = await seat.context.request.post(`${roomUrl}/move`, { data: { tokenIndex: 0, diceIndices: [0] } });
     assert.equal(move.status(), 400);
     await seat.page.goto(`${base}/`);
     await seat.page.getByTestId("text-wallet-balance").filter({ hasText: seat.player.id === winnerId ? "3,600" : "0" }).waitFor();

@@ -23,7 +23,10 @@ export type DepositStatus = "pending" | "success" | "failed";
 
 export type LudoBoardState = {
   turnUserId: string;
-  dice: number | null;
+  dice: number[] | null;
+  remainingDice: number[];
+  consecutiveDoubles: number;
+  turnMessage: "third_double" | "double_bonus" | "no_moves" | "timeout" | null;
   hasRolled: boolean;
   redTokens: number[];
   greenTokens: number[];

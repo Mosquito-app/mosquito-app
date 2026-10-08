@@ -198,12 +198,48 @@ export interface JoinRoomInput {
   stakeNaira: JoinRoomInputStakeNaira;
 }
 
+export type BoardStateRemainingDiceItem = typeof BoardStateRemainingDiceItem[keyof typeof BoardStateRemainingDiceItem];
+
+
+export const BoardStateRemainingDiceItem = {
+  NUMBER_0: 0,
+  NUMBER_1: 1,
+} as const;
+
+/**
+ * @nullable
+ */
+export type BoardStateTurnMessage = typeof BoardStateTurnMessage[keyof typeof BoardStateTurnMessage] | null;
+
+
+export const BoardStateTurnMessage = {
+  third_double: 'third_double',
+  double_bonus: 'double_bonus',
+  no_moves: 'no_moves',
+  timeout: 'timeout',
+} as const;
+
 export interface BoardState {
   turnUserId: string;
   /** @nullable */
   turnDeadlineAt: string | null;
+  /**
+     * @minItems 2
+     * @maxItems 2
+     * @nullable
+     * @items.minimum 1
+     * @items.maximum 6
+     */
+  dice: number[] | null;
+  /** @maxItems 2 */
+  remainingDice: BoardStateRemainingDiceItem[];
+  /**
+     * @minimum 0
+     * @maximum 2
+     */
+  consecutiveDoubles: number;
   /** @nullable */
-  dice: number | null;
+  turnMessage: BoardStateTurnMessage;
   hasRolled: boolean;
   redTokens: number[];
   greenTokens: number[];
@@ -256,11 +292,24 @@ export interface Room {
   createdAt: string;
 }
 
+export type MoveInputDiceIndicesItem = typeof MoveInputDiceIndicesItem[keyof typeof MoveInputDiceIndicesItem];
+
+
+export const MoveInputDiceIndicesItem = {
+  NUMBER_0: 0,
+  NUMBER_1: 1,
+} as const;
+
 export interface MoveInput {
   /**
      * @minimum 0
      * @maximum 3
      */
   tokenIndex: number;
+  /**
+     * @minItems 1
+     * @maxItems 2
+     */
+  diceIndices: MoveInputDiceIndicesItem[];
 }
 

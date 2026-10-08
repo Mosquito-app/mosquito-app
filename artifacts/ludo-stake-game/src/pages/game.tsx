@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link, useLocation, useParams } from 'wouter';
 import { ArrowLeft, ArrowRight, BadgeCheck, Clock3, ShieldCheck } from 'lucide-react';
 import {
@@ -9,55 +9,18 @@ import type { Room } from '@workspace/api-client-react';
 import { queryClient } from '@/lib/query-client';
 import { AuthFrame, InlineError, LoadingBlock, Shell, money } from '@/components/common';
 import { useRealtime } from '@/hooks/use-realtime';
+import { DiceFace, LudoBoard, cellFor, canMoveToken, destination } from '@/components/ludo-board';
+import type { Color } from '@/components/ludo-board';
+import '@/game-board.css';
 
-const pathCells: [number, number][] = [
-  [6,1],[6,2],[6,3],[6,4],[6,5],[5,6],[4,6],[3,6],[2,6],[1,6],[0,6],[0,7],[0,8],[1,8],[2,8],[3,8],[4,8],[5,8],[6,9],[6,10],[6,11],[6,12],[6,13],[6,14],[7,14],[8,14],[8,13],[8,12],[8,11],[8,10],[8,9],[9,8],[10,8],[11,8],[12,8],[13,8],[14,8],[14,7],[14,6],[13,6],[12,6],[11,6],[10,6],[9,6],[8,5],[8,4],[8,3],[8,2],[8,1],[8,0],[7,0],[6,0],
-];
-type Color = 'red' | 'green';
-const OFFSET: Record<Color, number> = { red: 0, green: 26 };
-const BASE: Record<Color, [number, number][]> = { red: [[1,1],[1,4],[4,1],[4,4]], green: [[10,10],[10,13],[13,10],[13,13]] };
-const RECTS = [{ cls: 'home-red', r: 0, c: 0, color: 'red' }, { cls: 'home-yellow', r: 0, c: 9 }, { cls: 'home-green', r: 9, c: 9, color: 'green' }, { cls: 'home-blue', r: 9, c: 0 }];
+export { cellFor, canMoveToken };
 
-export function cellFor(color: Color, position: number, index: number): [number, number] {
-  if (position < 0) return BASE[color][index];
-  if (position <= 51) return pathCells[(position + OFFSET[color]) % 52];
-  if (position <= 56) return color === 'red' ? [7, 1 + (position - 52)] : [7, 13 - (position - 52)];
-  return [7, 7];
-}
-export const canMoveToken = (position: number, die: number | null) => die !== null && (position === -1 ? die === 6 : position >= 0 && position < 57 && position + die <= 57);
 
 function useCountdown(deadline: string | null | undefined, active: boolean) {
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => { if (!deadline || !active) return; setNow(Date.now()); const t = window.setInterval(() => setNow(Date.now()), 250); return () => window.clearInterval(t); }, [deadline, active]);
   if (!deadline || !active) return null;
   return Math.max(0, Math.ceil((new Date(deadline).getTime() - now) / 1000));
-}
-
-function LudoBoard({ room, canMove, onMove }: { room: Room; canMove: boolean; onMove: (index: number) => void }) {
-  const trackSet = new Map<string, number>(); pathCells.forEach(([r, c], i) => trackSet.set(`${r}-${c}`, i));
-  const laneCells = new Map<string, Color>();
-  for (let i = 1; i <= 5; i++) { laneCells.set(`7-${i}`, 'red'); laneCells.set(`7-${14 - i}`, 'green'); }
-  const tokens = (['red', 'green'] as Color[]).flatMap(color => (color === 'red' ? room.board.redTokens : room.board.greenTokens).map((position, index) => ({ color, position, index, at: cellFor(color, position, index) })));
-  const die = room.board.dice;
-  const safe = [[6,1],[2,6],[1,8],[6,12],[8,13],[12,8],[13,6],[8,2]];
-  return <div className="board-frame">
-    <div className="board-grid" role="img" aria-label="Ludo match board, red and green player tokens">
-      {Array.from({ length: 225 }, (_, i) => {
-        const r = Math.floor(i / 15), c = i % 15, key = `${r}-${c}`;
-        const home = RECTS.find(h => r >= h.r && r < h.r + 6 && c >= h.c && c < h.c + 6);
-        const lane = laneCells.get(key);
-        const isCenter = r >= 6 && r <= 8 && c >= 6 && c <= 8;
-        const here = tokens.filter(t => t.at[0] === r && t.at[1] === c);
-        return <div key={i} className={`board-cell ${home?.cls || ''} ${trackSet.has(key) ? 'track-cell' : ''} ${lane ? `lane-${lane}` : ''} ${safe.some(([a, b]) => a === r && b === c) ? 'safe-cell' : ''} ${isCenter ? 'center-cell' : ''}`}>
-          {home && r === home.r + 2 && c === home.c + 2 && <span className={`home-center ${home.cls}`} />}
-          {r === 7 && c === 7 && <span className="center-star">✦</span>}
-          {here.map(t => { const mine = t.color === room.myColor; const legal = canMove && mine && canMoveToken(t.position, die);
-            return <button key={`${t.color}-${t.index}`} aria-label={`${t.color} token ${t.index + 1}`} disabled={!legal} onClick={() => onMove(t.index)} className={`board-token ${t.color} ${legal ? 'token-ready' : ''}`} style={t.position === 57 ? { transform: `translate(${(t.index - 1.5) * 5}px, ${(t.color === 'red' ? -4 : 4)}px)` } : undefined} data-testid={`button-token-${t.color}-${t.index}`} />; })}
-        </div>;
-      })}
-    </div>
-    <div className="board-legend"><span><i className="legend-dot red" /> RED SEAT</span><span><i className="legend-dot green" /> GREEN SEAT</span><span><i className="legend-safe" /> SAFE SQUARE</span></div>
-  </div>;
 }
 
 export default function GamePage() {
@@ -78,6 +41,11 @@ export default function GamePage() {
     void queryClient.invalidateQueries({ queryKey: getGetLobbyQueryKey() });
   };
   const fail = () => { setActionError('That move could not be completed. The board is refreshing.'); void queryClient.invalidateQueries({ queryKey: getGetRoomQueryKey(roomId) }); };
+  type Pick = 'd0' | 'd1' | 'both';
+  const [pick, setPick] = useState<Pick | null>(null);
+  const remKey = room ? `${room.board.dice?.join(',')}|${room.board.remainingDice.join(',')}` : '';
+  useEffect(() => { setPick(null); }, [remKey]);
+  const remaining = useMemo(() => room?.board.remainingDice ?? [], [room?.board.remainingDice]);
   if (!user && current.isLoading) return <Shell><div className="page-content"><LoadingBlock label="Checking player seat" /></div></Shell>;
   if (!user) return <AuthFrame mode="login" heading="Your seat is reserved." copy="Sign in to return to this match."><Link className="primary-btn full" href="/login" data-testid="link-game-login">Sign in <ArrowRight size={17} /></Link></AuthFrame>;
   if (roomQuery.isLoading) return <Shell user={user}><div className="page-content"><LoadingBlock label="Setting the board" /></div></Shell>;
@@ -89,9 +57,22 @@ export default function GamePage() {
   const isWaiting = room.status === 'waiting';
   const isDone = room.status === 'completed' || room.status === 'cancelled';
   const mine = room.myColor === 'red' ? room.board.redTokens : room.board.greenTokens;
-  const die = room.board.dice;
-  const canMove = isActive && isMyTurn && room.board.hasRolled;
-  const anyLegal = mine.some(p => canMoveToken(p, die));
+  const dice = room.board.dice;
+  const canMove = isActive && isMyTurn && room.board.hasRolled && !!dice && remaining.length > 0;
+  const defaultPick: Pick | null = remaining.length === 2 ? 'both' : remaining.length === 1 ? (remaining[0] === 0 ? 'd0' : 'd1') : null;
+  const valid = (p: Pick | null) => p === 'both' ? remaining.length === 2 : p === 'd0' ? remaining.includes(0) : p === 'd1' ? remaining.includes(1) : false;
+  const sel: Pick | null = valid(pick) ? pick : defaultPick;
+  const indicesFor = (p: Pick | null): (0 | 1)[] => p === 'both' ? [0, 1] : p === 'd0' ? [0] : p === 'd1' ? [1] : [];
+  const valuesFor = (p: Pick | null) => dice ? indicesFor(p).map(i => dice[i]) : [];
+  const legalFor = (p: Pick | null) => new Set(canMove ? mine.map((pos, i) => (destination(pos, valuesFor(p)) !== null ? i : -1)).filter(i => i >= 0) : []);
+  const legalTokens = legalFor(sel);
+  const anyLegal = (['d0', 'd1', 'both'] as Pick[]).some(p => valid(p) && legalFor(p).size > 0);
+  const dieAvail = (i: number) => remaining.includes(i as 0 | 1);
+  const msg = room.board.turnMessage;
+  const notice = msg === 'third_double' ? 'Third double in a row. The turn is forfeited before any movement.' : msg === 'double_bonus' ? 'Double rolled. Roll again after your dice are used.' : msg === 'no_moves' ? 'No legal move for that roll. Turn passed.' : msg === 'timeout' ? 'The turn clock ran out. Turn passed.' : '';
+  const onMove = (index: number) => { if (!sel) return; setActionError(''); move.mutate({ roomId, data: { tokenIndex: index, diceIndices: indicesFor(sel) } }, { onSuccess: patch, onError: fail }); };
+  const optBtn = (p: Pick, label: string, faces: number[], sum?: number) => <button key={p} type="button" className={`lb-opt ${sel === p ? 'active' : ''}`} disabled={!canMove || !valid(p)} aria-pressed={sel === p} onClick={() => setPick(p)} data-testid={p === 'both' ? 'button-dice-combine' : `button-die-${p === 'd0' ? 0 : 1}`}>
+    {faces.map((v, k) => <DiceFace key={k} value={v} used={false} />)}<span>{label}{sum !== undefined && <span className="sum"> {sum}</span>}<small>{!valid(p) ? 'USED' : sel === p ? 'SELECTED' : 'AVAILABLE'}</small></span></button>;
   const connLabel = conn === 'live' ? 'LIVE' : conn === 'connecting' ? 'CONNECTING' : 'RECONNECTING · POLLING 10s';
   return <Shell user={user}>
     <div className="game-page page-in">
@@ -106,12 +87,24 @@ export default function GamePage() {
             <div className={`player-chip opponent ${isActive && !isMyTurn ? 'turn-active' : ''}`}><span className={`player-avatar ${theirColor}`}>{opponent?.slice(0, 1).toUpperCase() || '·'}</span><div><b>{opponent || 'Waiting for player'}</b><span>{theirColor.toUpperCase()} SEAT</span></div>{isActive && !isMyTurn && <span className="turn-marker">THEIR TURN</span>}</div>
           </div>
           {isActive && seconds !== null && <div className={`turn-timer ${seconds <= 8 ? 'urgent' : ''}`} data-testid="text-turn-countdown"><span>{isMyTurn ? 'YOUR CLOCK' : 'THEIR CLOCK'}</span><b>{seconds}s</b><i style={{ transform: `scaleX(${Math.min(1, seconds / 30)})` }} /></div>}
-          <LudoBoard room={room} canMove={canMove} onMove={index => { setActionError(''); move.mutate({ roomId, data: { tokenIndex: index } }, { onSuccess: patch, onError: fail }); }} />
+          <LudoBoard room={room} legalTokens={legalTokens} selecting={canMove && legalTokens.size > 0} onMove={onMove} />
           {actionError && <InlineError>{actionError}</InlineError>}
           <div className="game-controls">
-            <div className="dice-area"><div className={`dice-face ${die ? 'die-roll' : ''}`} data-testid="text-dice-value">{die || <span className="dice-dots">···</span>}</div><span className="dice-caption">{die ? 'LAST ROLL' : 'DIE'}</span></div>
-            <div className="control-copy"><b>{isDone ? (room.board.winnerUserId === user.id ? 'You took the table.' : 'Match complete.') : isWaiting ? 'Waiting for a challenger.' : isMyTurn ? (room.board.hasRolled ? (anyLegal ? 'Choose a lit token.' : 'No legal move. Waiting on the server.') : 'Your turn. Roll the die.') : 'Opponent is thinking.'}</b><span>{isWaiting ? 'Your stake stays reserved while the room waits.' : 'The server keeps a 30 second turn clock.'}</span></div>
-            <button className={`roll-btn ${isActive && isMyTurn && !room.board.hasRolled ? 'roll-ready' : ''}`} disabled={!isActive || !isMyTurn || room.board.hasRolled || roll.isPending} onClick={() => { setActionError(''); roll.mutate({ roomId }, { onSuccess: patch, onError: fail }); }} data-testid="button-roll-dice">{roll.isPending ? 'Rolling…' : 'Roll die'} <ArrowRight size={16} /></button>
+            <div className="lb-dice-panel" data-testid="panel-dice">
+            <p className={`lb-turn ${isMyTurn ? '' : 'wait'}`}>{isDone ? (room.board.winnerUserId === user.id ? 'You took the table.' : 'Match complete.') : isWaiting ? 'Waiting for a challenger.' : isMyTurn ? (room.board.hasRolled ? (anyLegal ? 'Pick a die, or both as a sum, then tap a glowing cap.' : 'No legal move. Waiting on the server.') : 'Your turn. Roll both dice.') : `Waiting on ${opponent || 'opponent'} to play.`}</p>
+            <div className="lb-dice-row">
+              {[0, 1].map(i => <span key={i} className="lb-opt" style={{ cursor: 'default' }} data-testid={`text-die-${i}`}><DiceFace value={dice ? dice[i] : null} used={!!dice && !dieAvail(i)} selected={false} /><span>Die {i + 1}: <b data-testid={`text-dice-value-${i}`}>{dice ? dice[i] : '-'}</b><small>{!dice ? 'NOT ROLLED' : dieAvail(i) ? 'AVAILABLE' : 'USED'}</small></span></span>)}
+              {dice && <>
+                {optBtn('d0', 'Move die 1', [dice[0]])}
+                {optBtn('d1', 'Move die 2', [dice[1]])}
+                {optBtn('both', 'Both, sum', [dice[0], dice[1]], dice[0] + dice[1])}
+              </>}
+              <button className={`roll-btn ${isActive && isMyTurn && !room.board.hasRolled ? 'roll-ready' : ''}`} disabled={!isActive || !isMyTurn || room.board.hasRolled || roll.isPending} onClick={() => { setActionError(''); roll.mutate({ roomId }, { onSuccess: patch, onError: fail }); }} data-testid="button-roll-dice">{roll.isPending ? 'Rolling...' : 'Roll dice'} <ArrowRight size={16} /></button>
+            </div>
+            {isActive && <div className="lb-doubles" data-testid="text-doubles">DOUBLES IN A ROW <b className={room.board.consecutiveDoubles > 0 ? 'on' : ''} /><b className={room.board.consecutiveDoubles > 1 ? 'on' : ''} /> {room.board.consecutiveDoubles}/2</div>}
+            {notice && <div className={`lb-notice ${msg === 'third_double' || msg === 'timeout' ? 'bad' : ''}`} role="status" data-testid="text-turn-notice">{notice}</div>}
+            <p className="lb-help"><b>Rules.</b> Pick die 1 or die 2 to move one token, or move both as a sum. Leave home only with a 6; that 6 is spent on entry and a second chosen die then moves the token on. A 1 + 5 sum cannot exit. Split dice between two tokens by choosing one die at a time. A double gives a bonus roll once both dice are used; a third double in a row forfeits the turn.</p>
+            </div>
           </div>
           {isWaiting && isHost && <div className="waiting-controls"><div><span className="pulse-dot" /> ROOM OPEN · SHARE THE STAKE WITH A FRIEND</div><button className="quiet-btn" disabled={cancel.isPending} onClick={() => cancel.mutate({ roomId }, { onSuccess: next => { patch(next); setLocation('/'); }, onError: () => setActionError('Could not cancel this room. Try again.') })} data-testid="button-cancel-room">{cancel.isPending ? 'Closing table…' : 'Cancel table'}</button></div>}
           {isWaiting && !isHost && <div className="waiting-banner"><Clock3 size={17} /> Waiting for the match to start.</div>}

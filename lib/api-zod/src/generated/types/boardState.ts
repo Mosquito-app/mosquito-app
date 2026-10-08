@@ -5,13 +5,30 @@
  * Ludo Stake Game API. All wagering and balances are sandbox-only.
  * OpenAPI spec version: 0.1.0
  */
+import type { BoardStateRemainingDiceItem } from './boardStateRemainingDiceItem';
+import type { BoardStateTurnMessage } from './boardStateTurnMessage';
 
 export interface BoardState {
   turnUserId: string;
   /** @nullable */
   turnDeadlineAt: Date | null;
+  /**
+     * @minItems 2
+     * @maxItems 2
+     * @nullable
+     * @items.minimum 1
+     * @items.maximum 6
+     */
+  dice: number[] | null;
+  /** @maxItems 2 */
+  remainingDice: BoardStateRemainingDiceItem[];
+  /**
+     * @minimum 0
+     * @maximum 2
+     */
+  consecutiveDoubles: number;
   /** @nullable */
-  dice: number | null;
+  turnMessage: BoardStateTurnMessage;
   hasRolled: boolean;
   redTokens: number[];
   greenTokens: number[];

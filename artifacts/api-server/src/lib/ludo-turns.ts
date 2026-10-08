@@ -2,6 +2,7 @@ import { eq } from "drizzle-orm";
 import { db, roomsTable, type LudoBoardState } from "@workspace/db";
 import { publishRoomUpdate } from "./ludo-events";
 import { logger } from "./logger";
+import { normalizeBoard } from "./ludo-rules";
 
 export const TURN_MS = 30_000;
 export const deadline = () => new Date(Date.now() + TURN_MS).toISOString();
@@ -25,9 +26,10 @@ export async function expireTurns(now = Date.now()) {
         .where(eq(roomsTable.id, candidate.id)).for("update", { skipLocked: true }).limit(1);
       if (!room || room.status !== "active" || !room.opponentUserId || !turnExpired(room.board, now)) return false;
       const board: LudoBoardState = {
-        ...room.board,
+        ...normalizeBoard(room.board),
         turnUserId: nextPlayerId(room, room.board.turnUserId),
         dice: null, hasRolled: false,
+        remainingDice: [], consecutiveDoubles: 0, turnMessage: "timeout",
         turnDeadlineAt: new Date(now + TURN_MS).toISOString(),
       };
       await tx.update(roomsTable).set({ board, updatedAt: new Date() }).where(eq(roomsTable.id, room.id));

@@ -42,3 +42,17 @@ mtime_ms = 1791413593245
 storage_uri = "gcs://replit-rams-assets-worf/rams/assets/repl:f23f81b4-fa1a-4306-8385-1a065af07af6/d2dc5d95-0c08-4621-9230-9901f040312f/90da9987-d33a-4c4e-99fa-6547742b4a79"
 storage_version_token = "1791413663719349"
 content_type = "image/png"
+
+[[outputs]]
+id = "l9pTDEvE97wSUQ6PH6EmI"
+uri = "file://artifacts/api-server/test-results/uncle-joe-desktop.png"
+type = "image"
+title = "Uncle Joe wooden board preview"
+description = "The updated four-color wooden board and polished cap tokens, shown on the saved completed QA match. Split and combined two-dice moves were separately verified on desktop and mobile."
+logical_id = "37b03260-2a9e-4e1c-826d-dec3ae50be01"
+content_hash = "sha256:425b6c92c8c9616a5c6d5a3230bf3eb6b33e6d4cdf3732f7cfb0087b8e0a922e"
+size = 968183
+mtime_ms = 1791420145904
+storage_uri = "gcs://replit-rams-assets-worf/rams/assets/repl:f23f81b4-fa1a-4306-8385-1a065af07af6/37b03260-2a9e-4e1c-826d-dec3ae50be01/009741db-16e5-45ce-b864-ac4126db5105"
+storage_version_token = "1791420218542062"
+content_type = "image/png"

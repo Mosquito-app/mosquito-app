@@ -28,6 +28,7 @@ import {
 import { getAuthenticatedUser } from "../lib/ludo-auth";
 import { publishRoomUpdate } from "../lib/ludo-events";
 import { deadline, nextPlayerId, splitPot, turnExpired } from "../lib/ludo-turns";
+import { applyRoll, finishRoll, hasLegalMove, moveDestination, normalizeBoard, tokensFor } from "../lib/ludo-rules";
 
 const router: IRouter = Router();
 const STAKES_NAIRA = [500, 1000, 2000] as const;
@@ -57,27 +58,15 @@ function startBoard(hostUserId: string): LudoBoardState {
   return {
     turnUserId: hostUserId,
     dice: null,
+    remainingDice: [],
+    consecutiveDoubles: 0,
+    turnMessage: null,
     hasRolled: false,
     redTokens: [-1, -1, -1, -1],
     greenTokens: [-1, -1, -1, -1],
     winnerUserId: null,
     turnDeadlineAt: null,
   };
-}
-
-function tokensFor(board: LudoBoardState, color: "red" | "green"): number[] {
-  return color === "red" ? board.redTokens : board.greenTokens;
-}
-
-function canMoveToken(position: number, dice: number): boolean {
-  if (position === -1) return dice === 6;
-  return position < 57 && position + dice <= 57;
-}
-
-function validTokens(board: LudoBoardState, color: "red" | "green", dice: number) {
-  return tokensFor(board, color)
-    .map((position, index) => (canMoveToken(position, dice) ? index : -1))
-    .filter((index) => index >= 0);
 }
 
 function trackSquare(color: "red" | "green", position: number): number | null {
@@ -128,7 +117,7 @@ async function getRoomForViewer(roomId: string, viewerId: string) {
     opponentUserId: room.opponentUserId,
     opponentUsername,
     myColor,
-    board: room.board,
+    board: normalizeBoard(room.board),
     createdAt: room.createdAt,
   });
 }
@@ -147,7 +136,7 @@ async function loadLockedRoom(
   if (!room || !colorFor(room, viewerId)) {
     throw new GameActionError(404, "Match not found.");
   }
-  return room;
+  return { ...room, board: normalizeBoard(room.board) };
 }
 
 function currentPlayerColor(room: {
@@ -386,20 +375,10 @@ router.post("/rooms/:roomId/roll", async (req, res): Promise<void> => {
         throw new GameActionError(400, "Move one of your tokens before rolling again.");
       }
 
-      const die = randomInt(1, 7);
+      const dice: [number, number] = [randomInt(1, 7), randomInt(1, 7)];
       const color = currentPlayerColor(room, user.id);
       if (!color) throw new GameActionError(404, "Match not found.");
-      const movable = validTokens(room.board, color, die);
-      const board: LudoBoardState = { ...room.board, dice: die, hasRolled: true };
-
-      if (movable.length === 0) {
-        board.dice = null;
-        board.hasRolled = false;
-        if (die !== 6 && room.opponentUserId) {
-          board.turnUserId = nextPlayerId(room, user.id);
-        }
-        board.turnDeadlineAt = deadline();
-      }
+      const board = applyRoll(room.board, color, dice, nextPlayerId(room, user.id), deadline());
 
       await tx
         .update(roomsTable)
@@ -450,19 +429,24 @@ router.post("/rooms/:roomId/move", async (req, res): Promise<void> => {
       if (!color) throw new GameActionError(404, "Match not found.");
       const ownTokens = [...tokensFor(room.board, color)];
       const selected = body.data.tokenIndex;
+      const indices: number[] = body.data.diceIndices;
+      if (new Set(indices).size !== indices.length || indices.some(index => !room.board.remainingDice.includes(index))) {
+        throw new GameActionError(400, "Choose only unused dice from this roll.");
+      }
+      const values = indices.map(index => room.board.dice![index]);
       const position = ownTokens[selected];
-      if (position === undefined || !canMoveToken(position, room.board.dice)) {
+      const destination = position === undefined ? null : moveDestination(position, values);
+      if (destination === null) {
         throw new GameActionError(400, "That token cannot move with this roll.");
       }
 
-      const nextPosition = position === -1 ? 0 : position + room.board.dice;
+      const nextPosition = destination;
       ownTokens[selected] = nextPosition;
-      const board: LudoBoardState = {
+      let board: LudoBoardState = {
         ...room.board,
         redTokens: color === "red" ? ownTokens : room.board.redTokens,
         greenTokens: color === "green" ? ownTokens : room.board.greenTokens,
-        dice: null,
-        hasRolled: false,
+        remainingDice: room.board.remainingDice.filter(index => !indices.includes(index)),
       };
 
       const landedSquare = trackSquare(color, nextPosition);
@@ -481,6 +465,8 @@ router.post("/rooms/:roomId/move", async (req, res): Promise<void> => {
       if (won) {
         board.winnerUserId = user.id;
         board.turnDeadlineAt = null;
+        board.remainingDice = [];
+        board.hasRolled = false;
         await tx
           .update(roomsTable)
           .set({ status: "completed", board, updatedAt: new Date() })
@@ -489,9 +475,9 @@ router.post("/rooms/:roomId/move", async (req, res): Promise<void> => {
         return;
       }
 
-      board.turnUserId =
-        room.board.dice === 6 ? user.id : nextPlayerId(room, user.id);
-      board.turnDeadlineAt = deadline();
+      if (!hasLegalMove(board, color)) {
+        board = finishRoll(board, nextPlayerId(room, user.id), deadline(), board.remainingDice.length > 0);
+      }
       await tx
         .update(roomsTable)
         .set({ board, updatedAt: new Date() })

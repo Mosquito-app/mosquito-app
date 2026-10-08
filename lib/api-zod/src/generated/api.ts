@@ -236,6 +236,18 @@ export const JoinRoomBody = zod.object({
   "stakeNaira": zod.union([zod.literal(500),zod.literal(1000),zod.literal(2000)])
 })
 
+export const joinRoomResponseBoardDiceItemMax = 6;
+
+export const joinRoomResponseBoardDiceMin = 2;
+export const joinRoomResponseBoardDiceMax = 2;
+
+export const joinRoomResponseBoardRemainingDiceMax = 2;
+
+export const joinRoomResponseBoardConsecutiveDoublesMin = 0;
+export const joinRoomResponseBoardConsecutiveDoublesMax = 2;
+
+
+
 export const JoinRoomResponse = zod.object({
   "id": zod.string(),
   "stakeNaira": zod.union([zod.literal(500),zod.literal(1000),zod.literal(2000)]),
@@ -251,7 +263,10 @@ export const JoinRoomResponse = zod.object({
   "board": zod.object({
   "turnUserId": zod.string(),
   "turnDeadlineAt": zod.coerce.date().nullable(),
-  "dice": zod.number().int().nullable(),
+  "dice": zod.array(zod.number().int().min(1).max(joinRoomResponseBoardDiceItemMax)).min(joinRoomResponseBoardDiceMin).max(joinRoomResponseBoardDiceMax).nullable(),
+  "remainingDice": zod.array(zod.union([zod.literal(0),zod.literal(1)])).max(joinRoomResponseBoardRemainingDiceMax),
+  "consecutiveDoubles": zod.number().int().min(joinRoomResponseBoardConsecutiveDoublesMin).max(joinRoomResponseBoardConsecutiveDoublesMax),
+  "turnMessage": zod.union([zod.literal('third_double'),zod.literal('double_bonus'),zod.literal('no_moves'),zod.literal('timeout'),zod.literal(null)]).nullable(),
   "hasRolled": zod.boolean(),
   "redTokens": zod.array(zod.number().int()),
   "greenTokens": zod.array(zod.number().int()),
@@ -268,6 +283,18 @@ export const GetRoomParams = zod.object({
   "roomId": zod.coerce.string().uuid()
 })
 
+export const getRoomResponseBoardDiceItemMax = 6;
+
+export const getRoomResponseBoardDiceMin = 2;
+export const getRoomResponseBoardDiceMax = 2;
+
+export const getRoomResponseBoardRemainingDiceMax = 2;
+
+export const getRoomResponseBoardConsecutiveDoublesMin = 0;
+export const getRoomResponseBoardConsecutiveDoublesMax = 2;
+
+
+
 export const GetRoomResponse = zod.object({
   "id": zod.string(),
   "stakeNaira": zod.union([zod.literal(500),zod.literal(1000),zod.literal(2000)]),
@@ -283,7 +310,10 @@ export const GetRoomResponse = zod.object({
   "board": zod.object({
   "turnUserId": zod.string(),
   "turnDeadlineAt": zod.coerce.date().nullable(),
-  "dice": zod.number().int().nullable(),
+  "dice": zod.array(zod.number().int().min(1).max(getRoomResponseBoardDiceItemMax)).min(getRoomResponseBoardDiceMin).max(getRoomResponseBoardDiceMax).nullable(),
+  "remainingDice": zod.array(zod.union([zod.literal(0),zod.literal(1)])).max(getRoomResponseBoardRemainingDiceMax),
+  "consecutiveDoubles": zod.number().int().min(getRoomResponseBoardConsecutiveDoublesMin).max(getRoomResponseBoardConsecutiveDoublesMax),
+  "turnMessage": zod.union([zod.literal('third_double'),zod.literal('double_bonus'),zod.literal('no_moves'),zod.literal('timeout'),zod.literal(null)]).nullable(),
   "hasRolled": zod.boolean(),
   "redTokens": zod.array(zod.number().int()),
   "greenTokens": zod.array(zod.number().int()),
@@ -300,6 +330,18 @@ export const RollDiceParams = zod.object({
   "roomId": zod.coerce.string().uuid()
 })
 
+export const rollDiceResponseBoardDiceItemMax = 6;
+
+export const rollDiceResponseBoardDiceMin = 2;
+export const rollDiceResponseBoardDiceMax = 2;
+
+export const rollDiceResponseBoardRemainingDiceMax = 2;
+
+export const rollDiceResponseBoardConsecutiveDoublesMin = 0;
+export const rollDiceResponseBoardConsecutiveDoublesMax = 2;
+
+
+
 export const RollDiceResponse = zod.object({
   "id": zod.string(),
   "stakeNaira": zod.union([zod.literal(500),zod.literal(1000),zod.literal(2000)]),
@@ -315,7 +357,10 @@ export const RollDiceResponse = zod.object({
   "board": zod.object({
   "turnUserId": zod.string(),
   "turnDeadlineAt": zod.coerce.date().nullable(),
-  "dice": zod.number().int().nullable(),
+  "dice": zod.array(zod.number().int().min(1).max(rollDiceResponseBoardDiceItemMax)).min(rollDiceResponseBoardDiceMin).max(rollDiceResponseBoardDiceMax).nullable(),
+  "remainingDice": zod.array(zod.union([zod.literal(0),zod.literal(1)])).max(rollDiceResponseBoardRemainingDiceMax),
+  "consecutiveDoubles": zod.number().int().min(rollDiceResponseBoardConsecutiveDoublesMin).max(rollDiceResponseBoardConsecutiveDoublesMax),
+  "turnMessage": zod.union([zod.literal('third_double'),zod.literal('double_bonus'),zod.literal('no_moves'),zod.literal('timeout'),zod.literal(null)]).nullable(),
   "hasRolled": zod.boolean(),
   "redTokens": zod.array(zod.number().int()),
   "greenTokens": zod.array(zod.number().int()),
@@ -335,11 +380,26 @@ export const MoveTokenParams = zod.object({
 export const moveTokenBodyTokenIndexMin = 0;
 export const moveTokenBodyTokenIndexMax = 3;
 
+export const moveTokenBodyDiceIndicesMax = 2;
+
 
 
 export const MoveTokenBody = zod.object({
-  "tokenIndex": zod.number().int().min(moveTokenBodyTokenIndexMin).max(moveTokenBodyTokenIndexMax)
+  "tokenIndex": zod.number().int().min(moveTokenBodyTokenIndexMin).max(moveTokenBodyTokenIndexMax),
+  "diceIndices": zod.array(zod.union([zod.literal(0),zod.literal(1)])).min(1).max(moveTokenBodyDiceIndicesMax)
 })
+
+export const moveTokenResponseBoardDiceItemMax = 6;
+
+export const moveTokenResponseBoardDiceMin = 2;
+export const moveTokenResponseBoardDiceMax = 2;
+
+export const moveTokenResponseBoardRemainingDiceMax = 2;
+
+export const moveTokenResponseBoardConsecutiveDoublesMin = 0;
+export const moveTokenResponseBoardConsecutiveDoublesMax = 2;
+
+
 
 export const MoveTokenResponse = zod.object({
   "id": zod.string(),
@@ -356,7 +416,10 @@ export const MoveTokenResponse = zod.object({
   "board": zod.object({
   "turnUserId": zod.string(),
   "turnDeadlineAt": zod.coerce.date().nullable(),
-  "dice": zod.number().int().nullable(),
+  "dice": zod.array(zod.number().int().min(1).max(moveTokenResponseBoardDiceItemMax)).min(moveTokenResponseBoardDiceMin).max(moveTokenResponseBoardDiceMax).nullable(),
+  "remainingDice": zod.array(zod.union([zod.literal(0),zod.literal(1)])).max(moveTokenResponseBoardRemainingDiceMax),
+  "consecutiveDoubles": zod.number().int().min(moveTokenResponseBoardConsecutiveDoublesMin).max(moveTokenResponseBoardConsecutiveDoublesMax),
+  "turnMessage": zod.union([zod.literal('third_double'),zod.literal('double_bonus'),zod.literal('no_moves'),zod.literal('timeout'),zod.literal(null)]).nullable(),
   "hasRolled": zod.boolean(),
   "redTokens": zod.array(zod.number().int()),
   "greenTokens": zod.array(zod.number().int()),
@@ -373,6 +436,18 @@ export const CancelRoomParams = zod.object({
   "roomId": zod.coerce.string().uuid()
 })
 
+export const cancelRoomResponseBoardDiceItemMax = 6;
+
+export const cancelRoomResponseBoardDiceMin = 2;
+export const cancelRoomResponseBoardDiceMax = 2;
+
+export const cancelRoomResponseBoardRemainingDiceMax = 2;
+
+export const cancelRoomResponseBoardConsecutiveDoublesMin = 0;
+export const cancelRoomResponseBoardConsecutiveDoublesMax = 2;
+
+
+
 export const CancelRoomResponse = zod.object({
   "id": zod.string(),
   "stakeNaira": zod.union([zod.literal(500),zod.literal(1000),zod.literal(2000)]),
@@ -388,7 +463,10 @@ export const CancelRoomResponse = zod.object({
   "board": zod.object({
   "turnUserId": zod.string(),
   "turnDeadlineAt": zod.coerce.date().nullable(),
-  "dice": zod.number().int().nullable(),
+  "dice": zod.array(zod.number().int().min(1).max(cancelRoomResponseBoardDiceItemMax)).min(cancelRoomResponseBoardDiceMin).max(cancelRoomResponseBoardDiceMax).nullable(),
+  "remainingDice": zod.array(zod.union([zod.literal(0),zod.literal(1)])).max(cancelRoomResponseBoardRemainingDiceMax),
+  "consecutiveDoubles": zod.number().int().min(cancelRoomResponseBoardConsecutiveDoublesMin).max(cancelRoomResponseBoardConsecutiveDoublesMax),
+  "turnMessage": zod.union([zod.literal('third_double'),zod.literal('double_bonus'),zod.literal('no_moves'),zod.literal('timeout'),zod.literal(null)]).nullable(),
   "hasRolled": zod.boolean(),
   "redTokens": zod.array(zod.number().int()),
   "greenTokens": zod.array(zod.number().int()),

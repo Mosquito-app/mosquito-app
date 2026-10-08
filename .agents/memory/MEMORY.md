@@ -2,3 +2,4 @@
 - [Scoped dependency installs](scoped-installs.md) — The package callback can reject pnpm workspace-root installs; scope additions to their package.
 - [Paystack test recipients](paystack-test-recipients.md) — Sample payment accounts are not guaranteed to resolve as transfer recipients, even with a valid test key.
 - [Browser payment QA](browser-payment-qa.md) — Testing-tool fallback and hosted-checkout verification limits; never substitute seeded balances for payment evidence.
+- [Two-dice rules](two-dice-rules.md) — Home entry consumes a six, doubles replace six-only bonuses, and upgrades preserve existing rooms and stakes.
