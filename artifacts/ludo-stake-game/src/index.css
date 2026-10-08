@@ -737,6 +737,9 @@ button, a, input { -webkit-tap-highlight-color: transparent; }
 .wallet-actions .primary-btn, .wallet-actions .dark-btn { height:40px; padding:0 16px; display:inline-flex; align-items:center; gap:8px; }
 .wallet-deposit { margin-top:14px; display:flex; flex-wrap:wrap; gap:10px; }
 .wallet-deposit-heading { flex-basis:100%; font-size:13px; font-weight:700; }
+.game-card { font-family:inherit; text-align:left; cursor:pointer; }
+.game-card:disabled { cursor:not-allowed; }
+.game-card.chosen { outline:2px solid #c78b2e; outline-offset:2px; }
 .resume-banner { display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; margin:0 0 18px; padding:14px 16px; border-radius:10px; background:#f5c94e; color:#18372f; font-weight:700; }
 .resume-banner .primary-btn { display:inline-flex; gap:8px; align-items:center; padding:9px 14px; text-decoration:none; }
 .games-section { margin-bottom:22px; }

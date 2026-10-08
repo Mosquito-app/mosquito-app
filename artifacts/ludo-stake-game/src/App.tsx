@@ -7,6 +7,7 @@ import NotFound from '@/pages/not-found';
 import { LoginPage, RegisterPage } from '@/pages/auth';
 import LobbyPage from '@/pages/lobby';
 import GamePage from '@/pages/game';
+import FootballPage from '@/pages/football';
 import { queryClient } from '@/lib/query-client';
 import { Route, Switch, useLocation, Router as WouterRouter } from 'wouter';
 
@@ -20,6 +21,7 @@ function Router() {
     <Route path="/login" component={LoginPage} />
     <Route path="/register" component={RegisterPage} />
     <Route path="/game/:roomId" component={GamePage} />
+    <Route path="/football/:roomId" component={FootballPage} />
     <Route component={NotFound} />
   </Switch></RoutedErrorBoundary>;
 }

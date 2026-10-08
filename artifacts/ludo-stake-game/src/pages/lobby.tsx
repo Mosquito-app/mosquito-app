@@ -4,8 +4,9 @@ import { ArrowDownLeft, ArrowRight, ArrowUpRight, Coins, Gamepad2, Play, Refresh
 import {
   getGetLobbyQueryKey, getGetRoomQueryKey, getGetWalletQueryKey, useGetCurrentUser, useGetLobby,
   useGetWallet, useInitializeDeposit, useJoinRoom, useLogout, getGetCurrentUserQueryKey,
+  useGetFootballLobby, useJoinFootballRoom, getGetFootballLobbyQueryKey, getGetFootballRoomQueryKey,
 } from '@workspace/api-client-react';
-import type { Room, WalletTransaction } from '@workspace/api-client-react';
+import type { Room, FootballRoom, WalletTransaction } from '@workspace/api-client-react';
 import { queryClient } from '@/lib/query-client';
 import { AuthFrame, InlineError, LoadingBlock, Shell, dateLabel, money } from '@/components/common';
 import { DepositReturn, rememberDeposit } from '@/components/deposit-return';
@@ -18,7 +19,7 @@ const GAMES = [
   { name: 'Ludo Duel', active: true, note: 'Two players, one shared table' },
   { name: 'Whot', active: false, note: 'Card duel' },
   { name: 'Draft', active: false, note: 'Board classic' },
-  { name: 'Football Duel', active: false, note: 'Head to head' },
+  { name: '11v11 Football Duel', active: true, note: 'Two 3-minute halves · Golden goal' },
   { name: '8-Ball Pool', active: false, note: 'Cue sports' },
 ];
 
@@ -38,6 +39,9 @@ export default function LobbyPage() {
   const conn = useRealtime(!!user);
   const wallet = useGetWallet({ query: { queryKey: getGetWalletQueryKey(), enabled: !!user, refetchInterval: 10000 } });
   const lobby = useGetLobby({ query: { queryKey: getGetLobbyQueryKey(), enabled: !!user, refetchInterval: 10000 } });
+  const footballLobby = useGetFootballLobby({ query: { queryKey: getGetFootballLobbyQueryKey(), enabled: !!user, refetchInterval: 3000 } });
+  const joinFootball = useJoinFootballRoom();
+  const [mode, setMode] = useState<'ludo' | 'football'>('ludo');
   const join = useJoinRoom(); const logout = useLogout(); const initialize = useInitializeDeposit();
   const [stake, setStake] = useState<Stake>(500);
   const [depositOpen, setDepositOpen] = useState(false);
@@ -46,8 +50,13 @@ export default function LobbyPage() {
   const [depositError, setDepositError] = useState('');
   const [roomError, setRoomError] = useState('');
   const myRoomId = lobby.data?.myRoomId ?? null;
+  const footballRoom = footballLobby.data?.myRoom;
+  const currentRoomId = mode === 'football' ? footballRoom?.id : myRoomId;
+  const openRooms = mode === 'football' ? footballLobby.data?.rooms : lobby.data?.rooms;
+  const finding = mode === 'football' ? joinFootball.isPending : join.isPending;
+  const roomsLoading = mode === 'football' ? footballLobby.isLoading : lobby.isLoading;
   const counts = lobby.data?.stakeCounts || [];
-  const waiting = (value: number) => counts.find(item => item.stakeNaira === value)?.waitingPlayers || 0;
+  const waiting = (value: number) => mode === 'football' ? footballLobby.data?.rooms.filter(r => r.stakeNaira === value).length ?? 0 : counts.find(item => item.stakeNaira === value)?.waitingPlayers || 0;
   const w = wallet.data;
   const entered = (room: Room) => {
     queryClient.setQueryData(getGetRoomQueryKey(room.id), room);
@@ -55,7 +64,23 @@ export default function LobbyPage() {
     void queryClient.invalidateQueries({ queryKey: getGetWalletQueryKey() });
     setLocation(`/game/${room.id}`);
   };
-  const play = (value: Stake, roomId?: string) => { setRoomError(''); join.mutate({ data: { stakeNaira: value, ...(roomId ? { roomId } : {}) } }, { onSuccess: entered, onError: () => setRoomError('Could not reserve that sandbox stake. Check your available balance, or resume your open table.') }); };
+  const enteredFootball = (room: FootballRoom) => {
+    queryClient.setQueryData(getGetFootballRoomQueryKey(room.id), room);
+    void queryClient.invalidateQueries({ queryKey: getGetFootballLobbyQueryKey() });
+    void queryClient.invalidateQueries({ queryKey: getGetWalletQueryKey() });
+    setLocation(`/football/${room.id}`);
+  };
+  const play = (value: Stake, roomId?: string) => {
+    setRoomError('');
+    if (mode === 'football') {
+      joinFootball.mutate({ data: { stakeNaira: value, ...(roomId ? { roomId } : {}) } }, {
+        onSuccess: enteredFootball,
+        onError: () => setRoomError('Could not join football. Both players need enough available test funds; the room may already be taken.'),
+      });
+    } else join.mutate({ data: { stakeNaira: value, ...(roomId ? { roomId } : {}) } }, {
+      onSuccess: entered, onError: () => setRoomError('Could not reserve that sandbox stake. Check your available balance, or resume your open table.'),
+    });
+  };
   const deposit = (event: FormEvent) => {
     event.preventDefault(); setDepositError('');
     const amount = Number(depositAmount);
@@ -91,26 +116,28 @@ export default function LobbyPage() {
       </section>
 
       {myRoomId && <div className="resume-banner" data-testid="banner-resume"><div><span className="pulse-dot" /> You have an open table.</div><Link href={`/game/${myRoomId}`} className="primary-btn" data-testid="link-resume-room"><Play size={15} /> Resume table</Link></div>}
+      {footballRoom && <div className="resume-banner" data-testid="banner-resume-football"><div><span className="pulse-dot" /> Your 11v11 football room is {footballRoom.status}.</div><Link href={`/football/${footballRoom.id}`} className="primary-btn" data-testid="link-resume-football"><Play size={15} /> Resume football</Link></div>}
 
       <section className="games-section">
         <div className="section-head"><div><div className="section-overline">GAMES</div><h2>Choose a game.</h2></div></div>
-        <div className="game-cards">{GAMES.map(game => <div key={game.name} className={`game-card ${game.active ? 'active' : 'soon'}`} aria-disabled={!game.active} data-testid={`card-game-${game.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`}>
+        <div className="game-cards">{GAMES.map(game => <button type="button" key={game.name} className={`game-card ${game.active ? 'active' : 'soon'} ${game.active && ((mode === 'ludo') === (game.name === 'Ludo Duel')) ? 'chosen' : ''}`} disabled={!game.active} aria-pressed={game.active && ((mode === 'ludo') === (game.name === 'Ludo Duel'))} onClick={() => { setMode(game.name === 'Ludo Duel' ? 'ludo' : 'football'); setRoomError(''); }} data-testid={`card-game-${game.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`}>
           <Gamepad2 size={20} /><b>{game.name}</b><small>{game.note}</small><span className="game-badge">{game.active ? 'Active' : 'Coming Soon'}</span>
-        </div>)}</div>
+        </button>)}</div>
       </section>
 
       <div className="content-grid">
         <section className="play-section">
-          <div className="section-head"><div><div className="section-overline">LUDO DUEL</div><h2>Pick your stakes.</h2></div></div>
-          <p className="section-intro">Each player stakes the amount. Winner takes 90% of the pot; 10% is the table commission.</p>
+          <div className="section-head"><div><div className="section-overline">{mode === 'football' ? '11V11 FOOTBALL DUEL' : 'LUDO DUEL'}</div><h2>Pick your stakes.</h2></div></div>
+          <p className="section-intro">{mode === 'football' ? 'Six minutes. Two full teams. A tied match goes to golden goal. Stakes lock when both players join. ' : 'Each player stakes the amount. '}Winner takes 90% of the pot; 10% is the table commission.</p>
           <div className="stake-list">{STAKES.map(value => <button key={value} className={`stake-option ${stake === value ? 'selected' : ''}`} onClick={() => setStake(value)} data-testid={`button-stake-${value}`}>
             <span className="stake-radio">{stake === value && <i />}</span><span className="stake-price">{money(value)}</span><span className="stake-foot">Pot {money(value * 2)} · Prize {money(value * 1.8)} · {waiting(value)} waiting</span><ArrowRight className="stake-arrow" size={17} /></button>)}</div>
           {roomError && <InlineError>{roomError}</InlineError>}
-          <button className="primary-btn match-btn" onClick={() => play(stake)} disabled={join.isPending || !!myRoomId} data-testid="button-find-match">{join.isPending ? 'Finding a table…' : myRoomId ? 'Resume your table first' : 'Find a match'} <ArrowRight size={18} /></button>
-          <div className="stake-explain"><ShieldCheck size={15} /><span>Stake is reserved from your available sandbox balance. Test funds only.</span></div>
+          <button className="primary-btn match-btn" onClick={() => play(stake)} disabled={finding || !!currentRoomId} data-testid="button-find-match">{finding ? 'Finding an opponent…' : currentRoomId ? 'Resume your match first' : mode === 'football' ? 'Play 11v11 Football' : 'Find a match'} <ArrowRight size={18} /></button>
+          <div className="stake-explain"><ShieldCheck size={15} /><span>{mode === 'football' ? 'Waiting is free. Both stakes enter escrow together at kickoff. Test funds only.' : 'Stake is reserved from your available sandbox balance. Test funds only.'}</span></div>
+          {mode === 'football' && footballLobby.isError && <InlineError>Football lobby unavailable. <button onClick={() => void footballLobby.refetch()}>Retry</button></InlineError>}
           <div className="open-rooms">
-            <div className="open-head"><div><div className="section-overline">WAITING TABLES</div><h3>Join someone in.</h3></div><span className="room-count">{lobby.data?.rooms.length ?? 0} OPEN</span></div>
-            {lobby.isLoading ? <div className="room-skeleton"><span /><span /></div> : lobby.data?.rooms.length ? <div className="room-list">{lobby.data.rooms.map(room => { const mine = room.id === myRoomId || room.hostUsername === user.username; return <div className="room-row" key={room.id} data-testid={`row-room-${room.id}`}><span className="room-seat"><span className="seat-dot" />{room.hostUsername}{mine && ' (you)'}</span><span className="room-wager">{money(room.stakeNaira)} <small>STAKE</small></span>{mine ? <Link href={`/game/${room.id}`} className="join-btn" data-testid={`link-open-${room.id}`}>Open</Link> : <button className="join-btn" onClick={() => play(room.stakeNaira as Stake, room.id)} disabled={join.isPending || !!myRoomId} data-testid={`button-join-${room.id}`}>Join <ArrowRight size={14} /></button>}</div>; })}</div> : <div className="empty-rooms"><div className="empty-symbol"><Gamepad2 size={20} /></div><div><b>No waiting tables yet.</b><span>Start a match and a friend can take the other seat.</span></div></div>}
+            <div className="open-head"><div><div className="section-overline">WAITING {mode === 'football' ? 'FOOTBALL ROOMS' : 'TABLES'}</div><h3>Join someone in.</h3></div><span className="room-count">{openRooms?.length ?? 0} OPEN</span></div>
+            {roomsLoading ? <div className="room-skeleton"><span /><span /></div> : openRooms?.length ? <div className="room-list">{openRooms.map(room => { const mine = room.id === currentRoomId || room.hostUsername === user.username; return <div className="room-row" key={room.id} data-testid={`row-room-${room.id}`}><span className="room-seat"><span className="seat-dot" />{room.hostUsername}{mine && ' (you)'}</span><span className="room-wager">{money(room.stakeNaira)} <small>STAKE</small></span>{mine ? <Link href={`/${mode === 'football' ? 'football' : 'game'}/${room.id}`} className="join-btn" data-testid={`link-open-${room.id}`}>Open</Link> : <button className="join-btn" onClick={() => play(room.stakeNaira as Stake, room.id)} disabled={finding || !!currentRoomId} data-testid={`button-join-${room.id}`}>Join <ArrowRight size={14} /></button>}</div>; })}</div> : <div className="empty-rooms"><div className="empty-symbol"><Gamepad2 size={20} /></div><div><b>No waiting matches yet.</b><span>Start a match and a friend can join from this lobby.</span></div></div>}
           </div>
         </section>
         <section className="activity-section">

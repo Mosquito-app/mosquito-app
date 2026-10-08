@@ -26,11 +26,16 @@ _Populate as you build — short repo map plus pointers to the source-of-truth f
 
 ## Architecture decisions
 
-_Populate as you build — non-obvious choices a reader couldn't infer from the code (3-5 bullets)._
+- Football uses HTML Canvas in the existing web app, not Flutter/Flame. The browser sends only directional inputs and actions; Node owns all 22 players, AI, ball physics, match time, goals, and results.
+- Football has a PostgreSQL-leased simulation owner with snapshot/input notification relay between processes, so participants may connect to different server workers.
+- Football waiting rooms do not reserve funds. This follows the requested match-start deduction and avoids locking money in abandoned waiting rooms. Joining atomically rechecks both balances, locks both stakes, and starts the match. Preserve the separate existing Ludo funding behavior.
+- Both games use the same Mosquito Wallet and commission wallet. Football has its own room/ledger tables; never place football IDs in the Ludo-specific wallet room foreign key.
 
 ## Product
 
-_Describe the high-level user-facing capabilities of this app once they exist._
+Mosquito App offers Ludo Duel and mobile-first 11v11 Football Duel with local accounts and Paystack test-only Mosquito Wallet deposits/withdrawals. Wagered matches settle 90% to the winner and 10% to the platform.
+
+Ludo retains its two-dice Uncle Joe board, 14-minute ranking, and sudden-death draw break. Football runs two 3-minute halves; tied full-time matches continue until the first golden goal. Whot, Draft, and 8-Ball Pool remain coming soon.
 
 ## User preferences
 
@@ -38,8 +43,13 @@ _Populate as you build — explicit user instructions worth remembering across s
 
 ## Gotchas
 
-_Populate as you build — sharp edges, "always run X before Y" rules._
+- Do not introduce real-money payment keys or bypass test-only payment safeguards.
+- Keep the football page free of transform-based entry animations: transformed ancestors change the containing block for its fixed mobile controls.
+- Financial QA uses disposable PostgreSQL schemas and clearly labelled synthetic balances, not public wallet seeding or a substitute for Paystack payment verification.
 
 ## Pointers
 
 - See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and package details
+- Football server: `artifacts/api-server/src/lib/football-{physics,manager,finance}.ts`; REST routes: `src/routes/football.ts`; shared WebSocket transport: `src/lib/ludo-realtime.ts`.
+- Football schema: `lib/db/src/schema/football.ts`; contract: `lib/api-spec/openapi.yaml`; Canvas renderer and mobile controls: `artifacts/ludo-stake-game/src/components/football-pitch.tsx` and `src/pages/football.tsx`.
+- Football checks: API-server `test tests/football-physics.test.ts` and `test tests/football-routes.test.ts`. Build the web artifact before `test tests/football-browser-server.test.ts`, which exercises two actual browser sessions against an isolated API/database.

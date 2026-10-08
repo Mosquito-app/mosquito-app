@@ -17,6 +17,78 @@ tags:
   - name: games
     description: Two-player Ludo lobby and matches
 paths:
+  /football/lobby:
+    get:
+      operationId: getFootballLobby
+      tags: [football]
+      responses:
+        '200':
+          description: Waiting football rooms and your current match
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FootballLobby'
+        '401':
+          description: Sign in required
+  /football/rooms:
+    post:
+      operationId: joinFootballRoom
+      tags: [football]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FootballJoinRequest'
+      responses:
+        '200':
+          description: Football room created, resumed or joined
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FootballRoom'
+        '400':
+          description: Invalid stake
+        '401':
+          description: Sign in required
+        '409':
+          description: Room unavailable or insufficient balance
+  /football/rooms/{roomId}:
+    parameters:
+      - name: roomId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    get:
+      operationId: getFootballRoom
+      tags: [football]
+      responses:
+        '200':
+          description: Authoritative football room snapshot for a participant
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FootballRoom'
+        '401':
+          description: Sign in required
+        '404':
+          description: Room not found or not a participant
+    delete:
+      operationId: cancelFootballRoom
+      tags: [football]
+      responses:
+        '200':
+          description: Waiting room cancelled; waiting rooms never debit stakes
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FootballRoom'
+        '401':
+          description: Sign in required
+        '409':
+          description: Only the host can cancel a waiting room
   /healthz:
     get:
       operationId: healthCheck
@@ -343,6 +415,87 @@ paths:
           description: Match not found
 components:
   schemas:
+    FootballJoinRequest:
+      type: object
+      required: [stakeNaira]
+      properties:
+        stakeNaira: { type: integer, enum: [500, 1000, 2000] }
+        roomId: { type: string, format: uuid }
+    FootballPlayer:
+      type: object
+      required: [id, team, number, role, x, y]
+      properties:
+        id: { type: string }
+        team: { type: string, enum: [home, away] }
+        number: { type: integer }
+        role: { type: string, enum: [GK, DEF, MID, FWD] }
+        x: { type: number }
+        y: { type: number }
+    FootballBall:
+      type: object
+      required: [x, y, vx, vy, ownerId]
+      properties:
+        x: { type: number }
+        y: { type: number }
+        vx: { type: number }
+        vy: { type: number }
+        ownerId: { type: string, nullable: true }
+    FootballState:
+      type: object
+      required: [players, ball, scoreHome, scoreAway, controlledHome, controlledAway, phase, homeDirection, startedAt, serverTimeAt, elapsedMs, remainingMs, lastTickAt, pauseUntil, ballFreeAt, lastTouchId, lastActionHomeAt, lastActionAwayAt, lastEvent, sequence, winnerTeam]
+      properties:
+        players:
+          type: array
+          items: { $ref: '#/components/schemas/FootballPlayer' }
+        ball: { $ref: '#/components/schemas/FootballBall' }
+        scoreHome: { type: integer }
+        scoreAway: { type: integer }
+        controlledHome: { type: string }
+        controlledAway: { type: string }
+        phase: { type: string, enum: [waiting, first_half, second_half, overtime, finished] }
+        homeDirection: { type: number, enum: [-1, 1] }
+        startedAt: { type: string, format: date-time, nullable: true }
+        serverTimeAt: { type: string, format: date-time }
+        elapsedMs: { type: integer }
+        remainingMs: { type: integer }
+        lastTickAt: { type: integer }
+        pauseUntil: { type: integer }
+        ballFreeAt: { type: integer }
+        lastTouchId: { type: string, nullable: true }
+        lastActionHomeAt: { type: integer }
+        lastActionAwayAt: { type: integer }
+        lastEvent: { type: string }
+        sequence: { type: integer }
+        winnerTeam: { type: string, enum: [home, away], nullable: true }
+    FootballRoom:
+      type: object
+      required: [id, status, stakeNaira, potNaira, prizeNaira, commissionNaira, hostUserId, opponentUserId, winnerUserId, hostUsername, opponentUsername, viewerTeam, createdAt, state]
+      properties:
+        id: { type: string, format: uuid }
+        status: { type: string, enum: [waiting, active, completed, cancelled] }
+        stakeNaira: { type: integer }
+        potNaira: { type: integer }
+        prizeNaira: { type: integer }
+        commissionNaira: { type: integer }
+        hostUserId: { type: string, format: uuid }
+        opponentUserId: { type: string, format: uuid, nullable: true }
+        winnerUserId: { type: string, format: uuid, nullable: true }
+        hostUsername: { type: string }
+        opponentUsername: { type: string, nullable: true }
+        viewerTeam: { type: string, enum: [home, away], nullable: true }
+        createdAt: { type: string, format: date-time }
+        state: { $ref: '#/components/schemas/FootballState' }
+    FootballLobby:
+      type: object
+      required: [rooms, myRoom]
+      properties:
+        rooms:
+          type: array
+          items: { $ref: '#/components/schemas/FootballRoom' }
+        myRoom:
+          allOf:
+            - $ref: '#/components/schemas/FootballRoom'
+          nullable: true
     HealthStatus:
       type: object
       properties:

@@ -4,6 +4,7 @@ import { createServer } from "node:http";
 import { installRealtime } from "./lib/ludo-realtime";
 import { startTurnTimer } from "./lib/ludo-turns";
 import { startWithdrawalReconciliation } from "./lib/ludo-withdrawals";
+import { startFootballEngine } from "./lib/football-manager";
 
 const rawPort = process.env["PORT"];
 
@@ -23,6 +24,8 @@ const server = createServer(app);
 installRealtime(server);
 startTurnTimer();
 startWithdrawalReconciliation();
+const stopFootball = startFootballEngine();
+server.on("close", stopFootball);
 server.on("error", err => { logger.error({ err }, "Server failed"); process.exit(1); });
 server.listen(port, "0.0.0.0", () => {
   logger.info({ port }, "Server listening");

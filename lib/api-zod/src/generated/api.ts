@@ -8,6 +8,284 @@
 import * as zod from 'zod';
 
 
+export const GetFootballLobbyResponse = zod.object({
+  "rooms": zod.array(zod.object({
+  "id": zod.string().uuid(),
+  "status": zod.enum(['waiting', 'active', 'completed', 'cancelled']),
+  "stakeNaira": zod.number().int(),
+  "potNaira": zod.number().int(),
+  "prizeNaira": zod.number().int(),
+  "commissionNaira": zod.number().int(),
+  "hostUserId": zod.string().uuid(),
+  "opponentUserId": zod.string().uuid().nullable(),
+  "winnerUserId": zod.string().uuid().nullable(),
+  "hostUsername": zod.string(),
+  "opponentUsername": zod.string().nullable(),
+  "viewerTeam": zod.enum(['home', 'away']).nullable(),
+  "createdAt": zod.coerce.date(),
+  "state": zod.object({
+  "players": zod.array(zod.object({
+  "id": zod.string(),
+  "team": zod.enum(['home', 'away']),
+  "number": zod.number().int(),
+  "role": zod.enum(['GK', 'DEF', 'MID', 'FWD']),
+  "x": zod.number(),
+  "y": zod.number()
+})),
+  "ball": zod.object({
+  "x": zod.number(),
+  "y": zod.number(),
+  "vx": zod.number(),
+  "vy": zod.number(),
+  "ownerId": zod.string().nullable()
+}),
+  "scoreHome": zod.number().int(),
+  "scoreAway": zod.number().int(),
+  "controlledHome": zod.string(),
+  "controlledAway": zod.string(),
+  "phase": zod.enum(['waiting', 'first_half', 'second_half', 'overtime', 'finished']),
+  "homeDirection": zod.union([zod.literal(-1),zod.literal(1)]),
+  "startedAt": zod.coerce.date().nullable(),
+  "serverTimeAt": zod.coerce.date(),
+  "elapsedMs": zod.number().int(),
+  "remainingMs": zod.number().int(),
+  "lastTickAt": zod.number().int(),
+  "pauseUntil": zod.number().int(),
+  "ballFreeAt": zod.number().int(),
+  "lastTouchId": zod.string().nullable(),
+  "lastActionHomeAt": zod.number().int(),
+  "lastActionAwayAt": zod.number().int(),
+  "lastEvent": zod.string(),
+  "sequence": zod.number().int(),
+  "winnerTeam": zod.enum(['home', 'away']).nullable()
+})
+})),
+  "myRoom": zod.object({
+  "id": zod.string().uuid(),
+  "status": zod.enum(['waiting', 'active', 'completed', 'cancelled']),
+  "stakeNaira": zod.number().int(),
+  "potNaira": zod.number().int(),
+  "prizeNaira": zod.number().int(),
+  "commissionNaira": zod.number().int(),
+  "hostUserId": zod.string().uuid(),
+  "opponentUserId": zod.string().uuid().nullable(),
+  "winnerUserId": zod.string().uuid().nullable(),
+  "hostUsername": zod.string(),
+  "opponentUsername": zod.string().nullable(),
+  "viewerTeam": zod.enum(['home', 'away']).nullable(),
+  "createdAt": zod.coerce.date(),
+  "state": zod.object({
+  "players": zod.array(zod.object({
+  "id": zod.string(),
+  "team": zod.enum(['home', 'away']),
+  "number": zod.number().int(),
+  "role": zod.enum(['GK', 'DEF', 'MID', 'FWD']),
+  "x": zod.number(),
+  "y": zod.number()
+})),
+  "ball": zod.object({
+  "x": zod.number(),
+  "y": zod.number(),
+  "vx": zod.number(),
+  "vy": zod.number(),
+  "ownerId": zod.string().nullable()
+}),
+  "scoreHome": zod.number().int(),
+  "scoreAway": zod.number().int(),
+  "controlledHome": zod.string(),
+  "controlledAway": zod.string(),
+  "phase": zod.enum(['waiting', 'first_half', 'second_half', 'overtime', 'finished']),
+  "homeDirection": zod.union([zod.literal(-1),zod.literal(1)]),
+  "startedAt": zod.coerce.date().nullable(),
+  "serverTimeAt": zod.coerce.date(),
+  "elapsedMs": zod.number().int(),
+  "remainingMs": zod.number().int(),
+  "lastTickAt": zod.number().int(),
+  "pauseUntil": zod.number().int(),
+  "ballFreeAt": zod.number().int(),
+  "lastTouchId": zod.string().nullable(),
+  "lastActionHomeAt": zod.number().int(),
+  "lastActionAwayAt": zod.number().int(),
+  "lastEvent": zod.string(),
+  "sequence": zod.number().int(),
+  "winnerTeam": zod.enum(['home', 'away']).nullable()
+})
+}).nullable()
+})
+
+
+export const JoinFootballRoomBody = zod.object({
+  "stakeNaira": zod.union([zod.literal(500),zod.literal(1000),zod.literal(2000)]),
+  "roomId": zod.string().uuid().optional()
+})
+
+export const JoinFootballRoomResponse = zod.object({
+  "id": zod.string().uuid(),
+  "status": zod.enum(['waiting', 'active', 'completed', 'cancelled']),
+  "stakeNaira": zod.number().int(),
+  "potNaira": zod.number().int(),
+  "prizeNaira": zod.number().int(),
+  "commissionNaira": zod.number().int(),
+  "hostUserId": zod.string().uuid(),
+  "opponentUserId": zod.string().uuid().nullable(),
+  "winnerUserId": zod.string().uuid().nullable(),
+  "hostUsername": zod.string(),
+  "opponentUsername": zod.string().nullable(),
+  "viewerTeam": zod.enum(['home', 'away']).nullable(),
+  "createdAt": zod.coerce.date(),
+  "state": zod.object({
+  "players": zod.array(zod.object({
+  "id": zod.string(),
+  "team": zod.enum(['home', 'away']),
+  "number": zod.number().int(),
+  "role": zod.enum(['GK', 'DEF', 'MID', 'FWD']),
+  "x": zod.number(),
+  "y": zod.number()
+})),
+  "ball": zod.object({
+  "x": zod.number(),
+  "y": zod.number(),
+  "vx": zod.number(),
+  "vy": zod.number(),
+  "ownerId": zod.string().nullable()
+}),
+  "scoreHome": zod.number().int(),
+  "scoreAway": zod.number().int(),
+  "controlledHome": zod.string(),
+  "controlledAway": zod.string(),
+  "phase": zod.enum(['waiting', 'first_half', 'second_half', 'overtime', 'finished']),
+  "homeDirection": zod.union([zod.literal(-1),zod.literal(1)]),
+  "startedAt": zod.coerce.date().nullable(),
+  "serverTimeAt": zod.coerce.date(),
+  "elapsedMs": zod.number().int(),
+  "remainingMs": zod.number().int(),
+  "lastTickAt": zod.number().int(),
+  "pauseUntil": zod.number().int(),
+  "ballFreeAt": zod.number().int(),
+  "lastTouchId": zod.string().nullable(),
+  "lastActionHomeAt": zod.number().int(),
+  "lastActionAwayAt": zod.number().int(),
+  "lastEvent": zod.string(),
+  "sequence": zod.number().int(),
+  "winnerTeam": zod.enum(['home', 'away']).nullable()
+})
+})
+
+
+export const GetFootballRoomParams = zod.object({
+  "roomId": zod.coerce.string().uuid()
+})
+
+export const GetFootballRoomResponse = zod.object({
+  "id": zod.string().uuid(),
+  "status": zod.enum(['waiting', 'active', 'completed', 'cancelled']),
+  "stakeNaira": zod.number().int(),
+  "potNaira": zod.number().int(),
+  "prizeNaira": zod.number().int(),
+  "commissionNaira": zod.number().int(),
+  "hostUserId": zod.string().uuid(),
+  "opponentUserId": zod.string().uuid().nullable(),
+  "winnerUserId": zod.string().uuid().nullable(),
+  "hostUsername": zod.string(),
+  "opponentUsername": zod.string().nullable(),
+  "viewerTeam": zod.enum(['home', 'away']).nullable(),
+  "createdAt": zod.coerce.date(),
+  "state": zod.object({
+  "players": zod.array(zod.object({
+  "id": zod.string(),
+  "team": zod.enum(['home', 'away']),
+  "number": zod.number().int(),
+  "role": zod.enum(['GK', 'DEF', 'MID', 'FWD']),
+  "x": zod.number(),
+  "y": zod.number()
+})),
+  "ball": zod.object({
+  "x": zod.number(),
+  "y": zod.number(),
+  "vx": zod.number(),
+  "vy": zod.number(),
+  "ownerId": zod.string().nullable()
+}),
+  "scoreHome": zod.number().int(),
+  "scoreAway": zod.number().int(),
+  "controlledHome": zod.string(),
+  "controlledAway": zod.string(),
+  "phase": zod.enum(['waiting', 'first_half', 'second_half', 'overtime', 'finished']),
+  "homeDirection": zod.union([zod.literal(-1),zod.literal(1)]),
+  "startedAt": zod.coerce.date().nullable(),
+  "serverTimeAt": zod.coerce.date(),
+  "elapsedMs": zod.number().int(),
+  "remainingMs": zod.number().int(),
+  "lastTickAt": zod.number().int(),
+  "pauseUntil": zod.number().int(),
+  "ballFreeAt": zod.number().int(),
+  "lastTouchId": zod.string().nullable(),
+  "lastActionHomeAt": zod.number().int(),
+  "lastActionAwayAt": zod.number().int(),
+  "lastEvent": zod.string(),
+  "sequence": zod.number().int(),
+  "winnerTeam": zod.enum(['home', 'away']).nullable()
+})
+})
+
+
+export const CancelFootballRoomParams = zod.object({
+  "roomId": zod.coerce.string().uuid()
+})
+
+export const CancelFootballRoomResponse = zod.object({
+  "id": zod.string().uuid(),
+  "status": zod.enum(['waiting', 'active', 'completed', 'cancelled']),
+  "stakeNaira": zod.number().int(),
+  "potNaira": zod.number().int(),
+  "prizeNaira": zod.number().int(),
+  "commissionNaira": zod.number().int(),
+  "hostUserId": zod.string().uuid(),
+  "opponentUserId": zod.string().uuid().nullable(),
+  "winnerUserId": zod.string().uuid().nullable(),
+  "hostUsername": zod.string(),
+  "opponentUsername": zod.string().nullable(),
+  "viewerTeam": zod.enum(['home', 'away']).nullable(),
+  "createdAt": zod.coerce.date(),
+  "state": zod.object({
+  "players": zod.array(zod.object({
+  "id": zod.string(),
+  "team": zod.enum(['home', 'away']),
+  "number": zod.number().int(),
+  "role": zod.enum(['GK', 'DEF', 'MID', 'FWD']),
+  "x": zod.number(),
+  "y": zod.number()
+})),
+  "ball": zod.object({
+  "x": zod.number(),
+  "y": zod.number(),
+  "vx": zod.number(),
+  "vy": zod.number(),
+  "ownerId": zod.string().nullable()
+}),
+  "scoreHome": zod.number().int(),
+  "scoreAway": zod.number().int(),
+  "controlledHome": zod.string(),
+  "controlledAway": zod.string(),
+  "phase": zod.enum(['waiting', 'first_half', 'second_half', 'overtime', 'finished']),
+  "homeDirection": zod.union([zod.literal(-1),zod.literal(1)]),
+  "startedAt": zod.coerce.date().nullable(),
+  "serverTimeAt": zod.coerce.date(),
+  "elapsedMs": zod.number().int(),
+  "remainingMs": zod.number().int(),
+  "lastTickAt": zod.number().int(),
+  "pauseUntil": zod.number().int(),
+  "ballFreeAt": zod.number().int(),
+  "lastTouchId": zod.string().nullable(),
+  "lastActionHomeAt": zod.number().int(),
+  "lastActionAwayAt": zod.number().int(),
+  "lastEvent": zod.string(),
+  "sequence": zod.number().int(),
+  "winnerTeam": zod.enum(['home', 'away']).nullable()
+})
+})
+
+
 /**
  * Returns server health status
  * @summary Health check

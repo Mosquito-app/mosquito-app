@@ -5,6 +5,146 @@
  * Ludo Stake Game API. All wagering and balances are sandbox-only.
  * OpenAPI spec version: 0.1.0
  */
+export type FootballJoinRequestStakeNaira = typeof FootballJoinRequestStakeNaira[keyof typeof FootballJoinRequestStakeNaira];
+
+
+export const FootballJoinRequestStakeNaira = {
+  NUMBER_500: 500,
+  NUMBER_1000: 1000,
+  NUMBER_2000: 2000,
+} as const;
+
+export interface FootballJoinRequest {
+  stakeNaira: FootballJoinRequestStakeNaira;
+  roomId?: string;
+}
+
+export type FootballPlayerTeam = typeof FootballPlayerTeam[keyof typeof FootballPlayerTeam];
+
+
+export const FootballPlayerTeam = {
+  home: 'home',
+  away: 'away',
+} as const;
+
+export type FootballPlayerRole = typeof FootballPlayerRole[keyof typeof FootballPlayerRole];
+
+
+export const FootballPlayerRole = {
+  GK: 'GK',
+  DEF: 'DEF',
+  MID: 'MID',
+  FWD: 'FWD',
+} as const;
+
+export interface FootballPlayer {
+  id: string;
+  team: FootballPlayerTeam;
+  number: number;
+  role: FootballPlayerRole;
+  x: number;
+  y: number;
+}
+
+export interface FootballBall {
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  ownerId: string | null;
+}
+
+export type FootballStatePhase = typeof FootballStatePhase[keyof typeof FootballStatePhase];
+
+
+export const FootballStatePhase = {
+  waiting: 'waiting',
+  first_half: 'first_half',
+  second_half: 'second_half',
+  overtime: 'overtime',
+  finished: 'finished',
+} as const;
+
+export type FootballStateHomeDirection = typeof FootballStateHomeDirection[keyof typeof FootballStateHomeDirection];
+
+
+export const FootballStateHomeDirection = {
+  NUMBER_MINUS_1: -1,
+  NUMBER_1: 1,
+} as const;
+
+export type FootballStateWinnerTeam = typeof FootballStateWinnerTeam[keyof typeof FootballStateWinnerTeam] | null;
+
+
+export const FootballStateWinnerTeam = {
+  home: 'home',
+  away: 'away',
+} as const;
+
+export interface FootballState {
+  players: FootballPlayer[];
+  ball: FootballBall;
+  scoreHome: number;
+  scoreAway: number;
+  controlledHome: string;
+  controlledAway: string;
+  phase: FootballStatePhase;
+  homeDirection: FootballStateHomeDirection;
+  startedAt: string | null;
+  serverTimeAt: string;
+  elapsedMs: number;
+  remainingMs: number;
+  lastTickAt: number;
+  pauseUntil: number;
+  ballFreeAt: number;
+  lastTouchId: string | null;
+  lastActionHomeAt: number;
+  lastActionAwayAt: number;
+  lastEvent: string;
+  sequence: number;
+  winnerTeam: FootballStateWinnerTeam;
+}
+
+export type FootballRoomStatus = typeof FootballRoomStatus[keyof typeof FootballRoomStatus];
+
+
+export const FootballRoomStatus = {
+  waiting: 'waiting',
+  active: 'active',
+  completed: 'completed',
+  cancelled: 'cancelled',
+} as const;
+
+export type FootballRoomViewerTeam = typeof FootballRoomViewerTeam[keyof typeof FootballRoomViewerTeam] | null;
+
+
+export const FootballRoomViewerTeam = {
+  home: 'home',
+  away: 'away',
+} as const;
+
+export interface FootballRoom {
+  id: string;
+  status: FootballRoomStatus;
+  stakeNaira: number;
+  potNaira: number;
+  prizeNaira: number;
+  commissionNaira: number;
+  hostUserId: string;
+  opponentUserId: string | null;
+  winnerUserId: string | null;
+  hostUsername: string;
+  opponentUsername: string | null;
+  viewerTeam: FootballRoomViewerTeam;
+  createdAt: string;
+  state: FootballState;
+}
+
+export interface FootballLobby {
+  rooms: FootballRoom[];
+  myRoom: FootballRoom | null;
+}
+
 export interface HealthStatus {
   status: string;
 }

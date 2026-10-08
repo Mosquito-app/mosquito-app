@@ -19,3 +19,4 @@
 
 export * from "./ludo";
 export * from "./ludo-finance";
+export * from "./football";

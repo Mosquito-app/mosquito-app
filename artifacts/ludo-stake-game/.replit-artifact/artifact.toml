@@ -1,7 +1,7 @@
 kind = "web"
 previewPath = "/"
 title = "Mosquito App"
-description = "Mosquito App: two-player Ludo Duel with a classic wooden board, two dice, a 14-minute timer, sudden-death overtime, and Mosquito Wallet for sandbox Paystack deposits and withdrawals."
+description = "Mosquito App: Ludo Duel and mobile-first 11v11 Football Duel, server-authoritative real-time matches, and test-only Mosquito Wallet wagering."
 version = "1.0.0"
 id = "artifacts/ludo-stake-game"
 router = "path"

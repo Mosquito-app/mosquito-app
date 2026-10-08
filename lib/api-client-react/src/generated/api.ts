@@ -25,6 +25,9 @@ import type {
   DepositInput,
   DepositVerification,
   DepositVerificationInput,
+  FootballJoinRequest,
+  FootballLobby,
+  FootballRoom,
   HealthStatus,
   JoinRoomInput,
   LobbyResponse,
@@ -63,6 +66,298 @@ const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKe
   }
   return result;
 };
+
+export const getGetFootballLobbyUrl = () => {
+
+
+
+
+  return `/api/football/lobby`
+}
+
+export const getFootballLobby = async ( options?: Parameters<typeof customFetch>[1]): Promise<FootballLobby> => {
+
+  return customFetch<FootballLobby>(getGetFootballLobbyUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetFootballLobbyQueryKey = () => {
+    return [
+    `/api/football/lobby`
+    ] as const;
+    }
+
+
+export const getGetFootballLobbyQueryOptions = <TData = Awaited<ReturnType<typeof getFootballLobby>>, TError = ErrorType<void>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getFootballLobby>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetFootballLobbyQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getFootballLobby>>> = ({ signal }) => getFootballLobby({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getFootballLobby>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetFootballLobbyQueryResult = NonNullable<Awaited<ReturnType<typeof getFootballLobby>>>
+export type GetFootballLobbyQueryError = ErrorType<void>
+
+
+
+export function useGetFootballLobby<TData = Awaited<ReturnType<typeof getFootballLobby>>, TError = ErrorType<void>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getFootballLobby>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetFootballLobbyQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getJoinFootballRoomUrl = () => {
+
+
+
+
+  return `/api/football/rooms`
+}
+
+export const joinFootballRoom = async (footballJoinRequest: FootballJoinRequest, options?: Parameters<typeof customFetch>[1]): Promise<FootballRoom> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<FootballRoom>(getJoinFootballRoomUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(footballJoinRequest)
+  }
+);}
+
+
+
+
+
+export const getJoinFootballRoomMutationKey = () => ['joinFootballRoom'] as const;
+
+export const getJoinFootballRoomMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof joinFootballRoom>>, TError,JoinFootballRoomMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof joinFootballRoom>>, TError,JoinFootballRoomMutationVariables, TContext> => {
+
+const mutationKey = getJoinFootballRoomMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof joinFootballRoom>>, JoinFootballRoomMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  joinFootballRoom(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type JoinFootballRoomMutationResult = NonNullable<Awaited<ReturnType<typeof joinFootballRoom>>>
+    export type JoinFootballRoomMutationBody = BodyType<FootballJoinRequest>
+    export type JoinFootballRoomMutationError = ErrorType<void>
+    export type JoinFootballRoomMutationVariables = {data: BodyType<FootballJoinRequest>}
+
+    export const useJoinFootballRoom = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof joinFootballRoom>>, TError,JoinFootballRoomMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof joinFootballRoom>>,
+        TError,
+        JoinFootballRoomMutationVariables,
+        TContext
+      > => {
+      return useMutation(getJoinFootballRoomMutationOptions(options));
+    }
+
+export const getGetFootballRoomUrl = (roomId: string,) => {
+
+
+
+
+  return `/api/football/rooms/${roomId}`
+}
+
+export const getFootballRoom = async (roomId: string, options?: Parameters<typeof customFetch>[1]): Promise<FootballRoom> => {
+
+  return customFetch<FootballRoom>(getGetFootballRoomUrl(roomId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetFootballRoomQueryKey = (roomId: string,) => {
+    return [
+    `/api/football/rooms/${roomId}`
+    ] as const;
+    }
+
+
+export const getGetFootballRoomQueryOptions = <TData = Awaited<ReturnType<typeof getFootballRoom>>, TError = ErrorType<void>>(roomId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getFootballRoom>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetFootballRoomQueryKey(roomId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getFootballRoom>>> = ({ signal }) => getFootballRoom(roomId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: roomId !== null && roomId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getFootballRoom>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetFootballRoomQueryResult = NonNullable<Awaited<ReturnType<typeof getFootballRoom>>>
+export type GetFootballRoomQueryError = ErrorType<void>
+
+
+
+export function useGetFootballRoom<TData = Awaited<ReturnType<typeof getFootballRoom>>, TError = ErrorType<void>>(
+ roomId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getFootballRoom>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetFootballRoomQueryOptions(roomId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCancelFootballRoomUrl = (roomId: string,) => {
+
+
+
+
+  return `/api/football/rooms/${roomId}`
+}
+
+export const cancelFootballRoom = async (roomId: string, options?: Parameters<typeof customFetch>[1]): Promise<FootballRoom> => {
+
+  return customFetch<FootballRoom>(getCancelFootballRoomUrl(roomId),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getCancelFootballRoomMutationKey = () => ['cancelFootballRoom'] as const;
+
+export const getCancelFootballRoomMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof cancelFootballRoom>>, TError,CancelFootballRoomMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof cancelFootballRoom>>, TError,CancelFootballRoomMutationVariables, TContext> => {
+
+const mutationKey = getCancelFootballRoomMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof cancelFootballRoom>>, CancelFootballRoomMutationVariables> = (props) => {
+          const {roomId} = props ?? {};
+
+          return  cancelFootballRoom(roomId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CancelFootballRoomMutationResult = NonNullable<Awaited<ReturnType<typeof cancelFootballRoom>>>
+
+    export type CancelFootballRoomMutationError = ErrorType<void>
+    export type CancelFootballRoomMutationVariables = {roomId: string}
+
+    export const useCancelFootballRoom = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof cancelFootballRoom>>, TError,CancelFootballRoomMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof cancelFootballRoom>>,
+        TError,
+        CancelFootballRoomMutationVariables,
+        TContext
+      > => {
+      return useMutation(getCancelFootballRoomMutationOptions(options));
+    }
 
 export const getHealthCheckUrl = () => {
 
