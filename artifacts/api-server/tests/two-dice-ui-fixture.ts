@@ -2,6 +2,8 @@ import assert from "node:assert/strict";
 import { readFile, writeFile } from "node:fs/promises";
 import { eq, inArray } from "drizzle-orm";
 import { db, pool, usersTable, roomsTable, sessionsTable, walletTransactionsTable, commissionLedgerTable } from "@workspace/db";
+import { matchDeadline } from "../src/lib/ludo-match";
+import { leadingColor } from "../src/lib/ludo-ranking";
 
 const report = JSON.parse(await readFile("test-results/two-dice-ui.json", "utf8"));
 const ids = report.players.map((player: { id: string }) => player.id);
@@ -29,6 +31,19 @@ try {
       await tx.delete(usersTable).where(inArray(usersTable.id, ids));
     });
     console.log("Disposable board-test users, stakes, sessions and room removed; real payment records untouched.");
+  } else if (process.argv.includes("--expire-tied")) {
+    const [room] = await db.select().from(roomsTable).where(eq(roomsTable.id, report.roomId));
+    assert.ok(room && room.status === "active");
+    assert.equal(room.hostUserId, ids[0]); assert.equal(room.opponentUserId, ids[1]);
+    assert.equal(leadingColor(room.board), null);
+    assert.equal(room.board.hasRolled, false);
+    // Accelerate only this unfunded disposable fixture, never real matches.
+    await db.update(roomsTable).set({ board: {
+      ...room.board, matchDeadlineAt: new Date(Date.now() + 4000).toISOString(),
+      turnDeadlineAt: new Date(Date.now() + 30000).toISOString(),
+      isOvertime: false, endReason: null,
+    } }).where(eq(roomsTable.id, room.id));
+    console.log("Disposable exact-tie fixture clock shortened for browser overtime verification.");
   } else {
     // Create a board-only fixture, not money or a provider-backed match.
     // Never auto-match these accounts into another user's waiting table.
@@ -39,6 +54,7 @@ try {
         turnUserId: ids[0], dice: null, remainingDice: [], hasRolled: false,
         consecutiveDoubles: 0, turnMessage: null, winnerUserId: null,
         turnDeadlineAt: new Date(Date.now() + 30000).toISOString(),
+        matchDeadlineAt: matchDeadline(), isOvertime: false, endReason: null,
       },
     }).returning({ id: roomsTable.id });
     report.roomId = room.id;

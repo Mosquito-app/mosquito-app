@@ -12,15 +12,24 @@ import { useRealtime } from '@/hooks/use-realtime';
 import { DiceFace, LudoBoard, cellFor, canMoveToken, destination } from '@/components/ludo-board';
 import type { Color } from '@/components/ludo-board';
 import '@/game-board.css';
+import { MatchClock } from '@/components/match-clock';
 
 export { cellFor, canMoveToken };
 
 
-function useCountdown(deadline: string | null | undefined, active: boolean) {
+function useCountdown(deadline: string | null | undefined, active: boolean, serverTimeAt?: string) {
   const [now, setNow] = useState(() => Date.now());
-  useEffect(() => { if (!deadline || !active) return; setNow(Date.now()); const t = window.setInterval(() => setNow(Date.now()), 250); return () => window.clearInterval(t); }, [deadline, active]);
+  const [offset, setOffset] = useState(0);
+  useEffect(() => {
+    if (!deadline || !active) return;
+    const sampledNow = Date.now();
+    setOffset(serverTimeAt ? Date.parse(serverTimeAt) - sampledNow : 0);
+    setNow(sampledNow);
+    const t = window.setInterval(() => setNow(Date.now()), 250);
+    return () => window.clearInterval(t);
+  }, [deadline, active, serverTimeAt]);
   if (!deadline || !active) return null;
-  return Math.max(0, Math.ceil((new Date(deadline).getTime() - now) / 1000));
+  return Math.max(0, Math.ceil((new Date(deadline).getTime() - now - offset) / 1000));
 }
 
 export default function GamePage() {
@@ -34,7 +43,8 @@ export default function GamePage() {
   const roll = useRollDice(); const move = useMoveToken(); const cancel = useCancelRoom();
   const [actionError, setActionError] = useState('');
   const isActive = room?.status === 'active';
-  const seconds = useCountdown(room?.board.turnDeadlineAt, !!isActive);
+  const seconds = useCountdown(room?.board.turnDeadlineAt, !!isActive, room?.serverTimeAt);
+  const matchSeconds = useCountdown(room?.board.matchDeadlineAt, !!isActive, room?.serverTimeAt);
   const patch = (next: Room) => {
     queryClient.setQueryData(getGetRoomQueryKey(roomId), next);
     void queryClient.invalidateQueries({ queryKey: getGetWalletQueryKey() });
@@ -58,7 +68,8 @@ export default function GamePage() {
   const isDone = room.status === 'completed' || room.status === 'cancelled';
   const mine = room.myColor === 'red' ? room.board.redTokens : room.board.greenTokens;
   const dice = room.board.dice;
-  const canMove = isActive && isMyTurn && room.board.hasRolled && !!dice && remaining.length > 0;
+  const clockAllowsPlay = !!isActive && (room.board.isOvertime || matchSeconds !== 0) && seconds !== 0;
+  const canMove = clockAllowsPlay && !move.isPending && isMyTurn && room.board.hasRolled && !!dice && remaining.length > 0;
   const defaultPick: Pick | null = remaining.length === 2 ? 'both' : remaining.length === 1 ? (remaining[0] === 0 ? 'd0' : 'd1') : null;
   const valid = (p: Pick | null) => p === 'both' ? remaining.length === 2 : p === 'd0' ? remaining.includes(0) : p === 'd1' ? remaining.includes(1) : false;
   const sel: Pick | null = valid(pick) ? pick : defaultPick;
@@ -79,6 +90,7 @@ export default function GamePage() {
       <div className="game-nav"><button className="back-link" onClick={() => setLocation('/')} data-testid="button-return-lobby"><ArrowLeft size={16} /> Lobby</button><div className="match-code">ROOM <b>{room.id.slice(0, 8).toUpperCase()}</b></div><span className={`sandbox-pill conn-${conn}`} data-testid="status-connection"><span className="pulse-dot" /> {connLabel}</span></div>
       <div className="game-title-row"><div><div className="section-overline">TWO-PLAYER MATCH · {room.status.toUpperCase()}</div><h1>Make your <em>move.</em></h1></div>
         <div className="stake-reserved"><span><span className="pulse-dot" /> STAKE EACH</span><b>{money(room.stakeNaira)}</b><small>Sandbox funds only</small></div></div>
+      <MatchClock room={room} seconds={matchSeconds} />
       <div className="match-layout">
         <section className="board-column">
           <div className="player-strip">
@@ -99,7 +111,7 @@ export default function GamePage() {
                 {optBtn('d1', 'Move die 2', [dice[1]])}
                 {optBtn('both', 'Both, sum', [dice[0], dice[1]], dice[0] + dice[1])}
               </>}
-              <button className={`roll-btn ${isActive && isMyTurn && !room.board.hasRolled ? 'roll-ready' : ''}`} disabled={!isActive || !isMyTurn || room.board.hasRolled || roll.isPending} onClick={() => { setActionError(''); roll.mutate({ roomId }, { onSuccess: patch, onError: fail }); }} data-testid="button-roll-dice">{roll.isPending ? 'Rolling...' : 'Roll dice'} <ArrowRight size={16} /></button>
+              <button className={`roll-btn ${clockAllowsPlay && isMyTurn && !room.board.hasRolled ? 'roll-ready' : ''}`} disabled={!clockAllowsPlay || !isMyTurn || room.board.hasRolled || roll.isPending} onClick={() => { setActionError(''); roll.mutate({ roomId }, { onSuccess: patch, onError: fail }); }} data-testid="button-roll-dice">{roll.isPending ? 'Rolling...' : 'Roll dice'} <ArrowRight size={16} /></button>
             </div>
             {isActive && <div className="lb-doubles" data-testid="text-doubles">DOUBLES IN A ROW <b className={room.board.consecutiveDoubles > 0 ? 'on' : ''} /><b className={room.board.consecutiveDoubles > 1 ? 'on' : ''} /> {room.board.consecutiveDoubles}/2</div>}
             {notice && <div className={`lb-notice ${msg === 'third_double' || msg === 'timeout' ? 'bad' : ''}`} role="status" data-testid="text-turn-notice">{notice}</div>}

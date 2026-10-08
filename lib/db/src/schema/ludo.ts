@@ -32,6 +32,10 @@ export type LudoBoardState = {
   greenTokens: number[];
   winnerUserId: string | null;
   turnDeadlineAt: string | null;
+  // Legacy JSON boards may omit these; normalizeBoard supplies API defaults.
+  matchDeadlineAt?: string | null;
+  isOvertime?: boolean;
+  endReason?: "all_home" | "timeout" | "overtime" | null;
 };
 
 export const usersTable = pgTable(

@@ -3,3 +3,4 @@
 - [Paystack test recipients](paystack-test-recipients.md) — Sample payment accounts are not guaranteed to resolve as transfer recipients, even with a valid test key.
 - [Browser payment QA](browser-payment-qa.md) — Testing-tool fallback and hosted-checkout verification limits; never substitute seeded balances for payment evidence.
 - [Two-dice rules](two-dice-rules.md) — Home entry consumes a six, doubles replace six-only bonuses, and upgrades preserve existing rooms and stakes.
+- [Match timeout rules](match-timeout-rules.md) — At 14 minutes rank finished tokens, then progress; exact ties enter sudden death until the first tie-breaking movement.

@@ -557,8 +557,16 @@ components:
           enum: [500, 1000, 2000]
     BoardState:
       type: object
-      required: [turnUserId, dice, remainingDice, consecutiveDoubles, turnMessage, hasRolled, redTokens, greenTokens, winnerUserId, turnDeadlineAt]
+      required: [turnUserId, dice, remainingDice, consecutiveDoubles, turnMessage, hasRolled, redTokens, greenTokens, winnerUserId, turnDeadlineAt, matchDeadlineAt, isOvertime, endReason]
       properties:
+        matchDeadlineAt:
+          type: ["string", "null"]
+          format: date-time
+        isOvertime:
+          type: boolean
+        endReason:
+          type: ["string", "null"]
+          enum: [all_home, timeout, overtime, null]
         turnUserId:
           type: string
         turnDeadlineAt:
@@ -598,11 +606,34 @@ components:
             type: integer
         winnerUserId:
           type: ["string", "null"]
+    PlayerRank:
+      type: object
+      required: [tokensHome, totalProgress]
+      properties:
+        tokensHome:
+          type: integer
+          minimum: 0
+          maximum: 4
+        totalProgress:
+          type: integer
+          minimum: 0
+          maximum: 232
     Room:
       type: object
       required:
-        [id, stakeNaira, potNaira, prizeNaira, commissionNaira, status, hostUserId, hostUsername, opponentUserId, opponentUsername, myColor, board, createdAt]
+        [id, stakeNaira, potNaira, prizeNaira, commissionNaira, status, hostUserId, hostUsername, opponentUserId, opponentUsername, myColor, board, createdAt, serverTimeAt, scores]
       properties:
+        serverTimeAt:
+          type: string
+          format: date-time
+        scores:
+          type: object
+          required: [red, green]
+          properties:
+            red:
+              $ref: "#/components/schemas/PlayerRank"
+            green:
+              $ref: "#/components/schemas/PlayerRank"
         id:
           type: string
         stakeNaira:

@@ -56,3 +56,17 @@ mtime_ms = 1791420145904
 storage_uri = "gcs://replit-rams-assets-worf/rams/assets/repl:f23f81b4-fa1a-4306-8385-1a065af07af6/37b03260-2a9e-4e1c-826d-dec3ae50be01/009741db-16e5-45ce-b864-ac4126db5105"
 storage_version_token = "1791420218542062"
 content_type = "image/png"
+
+[[outputs]]
+id = "nDqdQxteMeSVwbaiGbdhe"
+uri = "file://artifacts/api-server/test-results/match-clock-mobile.png"
+type = "image"
+title = "14-minute Ludo: overtime preview"
+description = "Mobile browser QA showing the shared clock at 0:00, equal rankings, the OVERTIME / DRAW BREAK banner and two-dice play. This used an accelerated disposable tied-room fixture without funded stakes; settlement was separately verified against isolated PostgreSQL test data."
+logical_id = "2eabdc86-806c-40e9-b3c1-438df1bc6a49"
+content_hash = "sha256:58e2eefde29c26e58301a841b51f48abbf401214b04ed04fef903054141d562c"
+size = 367018
+mtime_ms = 1791460628424
+storage_uri = "gcs://replit-rams-assets-worf/rams/assets/repl:f23f81b4-fa1a-4306-8385-1a065af07af6/2eabdc86-806c-40e9-b3c1-438df1bc6a49/f8b41b01-a87f-43e4-b45d-2a01fd5afc7c"
+storage_version_token = "1791460865913564"
+content_type = "image/png"

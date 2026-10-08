@@ -7,10 +7,13 @@
  */
 import type { BoardState } from './boardState';
 import type { RoomMyColor } from './roomMyColor';
+import type { RoomScores } from './roomScores';
 import type { RoomStakeNaira } from './roomStakeNaira';
 import type { RoomStatus } from './roomStatus';
 
 export interface Room {
+  serverTimeAt: Date;
+  scores: RoomScores;
   id: string;
   stakeNaira: RoomStakeNaira;
   potNaira: number;

@@ -12,6 +12,9 @@ export function normalizeBoard(board: LudoBoardState): LudoBoardState {
     remainingDice: paired && board.hasRolled ? board.remainingDice ?? [0, 1] : [],
     consecutiveDoubles: board.consecutiveDoubles ?? 0,
     turnMessage: board.turnMessage ?? null,
+    matchDeadlineAt: board.matchDeadlineAt ?? null,
+    isOvertime: board.isOvertime ?? false,
+    endReason: board.endReason ?? null,
   };
 }
 

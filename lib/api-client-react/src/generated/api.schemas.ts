@@ -198,6 +198,18 @@ export interface JoinRoomInput {
   stakeNaira: JoinRoomInputStakeNaira;
 }
 
+/**
+ * @nullable
+ */
+export type BoardStateEndReason = typeof BoardStateEndReason[keyof typeof BoardStateEndReason] | null;
+
+
+export const BoardStateEndReason = {
+  all_home: 'all_home',
+  timeout: 'timeout',
+  overtime: 'overtime',
+} as const;
+
 export type BoardStateRemainingDiceItem = typeof BoardStateRemainingDiceItem[keyof typeof BoardStateRemainingDiceItem];
 
 
@@ -220,6 +232,11 @@ export const BoardStateTurnMessage = {
 } as const;
 
 export interface BoardState {
+  /** @nullable */
+  matchDeadlineAt: string | null;
+  isOvertime: boolean;
+  /** @nullable */
+  endReason: BoardStateEndReason;
   turnUserId: string;
   /** @nullable */
   turnDeadlineAt: string | null;
@@ -246,6 +263,24 @@ export interface BoardState {
   /** @nullable */
   winnerUserId: string | null;
 }
+
+export interface PlayerRank {
+  /**
+     * @minimum 0
+     * @maximum 4
+     */
+  tokensHome: number;
+  /**
+     * @minimum 0
+     * @maximum 232
+     */
+  totalProgress: number;
+}
+
+export type RoomScores = {
+  red: PlayerRank;
+  green: PlayerRank;
+};
 
 export type RoomStakeNaira = typeof RoomStakeNaira[keyof typeof RoomStakeNaira];
 
@@ -275,6 +310,8 @@ export const RoomMyColor = {
 } as const;
 
 export interface Room {
+  serverTimeAt: string;
+  scores: RoomScores;
   id: string;
   stakeNaira: RoomStakeNaira;
   potNaira: number;

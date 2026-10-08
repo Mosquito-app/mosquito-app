@@ -20,8 +20,6 @@ import {
   roomsTable,
   usersTable,
   walletTransactionsTable,
-  platformWalletTable,
-  commissionLedgerTable,
   type LudoBoardState,
   type RoomStatus,
 } from "@workspace/db";
@@ -29,6 +27,8 @@ import { getAuthenticatedUser } from "../lib/ludo-auth";
 import { publishRoomUpdate } from "../lib/ludo-events";
 import { deadline, nextPlayerId, splitPot, turnExpired } from "../lib/ludo-turns";
 import { applyRoll, finishRoll, hasLegalMove, moveDestination, normalizeBoard, tokensFor } from "../lib/ludo-rules";
+import { completeMatch, matchDeadline, resolveMatchClock } from "../lib/ludo-match";
+import { boardScores, leadingColor } from "../lib/ludo-ranking";
 
 const router: IRouter = Router();
 const STAKES_NAIRA = [500, 1000, 2000] as const;
@@ -66,6 +66,7 @@ function startBoard(hostUserId: string): LudoBoardState {
     greenTokens: [-1, -1, -1, -1],
     winnerUserId: null,
     turnDeadlineAt: null,
+    matchDeadlineAt: null, isOvertime: false, endReason: null,
   };
 }
 
@@ -119,6 +120,8 @@ async function getRoomForViewer(roomId: string, viewerId: string) {
     myColor,
     board: normalizeBoard(room.board),
     createdAt: room.createdAt,
+    serverTimeAt: new Date().toISOString(),
+    scores: boardScores(room.board),
   });
 }
 
@@ -144,30 +147,6 @@ function currentPlayerColor(room: {
   opponentUserId: string | null;
 }, userId: string) {
   return colorFor(room, userId);
-}
-
-async function settleWinner(
-  tx: Parameters<Parameters<typeof db.transaction>[0]>[0],
-  roomId: string,
-  winnerUserId: string,
-  amountKobo: number,
-) {
-  const { prizeKobo, commissionKobo } = splitPot(amountKobo);
-  await tx
-    .update(usersTable)
-    .set({ balanceKobo: sql`${usersTable.balanceKobo} + ${prizeKobo}` })
-    .where(eq(usersTable.id, winnerUserId));
-  await tx.insert(walletTransactionsTable).values({
-    userId: winnerUserId,
-    type: "prize",
-    amountKobo: prizeKobo,
-    description: `Sandbox match prize — room ${roomId.slice(0, 8)}`,
-    roomId,
-  });
-  await tx.insert(commissionLedgerTable).values({ roomId, amountKobo: commissionKobo });
-  await tx.insert(platformWalletTable).values({ id: "commission", balanceKobo: commissionKobo })
-    .onConflictDoUpdate({ target: platformWalletTable.id,
-      set: { balanceKobo: sql`${platformWalletTable.balanceKobo} + ${commissionKobo}` } });
 }
 
 function sendGameError(
@@ -286,6 +265,7 @@ router.post("/rooms", async (req, res): Promise<void> => {
         const board = startBoard(openRoom.hostUserId);
         board.turnUserId = openRoom.hostUserId;
         board.turnDeadlineAt = deadline();
+        board.matchDeadlineAt = matchDeadline();
         await tx
           .update(roomsTable)
           .set({
@@ -363,10 +343,12 @@ router.post("/rooms/:roomId/roll", async (req, res): Promise<void> => {
 
   try {
     await db.transaction(async (tx) => {
-      const room = await loadLockedRoom(tx, params.data.roomId, user.id);
+      let room = await loadLockedRoom(tx, params.data.roomId, user.id);
       if (room.status !== "active") {
         throw new GameActionError(400, "This match is not active.");
       }
+      room = (await resolveMatchClock(tx, room)).room;
+      if (room.status === "completed") return;
       if (turnExpired(room.board)) throw new GameActionError(400, "Your turn timer expired. Refresh the board.");
       if (room.board.turnUserId !== user.id) {
         throw new GameActionError(400, "Wait for your turn to roll.");
@@ -413,10 +395,12 @@ router.post("/rooms/:roomId/move", async (req, res): Promise<void> => {
 
   try {
     await db.transaction(async (tx) => {
-      const room = await loadLockedRoom(tx, params.data.roomId, user.id);
+      let room = await loadLockedRoom(tx, params.data.roomId, user.id);
       if (room.status !== "active" || !room.opponentUserId) {
         throw new GameActionError(400, "This match is not active.");
       }
+      room = (await resolveMatchClock(tx, room)).room;
+      if (room.status === "completed") return;
       if (turnExpired(room.board)) throw new GameActionError(400, "Your turn timer expired. Refresh the board.");
       if (room.board.turnUserId !== user.id) {
         throw new GameActionError(400, "Wait for your turn.");
@@ -462,16 +446,10 @@ router.post("/rooms/:roomId/move", async (req, res): Promise<void> => {
       }
 
       const won = ownTokens.every((tokenPosition) => tokenPosition >= 57);
-      if (won) {
-        board.winnerUserId = user.id;
-        board.turnDeadlineAt = null;
-        board.remainingDice = [];
-        board.hasRolled = false;
-        await tx
-          .update(roomsTable)
-          .set({ status: "completed", board, updatedAt: new Date() })
-          .where(eq(roomsTable.id, room.id));
-        await settleWinner(tx, room.id, user.id, room.stakeKobo * 2);
+      const overtimeLeader = board.isOvertime ? leadingColor(board) : null;
+      if (won || overtimeLeader) {
+        const winner = overtimeLeader ? overtimeLeader === "red" ? room.hostUserId : room.opponentUserId! : user.id;
+        await completeMatch(tx, room, board, winner, board.isOvertime ? "overtime" : "all_home");
         return;
       }
 

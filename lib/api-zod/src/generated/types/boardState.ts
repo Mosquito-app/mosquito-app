@@ -5,10 +5,16 @@
  * Ludo Stake Game API. All wagering and balances are sandbox-only.
  * OpenAPI spec version: 0.1.0
  */
+import type { BoardStateEndReason } from './boardStateEndReason';
 import type { BoardStateRemainingDiceItem } from './boardStateRemainingDiceItem';
 import type { BoardStateTurnMessage } from './boardStateTurnMessage';
 
 export interface BoardState {
+  /** @nullable */
+  matchDeadlineAt: Date | null;
+  isOvertime: boolean;
+  /** @nullable */
+  endReason: BoardStateEndReason;
   turnUserId: string;
   /** @nullable */
   turnDeadlineAt: Date | null;

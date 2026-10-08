@@ -8,6 +8,7 @@
 
 export * from './authResponse';
 export * from './boardState';
+export * from './boardStateEndReason';
 export * from './boardStateRemainingDiceItem';
 export * from './boardStateTurnMessage';
 export * from './depositInitialization';
@@ -24,9 +25,11 @@ export * from './lobbyRoomStakeNaira';
 export * from './loginInput';
 export * from './moveInput';
 export * from './moveInputDiceIndicesItem';
+export * from './playerRank';
 export * from './registerInput';
 export * from './room';
 export * from './roomMyColor';
+export * from './roomScores';
 export * from './roomStakeNaira';
 export * from './roomStatus';
 export * from './stakeCount';
