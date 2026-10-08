@@ -52,16 +52,23 @@ try {
   await req("/football/lobby", undefined, undefined, undefined, 401);
   const host = await seat(), opponent = await seat(), outsider = await seat();
   await req("/football/rooms", host, { stakeNaira: 50 }, undefined, 400);
-  const first = (await req("/football/rooms", host, { stakeNaira: 1000 })).data;
+  await req("/football/rooms", host, { stakeNaira: 1000, club: "invalid_club" }, undefined, 400);
+  const first = (await req("/football/rooms", host, { stakeNaira: 1000, club: "barcelona" })).data;
+  assert.equal(first.state.homeClub, "barcelona");
   assert.equal(first.status, "waiting"); assert.equal(first.state.players.length, 22);
   assert.equal((await req("/wallet", host)).data.balanceNaira, 2000);
   assert.equal((await req("/wallet", host)).data.escrowedNaira, 0);
   assert.equal((await req(`/football/rooms/${first.id}`, opponent)).data.viewerTeam, null);
-  const joins = await Promise.all([1, 2].map(() => req("/football/rooms", opponent, { stakeNaira: 1000, roomId: first.id }, undefined, [200, 409])));
+  const joins = await Promise.all([1, 2].map(() => req("/football/rooms", opponent, { stakeNaira: 1000, roomId: first.id, club: "real_madrid" }, undefined, [200, 409])));
   const active = joins.find(r => r.status === 200)!.data;
-  assert.equal(active.status, "active"); assert.equal(active.state.remainingMs, 360000);
+  assert.equal(active.status, "active"); assert.equal(active.state.remainingMs, REGULATION_MS);
+  assert.equal(active.state.halfDurationMs, 240000); assert.equal(active.state.addedTimeMs, 60000);
+  assert.equal(active.state.halftimeBreakMs, 40000);
+  assert.equal(active.state.homeClub, "barcelona"); assert.equal(active.state.awayClub, "real_madrid");
+  assert.deepEqual((await req(`/football/rooms/${first.id}`, host)).data.state.homeClub, "barcelona");
   const joinedAgain = (await req("/football/rooms", opponent, { stakeNaira: 1000, roomId: first.id })).data;
   assert.equal(joinedAgain.id, first.id);
+  assert.equal(joinedAgain.state.awayClub, "real_madrid", "Resuming cannot change the locked-in club.");
   for (const s of [host, opponent]) {
     const w = (await req("/wallet", s)).data;
     assert.equal(w.balanceNaira, 1000); assert.equal(w.escrowedNaira, 1000); assert.equal(w.totalBalanceNaira, 2000);

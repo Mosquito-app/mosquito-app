@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { lazy, Suspense, type ReactNode } from 'react';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { ErrorBoundary } from '@/components/error-boundary';
 import { Toaster } from '@/components/ui/toaster';
@@ -7,7 +7,7 @@ import NotFound from '@/pages/not-found';
 import { LoginPage, RegisterPage } from '@/pages/auth';
 import LobbyPage from '@/pages/lobby';
 import GamePage from '@/pages/game';
-import FootballPage from '@/pages/football';
+const FootballPage = lazy(() => import('@/pages/football'));
 import { queryClient } from '@/lib/query-client';
 import { Route, Switch, useLocation, Router as WouterRouter } from 'wouter';
 
@@ -21,7 +21,7 @@ function Router() {
     <Route path="/login" component={LoginPage} />
     <Route path="/register" component={RegisterPage} />
     <Route path="/game/:roomId" component={GamePage} />
-    <Route path="/football/:roomId" component={FootballPage} />
+    <Route path="/football/:roomId"><Suspense fallback={<div className="empty-state">Loading 3D Football…</div>}><FootballPage /></Suspense></Route>
     <Route component={NotFound} />
   </Switch></RoutedErrorBoundary>;
 }

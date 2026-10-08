@@ -9,7 +9,10 @@ import {
 import type { FootballRoom } from '@workspace/api-client-react';
 import { queryClient } from '@/lib/query-client';
 import { AuthFrame, InlineError, LoadingBlock, Shell, money } from '@/components/common';
-import { FootballPitch, viewFlipped } from '@/components/football-pitch';
+import { FootballPitch } from '@/components/football-pitch';
+import { CLUBS, clubLabel, loadClub, saveClub, hasWebGL2, WEBGL_MSG } from '@/components/football-3d/clubs';
+import { xs } from '@/components/football-3d/types';
+import type { ControlBasis, FootballClubId } from '@/components/football-3d/types';
 import { useFootballRealtime } from '@/hooks/use-football-realtime';
 import '@/football.css';
 
@@ -46,13 +49,13 @@ export default function FootballPage() {
     lastStatus.current = room.status;
   }, [room, refreshRelated]);
 
-  const live = !!room && room.status === 'active' && !!room.viewerTeam && rt.conn === 'live' && room.state.phase !== 'waiting' && room.state.phase !== 'finished';
+  const live = !!room && room.status === 'active' && !!room.viewerTeam && rt.conn === 'live' && !['waiting', 'finished', 'halftime'].includes(xs(room.state).phase);
 
   // movement: joystick + keyboard
   const joy = useRef({ x: 0, y: 0 }); const keys = useRef(new Set<string>());
   const [knob, setKnob] = useState({ x: 0, y: 0 });
-  const flip = room ? viewFlipped(room.state, room.viewerTeam) : false;
-  const flipRef = useRef(flip); flipRef.current = flip;
+  const basis = useRef<ControlBasis>({ rightX: 1, rightY: 0, forwardX: 0, forwardY: -1 });
+  const [inviteClub, setInviteClub] = useState<FootballClubId>(loadClub);
   const setMoveRef = useRef(rt.setMove); setMoveRef.current = rt.setMove;
   const liveRef = useRef(live); liveRef.current = live;
   const pushMove = useCallback(() => {
@@ -60,12 +63,12 @@ export default function FootballPage() {
     const k = keys.current;
     if (k.size) { x += (k.has('d') || k.has('arrowright') ? 1 : 0) - (k.has('a') || k.has('arrowleft') ? 1 : 0); y += (k.has('s') || k.has('arrowdown') ? 1 : 0) - (k.has('w') || k.has('arrowup') ? 1 : 0); }
     const m = Math.hypot(x, y); if (m > 1) { x /= m; y /= m; }
-    const f = flipRef.current ? -1 : 1; // screen is rotated when attacking south
-    setMoveRef.current(liveRef.current ? x * f : 0, liveRef.current ? y * f : 0);
+    const b = basis.current; const up = -y; // screen up = camera forward
+    const mx = x * b.rightX + up * b.forwardX; const my = x * b.rightY + up * b.forwardY;
+    setMoveRef.current(liveRef.current ? mx : 0, liveRef.current ? my : 0);
   }, []);
   useEffect(() => { if (!live) { joy.current = { x: 0, y: 0 }; keys.current.clear(); setKnob({ x: 0, y: 0 }); pushMove(); } }, [live, pushMove]);
-  // Remap a held joystick/key when the teams switch ends at halftime.
-  useEffect(() => { pushMove(); }, [flip, pushMove]);
+  const onBasis = useCallback((b: ControlBasis) => { basis.current = b; pushMove(); }, [pushMove]);
 
   const stickRef = useRef<HTMLDivElement>(null); const stickPtr = useRef<number | null>(null);
   const moveStick = (e: RPointerEvent) => {
@@ -116,13 +119,15 @@ export default function FootballPage() {
   if (!room && roomQuery.isLoading) return <Shell user={user}><div className="page-content"><LoadingBlock label="Marking the pitch" /></div></Shell>;
   if (!room) return <Shell user={user}><div className="page-content"><div className="fb-wait"><h1>This pitch went quiet.</h1><p>It may have closed, or the link is out of date.</p><div className="fb-row"><button className="quiet-btn" onClick={() => void roomQuery.refetch()} data-testid="button-retry-football">Retry</button><button className="primary-btn" onClick={() => setLocation('/')} data-testid="button-football-lobby">Back to lobby <ArrowRight size={16} /></button></div></div></div></Shell>;
 
-  const s = room.state; const isHost = room.hostUserId === user.id;
+  const s = room.state; const xst = xs(s); const isHost = room.hostUserId === user.id;
   const homeName = room.hostUsername; const awayName = room.opponentUsername || 'Waiting';
   const dirLabel = s.homeDirection === -1 ? 'north' : 'south';
   const myDir = room.viewerTeam ? (room.viewerTeam === 'home' ? dirLabel : dirLabel === 'north' ? 'south' : 'north') : null;
   const paused = s.pauseUntil > 0 && Date.parse(s.serverTimeAt) < s.pauseUntil && s.phase !== 'finished' && s.phase !== 'waiting';
-  const halfLabel = s.phase === 'first_half' ? '1ST HALF' : s.phase === 'second_half' ? '2ND HALF' : s.phase === 'overtime' ? 'GOLDEN GOAL' : s.phase === 'finished' ? 'FULL TIME' : 'PRE-MATCH';
-  const halfRemaining = s.phase === 'first_half' ? Math.max(0, 180000 - s.elapsedMs) : s.phase === 'second_half' ? Math.max(0, 360000 - s.elapsedMs) : s.remainingMs;
+  const LABELS: Record<string, string> = { first_half: '1ST HALF', first_added: '1ST HALF ADDED TIME', halftime: 'HALFTIME', second_half: '2ND HALF', second_added: '2ND HALF ADDED TIME', overtime: 'GOLDEN GOAL', finished: 'FULL TIME', waiting: 'PRE-MATCH' };
+  const halfLabel = LABELS[xst.phase] ?? 'LIVE';
+  const halfRemaining = xst.phaseRemainingMs ?? s.remainingMs;
+  const timingNote = xst.halfDurationMs !== undefined ? `${fmt(xst.halfDurationMs)} halves + ${fmt(xst.addedTimeMs ?? 0)} added each half, ${fmt(xst.halftimeBreakMs ?? 0)} halftime break` : '';
   const done = room.status === 'completed' || room.status === 'cancelled';
   const won = room.winnerUserId === user.id;
   const connLabel = rt.conn === 'live' ? 'LIVE' : rt.conn === 'connecting' ? 'CONNECTING' : 'RECONNECTING · POLLING 2s';
@@ -141,9 +146,12 @@ export default function FootballPage() {
         <p className="fb-help">Share this link. Your opponent joins with a matching sandbox stake, and the whole team, 11 a side, is on the pitch.</p>
         <div className="fb-link" data-testid="text-football-invite">{url}</div>
         <div className="fb-row">
+          {!room.viewerTeam && <div className="fb-club-row"><small>YOUR CLUB</small><select className="fb-club-select" value={inviteClub} onChange={e => { const v = e.target.value as FootballClubId; setInviteClub(v); saveClub(v); }} data-testid="select-football-invite-club">{CLUBS.map(c => <option key={c.id} value={c.id}>{c.label}</option>)}</select></div>}
+          {room.status === 'waiting' && <small className="fb-help" data-testid="text-football-host-club">Host plays as {clubLabel(xst.homeClub)}.{xst.awayClub ? ` Opponent: ${clubLabel(xst.awayClub)}.` : ''}</small>}
           {!room.viewerTeam && <button className="primary-btn" disabled={join.isPending} data-testid="button-join-football-invite" onClick={() => {
             setErr('');
-            join.mutate({ data: { stakeNaira: room.stakeNaira as 500 | 1000 | 2000, roomId } }, {
+            if (!hasWebGL2()) { setErr(WEBGL_MSG); return; }
+            join.mutate({ data: { stakeNaira: room.stakeNaira as 500 | 1000 | 2000, roomId, club: inviteClub } }, {
               onSuccess: next => { queryClient.setQueryData(getGetFootballRoomQueryKey(next.id), next); refreshRelated(); setLocation(`/football/${next.id}`); },
               onError: () => setErr('This room may be taken, or a player needs more test funds in Mosquito Wallet.'),
             });
@@ -154,17 +162,19 @@ export default function FootballPage() {
         {err && <InlineError>{err}</InlineError>}
       </div> : <>
         <div className="fb-score" data-testid="panel-football-score">
-          <div className="fb-team"><small>HOME{room.viewerTeam === 'home' ? ' · YOU' : ''}</small><b>{homeName}</b></div>
-          <div className="fb-mid"><div className="fb-goals" data-testid="text-football-score">{s.scoreHome}<i>:</i>{s.scoreAway}</div><div className="fb-clock" data-testid="text-football-clock">{halfLabel}{s.phase === 'overtime' ? '' : ` · ${fmt(halfRemaining)}`}</div></div>
-          <div className="fb-team right"><small>AWAY{room.viewerTeam === 'away' ? ' · YOU' : ''}</small><b>{awayName}</b></div>
+          <div className="fb-team"><small>HOME{room.viewerTeam === 'home' ? ' · YOU' : ''} · {clubLabel(xst.homeClub).toUpperCase()}</small><b>{homeName}</b></div>
+          <div className="fb-mid"><div className="fb-goals" data-testid="text-football-score">{s.scoreHome}<i>:</i>{s.scoreAway}</div><div className="fb-clock" data-testid="text-football-clock">{halfLabel}{xst.phase === 'overtime' || xst.phase === 'finished' ? '' : ` · ${fmt(halfRemaining)}`}</div>{xst.phase !== 'overtime' && xst.phase !== 'finished' && <div className="fb-clock sub" data-testid="text-football-total-left">MATCH LEFT {fmt(s.remainingMs)}</div>}</div>
+          <div className="fb-team right"><small>AWAY{room.viewerTeam === 'away' ? ' · YOU' : ''} · {xst.awayClub ? clubLabel(xst.awayClub).toUpperCase() : 'TBD'}</small><b>{awayName}</b></div>
         </div>
-        {s.phase === 'overtime' && <div className="fb-banner gold" data-testid="text-football-golden">GOLDEN GOAL. Tied after 6 minutes. The next goal wins.</div>}
+        {xst.phase === 'overtime' && <div className="fb-banner gold" data-testid="text-football-golden">GOLDEN GOAL. Tied after full time. The next goal wins.</div>}
+        {xst.phase === 'halftime' && <div className="fb-banner gold" data-testid="text-football-halftime">HALFTIME. Controls are paused. Second half in {fmt(halfRemaining)}.</div>}
+        {(xst.phase === 'first_added' || xst.phase === 'second_added') && <div className="fb-banner" data-testid="text-football-added">Added time: {fmt(halfRemaining)} left in this half.</div>}
         {kickoffNote && <div className="fb-banner" data-testid="text-football-kickoff">{kickoffNote}</div>}
         {s.lastEvent && !done && !kickoffNote && <div className="fb-banner" data-testid="text-football-event">{s.lastEvent}</div>}
-        <FootballPitch state={s} team={room.viewerTeam} />
+        <FootballPitch state={s} team={room.viewerTeam} onControlBasis={onBasis} />
         {done && <div className="fb-banner result" data-testid="text-football-result">{room.status === 'cancelled' ? 'Waiting room cancelled. No stakes were debited.' : room.winnerUserId ? (won ? `You won. ${money(room.prizeNaira)} credited to your Mosquito Wallet test balance.` : 'Match ended. Opponent takes the prize.') : 'Match closed.'}</div>}
         <div className="fb-info">
-          <span data-testid="text-football-side">{room.viewerTeam ? `YOU ARE ${room.viewerTeam.toUpperCase()} · ATTACKING ${myDir!.toUpperCase()} (SHOWN UP)` : 'SPECTATING'}</span>
+          <span data-testid="text-football-side">{room.viewerTeam ? `YOU ARE ${room.viewerTeam.toUpperCase()} · ATTACKING ${myDir!.toUpperCase()}` : 'SPECTATING'}</span>
           <span>STAKE {money(room.stakeNaira)}</span><span data-testid="text-football-prize">PRIZE {money(room.prizeNaira)}</span><span>COMMISSION {money(room.commissionNaira)}</span>
         </div>
         {rt.error && <InlineError>{rt.error}</InlineError>}
@@ -182,7 +192,7 @@ export default function FootballPage() {
             <button className="fb-btn slide" disabled={!live} onPointerDown={slideDown} onPointerUp={slideUp} onPointerCancel={() => { window.clearTimeout(slideTimer.current); slideTimer.current = 0; }} data-testid="button-football-slide">Slide / Switch<small>L TACKLE · SPACE SWITCH</small></button>
           </div>
         </div>
-        <p className="fb-help">Tap Slide / Switch to tackle a nearby enemy carrier, otherwise it switches your player. Hold it to always switch. Keys: WASD or arrows move, J pass, K shoot, L tackle, Space switch. Two halves of 3 minutes; a tie goes to golden goal. <ShieldCheck size={11} style={{ verticalAlign: '-1px' }} /> Sandbox funds only, test play.</p>
+        <p className="fb-help">Tap Slide / Switch to tackle a nearby enemy carrier, otherwise it switches your player. Hold it to always switch. Keys: WASD or arrows move, J pass, K shoot, L tackle, Space switch. {timingNote ? `${timingNote}; ` : ''}a tie goes to golden goal. Stylized original player models, not licensed club assets. <ShieldCheck size={11} style={{ verticalAlign: '-1px' }} /> Sandbox funds only, test play.</p>
       </>}
     </div>
   </Shell>;

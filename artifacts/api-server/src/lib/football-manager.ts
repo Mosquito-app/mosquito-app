@@ -1,9 +1,10 @@
 import { randomUUID } from "node:crypto";
 import { EventEmitter } from "node:events";
+import { deflateSync, inflateSync } from "node:zlib";
 import { and, eq, inArray, sql } from "drizzle-orm";
 import { db, pool, footballRoomsTable, usersTable, type FootballState, type FootballTeam } from "@workspace/db";
 import { GetFootballRoomResponse } from "@workspace/api-zod";
-import { advanceFootball, type FootballInput, type FootballInputs } from "./football-physics";
+import { advanceFootball, normalizeFootballState, type FootballInput, type FootballInputs } from "./football-physics";
 import { settleFootball, type FootballRow } from "./football-finance";
 import { logger } from "./logger";
 
@@ -27,6 +28,7 @@ async function namesFor(row: FootballRow) {
     away: users.find(u => u.id === row.opponentUserId)?.username ?? null };
 }
 function dto(row: FootballRow, names: Match["names"], viewerId?: string): RoomDTO {
+  normalizeFootballState(row.state);
   return GetFootballRoomResponse.parse({
     id: row.id, status: row.status, stakeNaira: row.stakeKobo / 100, potNaira: row.stakeKobo * 2 / 100,
     prizeNaira: row.stakeKobo * 1.8 / 100, commissionNaira: row.stakeKobo * 0.2 / 100,
@@ -47,8 +49,12 @@ export async function footballRoomView(row: FootballRow, viewerId: string) {
 }
 async function notify(payload: Record<string, unknown>) {
   if (!busReady) return;
-  // < 8kB PostgreSQL notification limit: fixed 22-player snapshots are ~4kB.
-  await pool.query("SELECT pg_notify($1, $2)", [CHANNEL, JSON.stringify({ ...payload, origin: OWNER })]);
+  // Animation/elevation metadata can exceed PostgreSQL's 8kB limit.
+  const raw = JSON.stringify({ ...payload, origin: OWNER });
+  const wire = Buffer.byteLength(raw) > 7400
+    ? JSON.stringify({ kind: "packed", data: deflateSync(Buffer.from(raw)).toString("base64") }) : raw;
+  if (Buffer.byteLength(wire) >= 7900) throw new Error("Football relay snapshot is too large.");
+  await pool.query("SELECT pg_notify($1, $2)", [CHANNEL, wire]);
 }
 function emitSnapshot(match: Match) {
   const room = dto(match.row, match.names);
@@ -155,7 +161,10 @@ export function startFootballEngine() {
       await client.query(`LISTEN ${CHANNEL}`); busReady = true;
       client.on("notification", msg => {
         try {
-          const data = JSON.parse(msg.payload ?? "{}");
+          let data = JSON.parse(msg.payload ?? "{}");
+          if (data.kind === "packed") {
+            data = JSON.parse(inflateSync(Buffer.from(data.data, "base64"), { maxOutputLength: 65536 }).toString("utf8"));
+          }
           if (data.origin === OWNER) return;
           if (data.kind === "input") receiveInput(data.roomId, data.userId, data.input);
           if (data.kind === "snapshot") {

@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
-import { advanceFootball, HALF_MS, initialFootballState, REGULATION_MS, startFootball } from "../src/lib/football-physics";
+import { advanceFootball, HALF_MS, ADDED_MS, BREAK_MS, FIRST_HALF_END_MS, SECOND_HALF_START_MS,
+  initialFootballState, normalizeFootballState, REGULATION_MS, startFootball } from "../src/lib/football-physics";
 
 const T = 2_000_000;
 const fresh = () => { const s = initialFootballState(T); startFootball(s, T); s.pauseUntil = 0; return s; };
@@ -46,9 +47,53 @@ check(() => {
 check(() => {
   const s = fresh();
   advanceFootball(s, {}, T + HALF_MS);
+  assert.equal(s.phase, "first_added"); assert.equal(s.phaseRemainingMs, ADDED_MS);
+  const positions = JSON.stringify(s.players.map(p => [p.x, p.y]));
+  advanceFootball(s, { home: { moveX: 1, moveY: 1, action: "shoot" } }, T + FIRST_HALF_END_MS);
+  assert.equal(s.phase, "halftime"); assert.equal(s.phaseRemainingMs, BREAK_MS);
+  assert.equal(JSON.stringify(s.players.map(p => [p.x, p.y])), positions, "Halftime must freeze play.");
+  advanceFootball(s, {}, T + SECOND_HALF_START_MS);
   assert.equal(s.phase, "second_half"); assert.equal(s.homeDirection, 1);
-  assert.equal(s.remainingMs, HALF_MS); assert.equal(s.ball.ownerId, "away-9");
-  assert.match(s.lastEvent, /HALF TIME/);
+  assert.equal(s.remainingMs, HALF_MS + ADDED_MS); assert.equal(s.ball.ownerId, "away-9");
+  advanceFootball(s, {}, T + SECOND_HALF_START_MS + HALF_MS);
+  assert.equal(s.phase, "second_added"); assert.equal(s.phaseRemainingMs, ADDED_MS);
+});
+check(() => {
+  const s = fresh();
+  advanceFootball(s, { home: { moveX: 1, moveY: 0 } }, T + 33);
+  const p = s.players.find(p => p.id === s.controlledHome)!;
+  assert.equal(p.animation, "run"); assert.equal(p.facing, Math.PI / 2);
+  advanceFootball(s, { home: { moveX: 0, moveY: 0, action: "shoot" } }, T + 66);
+  assert.equal(p.animation, "kick"); assert.ok(p.animationUntil > T + 66);
+  assert.ok(s.ball.z > 0.22 && s.ball.vz > 0, "Shots have server-generated elevation and velocity.");
+  advanceFootball(s, { away: { moveX: 0, moveY: 0, action: "tackle" } }, T + 99);
+  assert.equal(s.players.find(p => p.id === s.controlledAway)!.animation, "slide");
+});
+check(() => {
+  const s = fresh();
+  s.ball = { x: 34, y: 0.1, z: 4, vx: 0, vy: -38, vz: 0, ownerId: null };
+  advanceFootball(s, {}, T + 33);
+  assert.equal(s.scoreHome, 0, "Shots over the crossbar must not score.");
+  assert.ok(s.ball.vy > 0);
+});
+check(() => {
+  const s = fresh();
+  s.ball = { x: 34, y: 9, z: 1.2, vx: 0, vy: -30, vz: 0, ownerId: null };
+  s.ballFreeAt = T + 5000;
+  advanceFootball(s, {}, T + 33);
+  const keeper = s.players.find(p => p.id === "away-1")!;
+  assert.equal(keeper.animation, "dive"); assert.ok(keeper.animationUntil > T + 33);
+});
+check(() => {
+  const s = fresh();
+  for (const key of ["timingVersion", "halfDurationMs", "addedTimeMs", "halftimeBreakMs", "phaseRemainingMs"] as const) delete (s as any)[key];
+  normalizeFootballState(s);
+  assert.equal(s.timingVersion, 1);
+  advanceFootball(s, {}, T + 180000);
+  assert.equal(s.phase, "second_half");
+  s.scoreAway = 1;
+  advanceFootball(s, {}, T + 360000);
+  assert.equal(s.phase, "finished"); assert.equal(s.winnerTeam, "away", "Legacy funded matches keep their original deadline.");
 });
 check(() => {
   const s = fresh(); s.scoreHome = 2; s.scoreAway = 1;
@@ -89,7 +134,8 @@ check(() => {
       assert.ok(Number.isFinite(p.x) && Number.isFinite(p.y));
       assert.ok(p.x >= 1 && p.x <= 67 && p.y >= 1 && p.y <= 104);
     }
-    assert.ok(Number.isFinite(s.ball.x) && Number.isFinite(s.ball.y));
+    assert.ok(Number.isFinite(s.ball.x) && Number.isFinite(s.ball.y) && Number.isFinite(s.ball.z) && Number.isFinite(s.ball.vz));
+    assert.ok(s.ball.z >= 0.22);
   }
 });
 console.log(`PASS ${checks} football engine scenarios, including 3,000 bounded physics frames.`);

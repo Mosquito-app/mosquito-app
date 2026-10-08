@@ -421,9 +421,13 @@ components:
       properties:
         stakeNaira: { type: integer, enum: [500, 1000, 2000] }
         roomId: { type: string, format: uuid }
+        club: { $ref: '#/components/schemas/FootballClub' }
+    FootballClub:
+      type: string
+      enum: [man_city, liverpool, man_utd, barcelona, real_madrid, chelsea]
     FootballPlayer:
       type: object
-      required: [id, team, number, role, x, y]
+      required: [id, team, number, role, x, y, z, facing, animation, animationStartedAt, animationUntil]
       properties:
         id: { type: string }
         team: { type: string, enum: [home, away] }
@@ -431,18 +435,25 @@ components:
         role: { type: string, enum: [GK, DEF, MID, FWD] }
         x: { type: number }
         y: { type: number }
+        z: { type: number, description: Server-authoritative elevation in metres }
+        facing: { type: number, description: Radians, zero faces positive pitch y }
+        animation: { type: string, enum: [idle, run, kick, slide, dive] }
+        animationStartedAt: { type: integer }
+        animationUntil: { type: integer }
     FootballBall:
       type: object
-      required: [x, y, vx, vy, ownerId]
+      required: [x, y, z, vx, vy, vz, ownerId]
       properties:
         x: { type: number }
         y: { type: number }
+        z: { type: number }
         vx: { type: number }
         vy: { type: number }
+        vz: { type: number }
         ownerId: { type: string, nullable: true }
     FootballState:
       type: object
-      required: [players, ball, scoreHome, scoreAway, controlledHome, controlledAway, phase, homeDirection, startedAt, serverTimeAt, elapsedMs, remainingMs, lastTickAt, pauseUntil, ballFreeAt, lastTouchId, lastActionHomeAt, lastActionAwayAt, lastEvent, sequence, winnerTeam]
+      required: [players, ball, scoreHome, scoreAway, controlledHome, controlledAway, phase, homeDirection, startedAt, serverTimeAt, elapsedMs, remainingMs, lastTickAt, pauseUntil, ballFreeAt, lastTouchId, lastActionHomeAt, lastActionAwayAt, lastEvent, sequence, winnerTeam, homeClub, awayClub, timingVersion, halfDurationMs, addedTimeMs, halftimeBreakMs, phaseRemainingMs]
       properties:
         players:
           type: array
@@ -452,7 +463,14 @@ components:
         scoreAway: { type: integer }
         controlledHome: { type: string }
         controlledAway: { type: string }
-        phase: { type: string, enum: [waiting, first_half, second_half, overtime, finished] }
+        phase: { type: string, enum: [waiting, first_half, first_added, halftime, second_half, second_added, overtime, finished] }
+        homeClub: { $ref: '#/components/schemas/FootballClub' }
+        awayClub: { $ref: '#/components/schemas/FootballClub' }
+        timingVersion: { type: integer, enum: [1, 2] }
+        halfDurationMs: { type: integer }
+        addedTimeMs: { type: integer }
+        halftimeBreakMs: { type: integer }
+        phaseRemainingMs: { type: integer }
         homeDirection: { type: number, enum: [-1, 1] }
         startedAt: { type: string, format: date-time, nullable: true }
         serverTimeAt: { type: string, format: date-time }

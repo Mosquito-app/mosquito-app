@@ -3,11 +3,20 @@ import { check, index, integer, jsonb, pgTable, text, timestamp, uniqueIndex, uu
 import { usersTable, walletTransactionsTable, type RoomStatus } from "./ludo";
 
 export type FootballTeam = "home" | "away";
-export type FootballPhase = "waiting" | "first_half" | "second_half" | "overtime" | "finished";
-export type FootballPlayer = { id: string; team: FootballTeam; number: number; role: "GK" | "DEF" | "MID" | "FWD"; x: number; y: number };
+export type FootballClub = "man_city" | "liverpool" | "man_utd" | "barcelona" | "real_madrid" | "chelsea";
+export type FootballPhase = "waiting" | "first_half" | "first_added" | "halftime" | "second_half" | "second_added" | "overtime" | "finished";
+export type FootballAnimation = "idle" | "run" | "kick" | "slide" | "dive";
+export type FootballPlayer = {
+  id: string; team: FootballTeam; number: number; role: "GK" | "DEF" | "MID" | "FWD";
+  x: number; y: number; z: number; facing: number;
+  animation: FootballAnimation; animationStartedAt: number; animationUntil: number;
+};
 export type FootballState = {
   players: FootballPlayer[];
-  ball: { x: number; y: number; vx: number; vy: number; ownerId: string | null };
+  /** x/y are pitch coordinates, z is elevation; WebGL maps [x,z,y]. */
+  ball: { x: number; y: number; z: number; vx: number; vy: number; vz: number; ownerId: string | null };
+  homeClub: FootballClub; awayClub: FootballClub;
+  timingVersion: 1 | 2; halfDurationMs: number; addedTimeMs: number; halftimeBreakMs: number; phaseRemainingMs: number;
   scoreHome: number; scoreAway: number;
   controlledHome: string; controlledAway: string;
   phase: FootballPhase; homeDirection: -1 | 1;

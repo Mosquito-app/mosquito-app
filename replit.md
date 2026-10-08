@@ -26,7 +26,7 @@ _Populate as you build — short repo map plus pointers to the source-of-truth f
 
 ## Architecture decisions
 
-- Football uses HTML Canvas in the existing web app, not Flutter/Flame. The browser sends only directional inputs and actions; Node owns all 22 players, AI, ball physics, match time, goals, and results.
+- Football uses Three.js/React Three Fiber in the existing web app, not Flutter/Flame. Original articulated 3D models use procedural numbered club-colour jersey textures; these are not licensed club assets. The browser sends only camera-mapped directions/actions; Node owns all 22 players, their animation states, ball elevation/velocity, match time, goals, and results.
 - Football has a PostgreSQL-leased simulation owner with snapshot/input notification relay between processes, so participants may connect to different server workers.
 - Football waiting rooms do not reserve funds. This follows the requested match-start deduction and avoids locking money in abandoned waiting rooms. Joining atomically rechecks both balances, locks both stakes, and starts the match. Preserve the separate existing Ludo funding behavior.
 - Both games use the same Mosquito Wallet and commission wallet. Football has its own room/ledger tables; never place football IDs in the Ludo-specific wallet room foreign key.
@@ -35,7 +35,7 @@ _Populate as you build — short repo map plus pointers to the source-of-truth f
 
 Mosquito App offers Ludo Duel and mobile-first 11v11 Football Duel with local accounts and Paystack test-only Mosquito Wallet deposits/withdrawals. Wagered matches settle 90% to the winner and 10% to the platform.
 
-Ludo retains its two-dice Uncle Joe board, 14-minute ranking, and sudden-death draw break. Football runs two 3-minute halves; tied full-time matches continue until the first golden goal. Whot, Draft, and 8-Ball Pool remain coming soon.
+Ludo retains its two-dice Uncle Joe board, 14-minute ranking, and sudden-death draw break. New Football matches use two 4-minute halves, one minute added time each half, and a 40-second halftime break: 10:40 scheduled wall time. Tied full-time matches continue until the first golden goal. Legacy funded Football games retain their original six-minute clock; never reset or extend a funded room on hydration. Whot, Draft, and 8-Ball Pool remain coming soon.
 
 ## User preferences
 
@@ -51,5 +51,5 @@ _Populate as you build — explicit user instructions worth remembering across s
 
 - See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and package details
 - Football server: `artifacts/api-server/src/lib/football-{physics,manager,finance}.ts`; REST routes: `src/routes/football.ts`; shared WebSocket transport: `src/lib/ludo-realtime.ts`.
-- Football schema: `lib/db/src/schema/football.ts`; contract: `lib/api-spec/openapi.yaml`; Canvas renderer and mobile controls: `artifacts/ludo-stake-game/src/components/football-pitch.tsx` and `src/pages/football.tsx`.
+- Football schema: `lib/db/src/schema/football.ts`; contract: `lib/api-spec/openapi.yaml`; WebGL renderer and mobile controls: `artifacts/ludo-stake-game/src/components/football-pitch.tsx`, `src/components/football-3d/`, and `src/pages/football.tsx`.
 - Football checks: API-server `test tests/football-physics.test.ts` and `test tests/football-routes.test.ts`. Build the web artifact before `test tests/football-browser-server.test.ts`, which exercises two actual browser sessions against an isolated API/database.

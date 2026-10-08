@@ -9,7 +9,7 @@ import { eq } from "drizzle-orm";
 import { db, pool, usersTable, footballRoomsTable, footballLedgerTable, platformWalletTable } from "@workspace/db";
 import app from "../src/app";
 import { installRealtime } from "../src/lib/ludo-realtime";
-import { initialFootballState } from "../src/lib/football-physics";
+import { initialFootballState, startFootball, updateFootballClock, HALF_MS, FIRST_HALF_END_MS, REGULATION_MS } from "../src/lib/football-physics";
 import { startFootballEngine } from "../src/lib/football-manager";
 
 // Disposable cloned PostgreSQL schema + real production frontend bundle,
@@ -28,28 +28,36 @@ const publicDir = resolve("../ludo-stake-game/dist/public");
 let testedRoom: string | null = null;
 const server = createServer(async (req, res) => {
   if (req.url?.startsWith("/api/")) { app(req, res); return; }
-  if (req.url === "/__qa/prepare-golden" && req.method === "POST") {
+  if (["/__qa/prepare-golden", "/__qa/prepare-stage"].includes(req.url ?? "") && req.method === "POST") {
     try {
       let body = ""; for await (const chunk of req) body += chunk;
-      const { roomId } = JSON.parse(body);
+      const { roomId, stage } = JSON.parse(body);
       const [row] = await db.select().from(footballRoomsTable).where(eq(footballRoomsTable.id, roomId));
       assert.equal(row.status, "active");
       const users = await db.select().from(usersTable);
       assert.ok(users.find(u => u.id === row.hostUserId)?.username.startsWith("football_browser_"));
       assert.ok(users.find(u => u.id === row.opponentUserId)?.username.startsWith("football_browser_"));
-      const now = Date.now(), state = initialFootballState(now);
-      state.phase = "overtime"; state.startedAt = new Date(now - 360001).toISOString();
-      state.elapsedMs = 360001; state.remainingMs = 0; state.pauseUntil = 0;
-      state.lastEvent = "GOLDEN GOAL · Accelerated isolated QA tie";
+      const now = Date.now(), state = initialFootballState(now, row.state.homeClub, row.state.awayClub);
+      const elapsed = req.url === "/__qa/prepare-golden" ? REGULATION_MS + 1
+        : stage === "halftime" ? FIRST_HALF_END_MS + 5000
+        : stage === "second_added" ? REGULATION_MS - 15000 : HALF_MS + 1000;
+      startFootball(state, now - elapsed);
+      updateFootballClock(state, now); state.pauseUntil = 0;
+      state.lastTickAt = now;
       state.sequence = row.state.sequence + 100000;
       const shooter = state.players.find(p => p.id === state.controlledHome)!;
-      shooter.x = 27; shooter.y = 2;
+      if (req.url === "/__qa/prepare-golden") { shooter.x = 27; shooter.y = 2; }
       const keeper = state.players.find(p => p.id === "away-1")!;
-      keeper.x = 42; keeper.y = 3;
-      state.ball = { x: 27, y: 2, vx: 0, vy: 0, ownerId: shooter.id };
-      state.lastTouchId = shooter.id; state.ballFreeAt = now;
+      if (req.url === "/__qa/prepare-golden") { keeper.x = 42; keeper.y = 3; }
+      if (req.url === "/__qa/prepare-golden") state.ball = { x: 27, y: 2, z: 0.22, vx: 0, vy: 0, vz: 0, ownerId: shooter.id };
+      if (stage === "dive") state.ball = { x: 34, y: 10, z: 1.2, vx: 0, vy: -5, vz: 0, ownerId: null };
+      if (stage === "tackle") {
+        const defender = state.players.find(p => p.id === state.controlledAway)!;
+        defender.x = shooter.x + 1; defender.y = shooter.y;
+      }
+      state.lastTouchId = shooter.id; state.ballFreeAt = stage === "dive" || stage === "tackle" ? now + 10000 : now;
       await db.update(footballRoomsTable).set({ state, engineOwner: "isolated-qa-handoff", leaseUntil: new Date(now - 1) }).where(eq(footballRoomsTable.id, roomId));
-      testedRoom = roomId; res.setHeader("content-type", "application/json"); res.end('{"ok":true}'); return;
+      testedRoom = roomId; res.setHeader("content-type", "application/json"); res.end(JSON.stringify({ ok: true, sequence: state.sequence })); return;
     } catch { res.statusCode = 400; res.end('{"error":"Invalid isolated QA fixture"}'); return; }
   }
   try {

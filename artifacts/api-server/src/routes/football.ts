@@ -3,7 +3,7 @@ import { Router, type IRouter } from "express";
 import { CancelFootballRoomParams, GetFootballRoomParams, JoinFootballRoomBody, GetFootballLobbyResponse, GetFootballRoomResponse } from "@workspace/api-zod";
 import { db, footballRoomsTable, usersTable } from "@workspace/db";
 import { getAuthenticatedUser } from "../lib/ludo-auth";
-import { initialFootballState, startFootball } from "../lib/football-physics";
+import { initialFootballState, normalizeFootballState, startFootball } from "../lib/football-physics";
 import { lockFootballStake } from "../lib/football-finance";
 import { discoverFootballMatches, footballRoomView } from "../lib/football-manager";
 
@@ -43,7 +43,7 @@ router.post("/football/rooms", async (req, res): Promise<void> => {
       if (!waiting) {
         const [me] = await tx.select().from(usersTable).where(eq(usersTable.id, user.id)).for("update");
         if (!me || me.balanceKobo < stakeKobo) throw new MatchError(409, "Add test funds to Mosquito Wallet before joining.");
-        const [created] = await tx.insert(footballRoomsTable).values({ hostUserId: user.id, stakeKobo, state: initialFootballState() }).returning();
+        const [created] = await tx.insert(footballRoomsTable).values({ hostUserId: user.id, stakeKobo, state: initialFootballState(Date.now(), body.data.club ?? "man_city") }).returning();
         return created;
       }
       const hostLock = await tx.execute(sql`select pg_try_advisory_xact_lock(hashtextextended(${`football-user:${waiting.hostUserId}`}, 0)) as acquired`);
@@ -52,7 +52,7 @@ router.post("/football/rooms", async (req, res): Promise<void> => {
       if (participants.length !== 2 || participants.some(p => p.balanceKobo < stakeKobo)) throw new MatchError(409, "Both players need enough test funds in Mosquito Wallet.");
       await lockFootballStake(tx, waiting, waiting.hostUserId);
       await lockFootballStake(tx, waiting, user.id);
-      const state = initialFootballState(); startFootball(state);
+      const state = initialFootballState(Date.now(), normalizeFootballState(waiting.state).homeClub, body.data.club ?? "liverpool"); startFootball(state);
       const [active] = await tx.update(footballRoomsTable).set({ status: "active", opponentUserId: user.id, state, updatedAt: new Date() })
         .where(eq(footballRoomsTable.id, waiting.id)).returning();
       return active;

@@ -5,6 +5,7 @@
  * Ludo Stake Game API. All wagering and balances are sandbox-only.
  * OpenAPI spec version: 0.1.0
  */
+import type { FootballPlayerAnimation } from './footballPlayerAnimation';
 import type { FootballPlayerRole } from './footballPlayerRole';
 import type { FootballPlayerTeam } from './footballPlayerTeam';
 
@@ -15,4 +16,11 @@ export interface FootballPlayer {
   role: FootballPlayerRole;
   x: number;
   y: number;
+  /** Server-authoritative elevation in metres */
+  z: number;
+  /** Radians */
+  facing: number;
+  animation: FootballPlayerAnimation;
+  animationStartedAt: number;
+  animationUntil: number;
 }

@@ -9,7 +9,9 @@
 export interface FootballBall {
   x: number;
   y: number;
+  z: number;
   vx: number;
   vy: number;
+  vz: number;
   ownerId: string | null;
 }

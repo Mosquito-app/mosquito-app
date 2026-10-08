@@ -38,3 +38,9 @@ Foreground the target page for physical touch and long-press QA; verify the requ
 **Why:** Separate browser contexts still share Chromium focus/timing behavior. A later football player selection can also change again when possession changes, making a single later selection an unreliable switch check.
 
 **How to apply:** Bring the touch page to the front, check that it is visible, observe the outgoing action and subsequent server snapshots, and keep ordinary touch hit-testing enabled.
+
+Bound software-WebGL browser teardown separately from gameplay verification.
+
+**Why:** In this environment, a native 3D browser pass completed its game, animation and wallet assertions but stalled during Chromium shutdown. The completed escrow records remained in the disposable QA schema; the timeout did not indicate a failed match.
+
+**How to apply:** Retain ownership of the test's browser process and bound graceful shutdown before killing only that process. If teardown stalls, verify the disposable ledger directly and clean up that schema, rather than repeating a completed match or touching public wallets.

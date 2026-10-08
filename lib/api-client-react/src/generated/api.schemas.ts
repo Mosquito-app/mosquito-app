@@ -14,9 +14,22 @@ export const FootballJoinRequestStakeNaira = {
   NUMBER_2000: 2000,
 } as const;
 
+export type FootballClub = typeof FootballClub[keyof typeof FootballClub];
+
+
+export const FootballClub = {
+  man_city: 'man_city',
+  liverpool: 'liverpool',
+  man_utd: 'man_utd',
+  barcelona: 'barcelona',
+  real_madrid: 'real_madrid',
+  chelsea: 'chelsea',
+} as const;
+
 export interface FootballJoinRequest {
   stakeNaira: FootballJoinRequestStakeNaira;
   roomId?: string;
+  club?: FootballClub;
 }
 
 export type FootballPlayerTeam = typeof FootballPlayerTeam[keyof typeof FootballPlayerTeam];
@@ -37,6 +50,17 @@ export const FootballPlayerRole = {
   FWD: 'FWD',
 } as const;
 
+export type FootballPlayerAnimation = typeof FootballPlayerAnimation[keyof typeof FootballPlayerAnimation];
+
+
+export const FootballPlayerAnimation = {
+  idle: 'idle',
+  run: 'run',
+  kick: 'kick',
+  slide: 'slide',
+  dive: 'dive',
+} as const;
+
 export interface FootballPlayer {
   id: string;
   team: FootballPlayerTeam;
@@ -44,13 +68,22 @@ export interface FootballPlayer {
   role: FootballPlayerRole;
   x: number;
   y: number;
+  /** Server-authoritative elevation in metres */
+  z: number;
+  /** Radians */
+  facing: number;
+  animation: FootballPlayerAnimation;
+  animationStartedAt: number;
+  animationUntil: number;
 }
 
 export interface FootballBall {
   x: number;
   y: number;
+  z: number;
   vx: number;
   vy: number;
+  vz: number;
   ownerId: string | null;
 }
 
@@ -60,9 +93,20 @@ export type FootballStatePhase = typeof FootballStatePhase[keyof typeof Football
 export const FootballStatePhase = {
   waiting: 'waiting',
   first_half: 'first_half',
+  first_added: 'first_added',
+  halftime: 'halftime',
   second_half: 'second_half',
+  second_added: 'second_added',
   overtime: 'overtime',
   finished: 'finished',
+} as const;
+
+export type FootballStateTimingVersion = typeof FootballStateTimingVersion[keyof typeof FootballStateTimingVersion];
+
+
+export const FootballStateTimingVersion = {
+  NUMBER_1: 1,
+  NUMBER_2: 2,
 } as const;
 
 export type FootballStateHomeDirection = typeof FootballStateHomeDirection[keyof typeof FootballStateHomeDirection];
@@ -89,6 +133,13 @@ export interface FootballState {
   controlledHome: string;
   controlledAway: string;
   phase: FootballStatePhase;
+  homeClub: FootballClub;
+  awayClub: FootballClub;
+  timingVersion: FootballStateTimingVersion;
+  halfDurationMs: number;
+  addedTimeMs: number;
+  halftimeBreakMs: number;
+  phaseRemainingMs: number;
   homeDirection: FootballStateHomeDirection;
   startedAt: string | null;
   serverTimeAt: string;

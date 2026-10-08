@@ -6,9 +6,11 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { FootballBall } from './footballBall';
+import type { FootballClub } from './footballClub';
 import type { FootballPlayer } from './footballPlayer';
 import type { FootballStateHomeDirection } from './footballStateHomeDirection';
 import type { FootballStatePhase } from './footballStatePhase';
+import type { FootballStateTimingVersion } from './footballStateTimingVersion';
 import type { FootballStateWinnerTeam } from './footballStateWinnerTeam';
 
 export interface FootballState {
@@ -19,6 +21,13 @@ export interface FootballState {
   controlledHome: string;
   controlledAway: string;
   phase: FootballStatePhase;
+  homeClub: FootballClub;
+  awayClub: FootballClub;
+  timingVersion: FootballStateTimingVersion;
+  halfDurationMs: number;
+  addedTimeMs: number;
+  halftimeBreakMs: number;
+  phaseRemainingMs: number;
   homeDirection: FootballStateHomeDirection;
   startedAt: Date | null;
   serverTimeAt: Date;

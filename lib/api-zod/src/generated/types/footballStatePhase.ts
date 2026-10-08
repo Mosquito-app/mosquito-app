@@ -12,7 +12,10 @@ export type FootballStatePhase = typeof FootballStatePhase[keyof typeof Football
 export const FootballStatePhase = {
   waiting: 'waiting',
   first_half: 'first_half',
+  first_added: 'first_added',
+  halftime: 'halftime',
   second_half: 'second_half',
+  second_added: 'second_added',
   overtime: 'overtime',
   finished: 'finished',
 } as const;

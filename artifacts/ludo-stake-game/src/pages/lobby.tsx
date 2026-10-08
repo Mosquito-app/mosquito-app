@@ -12,6 +12,8 @@ import { AuthFrame, InlineError, LoadingBlock, Shell, dateLabel, money } from '@
 import { DepositReturn, rememberDeposit } from '@/components/deposit-return';
 import { StatusPill, VerifyButton, WithdrawDialog } from '@/components/withdraw-dialog';
 import { useRealtime } from '@/hooks/use-realtime';
+import { CLUBS, hasWebGL2, loadClub, saveClub, WEBGL_MSG } from '@/components/football-3d/clubs';
+import type { FootballClubId } from '@/components/football-3d/types';
 
 type Stake = 500 | 1000 | 2000;
 const STAKES: Stake[] = [500, 1000, 2000];
@@ -19,7 +21,7 @@ const GAMES = [
   { name: 'Ludo Duel', active: true, note: 'Two players, one shared table' },
   { name: 'Whot', active: false, note: 'Card duel' },
   { name: 'Draft', active: false, note: 'Board classic' },
-  { name: '11v11 Football Duel', active: true, note: 'Two 3-minute halves · Golden goal' },
+  { name: '11v11 Football Duel', active: true, note: 'Two 4-minute halves + added time · Golden goal' },
   { name: '8-Ball Pool', active: false, note: 'Cue sports' },
 ];
 
@@ -44,6 +46,7 @@ export default function LobbyPage() {
   const [mode, setMode] = useState<'ludo' | 'football'>('ludo');
   const join = useJoinRoom(); const logout = useLogout(); const initialize = useInitializeDeposit();
   const [stake, setStake] = useState<Stake>(500);
+  const [club, setClub] = useState<FootballClubId>(loadClub);
   const [depositOpen, setDepositOpen] = useState(false);
   const [withdrawOpen, setWithdrawOpen] = useState(false);
   const [depositAmount, setDepositAmount] = useState('2000');
@@ -73,7 +76,8 @@ export default function LobbyPage() {
   const play = (value: Stake, roomId?: string) => {
     setRoomError('');
     if (mode === 'football') {
-      joinFootball.mutate({ data: { stakeNaira: value, ...(roomId ? { roomId } : {}) } }, {
+      if (!hasWebGL2()) { setRoomError(WEBGL_MSG); return; }
+      joinFootball.mutate({ data: { stakeNaira: value, ...(roomId ? { roomId } : {}), club } }, {
         onSuccess: enteredFootball,
         onError: () => setRoomError('Could not join football. Both players need enough available test funds; the room may already be taken.'),
       });
@@ -128,9 +132,10 @@ export default function LobbyPage() {
       <div className="content-grid">
         <section className="play-section">
           <div className="section-head"><div><div className="section-overline">{mode === 'football' ? '11V11 FOOTBALL DUEL' : 'LUDO DUEL'}</div><h2>Pick your stakes.</h2></div></div>
-          <p className="section-intro">{mode === 'football' ? 'Six minutes. Two full teams. A tied match goes to golden goal. Stakes lock when both players join. ' : 'Each player stakes the amount. '}Winner takes 90% of the pot; 10% is the table commission.</p>
+          <p className="section-intro">{mode === 'football' ? 'Two 4-minute halves with added time and a halftime break. Two full teams. A tied match goes to golden goal. Stakes lock when both players join. ' : 'Each player stakes the amount. '}Winner takes 90% of the pot; 10% is the table commission.</p>
           <div className="stake-list">{STAKES.map(value => <button key={value} className={`stake-option ${stake === value ? 'selected' : ''}`} onClick={() => setStake(value)} data-testid={`button-stake-${value}`}>
             <span className="stake-radio">{stake === value && <i />}</span><span className="stake-price">{money(value)}</span><span className="stake-foot">Pot {money(value * 2)} · Prize {money(value * 1.8)} · {waiting(value)} waiting</span><ArrowRight className="stake-arrow" size={17} /></button>)}</div>
+          {mode === 'football' && <label className="fb-club-row"><small>YOUR CLUB (STYLIZED KIT COLOURS)</small><select className="fb-club-select" value={club} onChange={e => { const v = e.target.value as FootballClubId; setClub(v); saveClub(v); }} data-testid="select-football-club">{CLUBS.map(c => <option key={c.id} value={c.id}>{c.label}</option>)}</select></label>}
           {roomError && <InlineError>{roomError}</InlineError>}
           <button className="primary-btn match-btn" onClick={() => play(stake)} disabled={finding || !!currentRoomId} data-testid="button-find-match">{finding ? 'Finding an opponent…' : currentRoomId ? 'Resume your match first' : mode === 'football' ? 'Play 11v11 Football' : 'Find a match'} <ArrowRight size={18} /></button>
           <div className="stake-explain"><ShieldCheck size={15} /><span>{mode === 'football' ? 'Waiting is free. Both stakes enter escrow together at kickoff. Test funds only.' : 'Stake is reserved from your available sandbox balance. Test funds only.'}</span></div>
