@@ -5,6 +5,143 @@
  * Ludo Stake Game API. All wagering and balances are sandbox-only.
  * OpenAPI spec version: 0.1.0
  */
+export type UnityMatchInputGameType = typeof UnityMatchInputGameType[keyof typeof UnityMatchInputGameType];
+
+
+export const UnityMatchInputGameType = {
+  football_11v11: 'football_11v11',
+} as const;
+
+export interface UnityMatchInput {
+  player1Id: string;
+  player2Id: string;
+  /**
+     * Whole NGN per player, never kobo
+     * @minimum 1
+     * @maximum 1000000
+     */
+  stakeAmount: number;
+  gameType: UnityMatchInputGameType;
+}
+
+export interface UnityMatchResultInput {
+  matchId: string;
+  /**
+     * @minLength 1
+     * @maxLength 2048
+     */
+  matchToken: string;
+  /**
+     * @minimum 0
+     * @maximum 99
+     */
+  player1Score: number;
+  /**
+     * @minimum 0
+     * @maximum 99
+     */
+  player2Score: number;
+  /** @nullable */
+  winnerId: string | null;
+  isDraw: boolean;
+}
+
+export interface UnityPlayer {
+  id: string;
+  username: string;
+}
+
+export type UnityMatchStartStatus = typeof UnityMatchStartStatus[keyof typeof UnityMatchStartStatus];
+
+
+export const UnityMatchStartStatus = {
+  PENDING: 'PENDING',
+  ACTIVE: 'ACTIVE',
+  COMPLETED: 'COMPLETED',
+  CANCELLED: 'CANCELLED',
+} as const;
+
+export interface UnityMatchStart {
+  success: boolean;
+  matchId: string;
+  matchToken: string;
+  player1: UnityPlayer;
+  player2: UnityPlayer;
+  stakeAmount: number;
+  status: UnityMatchStartStatus;
+  tokenExpiresAt: string;
+}
+
+export type UnityMatchSettlementStatus = typeof UnityMatchSettlementStatus[keyof typeof UnityMatchSettlementStatus];
+
+
+export const UnityMatchSettlementStatus = {
+  PENDING: 'PENDING',
+  ACTIVE: 'ACTIVE',
+  COMPLETED: 'COMPLETED',
+  CANCELLED: 'CANCELLED',
+} as const;
+
+export interface UnityMatchSettlement {
+  success: boolean;
+  message: string;
+  /** NGN credited to winner */
+  winnerPayout: number;
+  /** NGN credited to platform */
+  commissionLogged: number;
+  status: UnityMatchSettlementStatus;
+  overtime: boolean;
+  settled: boolean;
+}
+
+export type UnityMatchStatusStatus = typeof UnityMatchStatusStatus[keyof typeof UnityMatchStatusStatus];
+
+
+export const UnityMatchStatusStatus = {
+  PENDING: 'PENDING',
+  ACTIVE: 'ACTIVE',
+  COMPLETED: 'COMPLETED',
+  CANCELLED: 'CANCELLED',
+} as const;
+
+export type UnityMatchStatusGameType = typeof UnityMatchStatusGameType[keyof typeof UnityMatchStatusGameType];
+
+
+export const UnityMatchStatusGameType = {
+  football_11v11: 'football_11v11',
+} as const;
+
+export type UnityMatchStatusDrawRule = typeof UnityMatchStatusDrawRule[keyof typeof UnityMatchStatusDrawRule];
+
+
+export const UnityMatchStatusDrawRule = {
+  golden_goal: 'golden_goal',
+} as const;
+
+export interface UnityMatchStatus {
+  matchId: string;
+  status: UnityMatchStatusStatus;
+  gameType: UnityMatchStatusGameType;
+  player1Id: string;
+  player2Id: string;
+  stakeAmount: number;
+  totalPool: number;
+  /** @nullable */
+  player1Score: number | null;
+  /** @nullable */
+  player2Score: number | null;
+  /** @nullable */
+  winnerId: string | null;
+  overtime: boolean;
+  drawRule: UnityMatchStatusDrawRule;
+  winnerPayout: number;
+  commissionLogged: number;
+  startedAt: string;
+  /** @nullable */
+  completedAt: string | null;
+  sandboxOnly: boolean;
+}
+
 export type FootballJoinRequestStakeNaira = typeof FootballJoinRequestStakeNaira[keyof typeof FootballJoinRequestStakeNaira];
 
 

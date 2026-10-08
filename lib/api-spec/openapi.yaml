@@ -17,6 +17,70 @@ tags:
   - name: games
     description: Two-player Ludo lobby and matches
 paths:
+  /match/start:
+    post:
+      operationId: startUnityMatch
+      tags: [unity]
+      security: [{ UnityServerKey: [] }]
+      description: Private trusted-server operation. Stake amounts are whole NGN and sandbox-only. Both players must have authorized the stakes with the trusted server.
+      parameters:
+        - { in: header, name: X-Unity-Server-Key, required: true, schema: { type: string } }
+        - { in: header, name: Idempotency-Key, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UnityMatchInput' }
+      responses:
+        '200':
+          description: Atomically funded match or an idempotent retry
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/UnityMatchStart' }
+        '400': { description: Invalid payload or idempotency key }
+        '401': { description: Invalid server credential }
+        '409': { description: Insufficient funds or conflicting retry }
+        '503': { description: Bridge not configured }
+  /match/end:
+    post:
+      operationId: endUnityMatch
+      tags: [unity]
+      security: [{ UnityServerKey: [] }]
+      description: Only the trusted authoritative server can report results. A tied report keeps escrow locked for Golden Goal; clients cannot authorize payouts.
+      parameters:
+        - { in: header, name: X-Unity-Server-Key, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UnityMatchResultInput' }
+      responses:
+        '200':
+          description: Settled exactly once, an identical retry, or active Golden Goal overtime
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/UnityMatchSettlement' }
+        '400': { description: 'Invalid scores, draw flag or winner' }
+        '401': { description: Invalid or expired credentials }
+        '404': { description: Match not found }
+        '409': { description: Conflicting result or closed session }
+        '503': { description: Bridge not configured }
+  /match/status/{matchId}:
+    get:
+      operationId: getUnityMatchStatus
+      tags: [unity]
+      security: [{ UnityServerKey: [] }, { UnityMatchBearer: [] }]
+      description: Authenticate with Authorization Bearer matchToken, or the private server credential. Never send tokens in query strings.
+      parameters:
+        - { in: path, name: matchId, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200':
+          description: Current persisted match and escrow state
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/UnityMatchStatus' }
+        '401': { description: Authentication required }
+        '404': { description: Match not found }
   /football/lobby:
     get:
       operationId: getFootballLobby
@@ -414,7 +478,88 @@ paths:
         "404":
           description: Match not found
 components:
+  securitySchemes:
+    UnityServerKey:
+      type: apiKey
+      in: header
+      name: X-Unity-Server-Key
+      description: Private server-only credential. Never embed in Unity clients.
+    UnityMatchBearer:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Match-scoped polling token. Does not authorize wallet mutations.
   schemas:
+    UnityMatchInput:
+      type: object
+      additionalProperties: false
+      required: [player1Id, player2Id, stakeAmount, gameType]
+      properties:
+        player1Id: { type: string, format: uuid }
+        player2Id: { type: string, format: uuid }
+        stakeAmount: { type: integer, minimum: 1, maximum: 1000000, description: 'Whole NGN per player, never kobo' }
+        gameType: { type: string, enum: [football_11v11] }
+    UnityMatchResultInput:
+      type: object
+      additionalProperties: false
+      required: [matchId, matchToken, player1Score, player2Score, winnerId, isDraw]
+      properties:
+        matchId: { type: string, format: uuid }
+        matchToken: { type: string, minLength: 1, maxLength: 2048 }
+        player1Score: { type: integer, minimum: 0, maximum: 99 }
+        player2Score: { type: integer, minimum: 0, maximum: 99 }
+        winnerId: { type: [string, 'null'], format: uuid }
+        isDraw: { type: boolean }
+    UnityPlayer:
+      type: object
+      required: [id, username]
+      properties:
+        id: { type: string, format: uuid }
+        username: { type: string }
+    UnityMatchStart:
+      type: object
+      required: [success, matchId, matchToken, player1, player2, stakeAmount, status, tokenExpiresAt]
+      properties:
+        success: { type: boolean }
+        matchId: { type: string, format: uuid }
+        matchToken: { type: string }
+        player1: { $ref: '#/components/schemas/UnityPlayer' }
+        player2: { $ref: '#/components/schemas/UnityPlayer' }
+        stakeAmount: { type: integer }
+        status: { type: string, enum: [PENDING, ACTIVE, COMPLETED, CANCELLED] }
+        tokenExpiresAt: { type: string, format: date-time }
+    UnityMatchSettlement:
+      type: object
+      required: [success, message, winnerPayout, commissionLogged, status, overtime, settled]
+      properties:
+        success: { type: boolean }
+        message: { type: string }
+        winnerPayout: { type: number, description: NGN credited to winner }
+        commissionLogged: { type: number, description: NGN credited to platform }
+        status: { type: string, enum: [PENDING, ACTIVE, COMPLETED, CANCELLED] }
+        overtime: { type: boolean }
+        settled: { type: boolean }
+    UnityMatchStatus:
+      type: object
+      required: [matchId, status, gameType, player1Id, player2Id, stakeAmount, totalPool, player1Score, player2Score, winnerId, overtime, drawRule, winnerPayout, commissionLogged, startedAt, completedAt, sandboxOnly]
+      properties:
+        matchId: { type: string, format: uuid }
+        status: { type: string, enum: [PENDING, ACTIVE, COMPLETED, CANCELLED] }
+        gameType: { type: string, enum: [football_11v11] }
+        player1Id: { type: string, format: uuid }
+        player2Id: { type: string, format: uuid }
+        stakeAmount: { type: integer }
+        totalPool: { type: integer }
+        player1Score: { type: [integer, 'null'] }
+        player2Score: { type: [integer, 'null'] }
+        winnerId: { type: [string, 'null'], format: uuid }
+        overtime: { type: boolean }
+        drawRule: { type: string, enum: [golden_goal] }
+        winnerPayout: { type: number }
+        commissionLogged: { type: number }
+        startedAt: { type: string, format: date-time }
+        completedAt: { type: [string, 'null'], format: date-time }
+        sandboxOnly: { type: boolean }
     FootballJoinRequest:
       type: object
       required: [stakeNaira]

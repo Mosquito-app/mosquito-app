@@ -8,6 +8,108 @@
 import * as zod from 'zod';
 
 
+/**
+ * Private trusted-server operation. Stake amounts are whole NGN and sandbox-only. Both players must have authorized the stakes with the trusted server.
+ */
+export const StartUnityMatchHeader = zod.object({
+  "X-Unity-Server-Key": zod.string(),
+  "Idempotency-Key": zod.string().uuid()
+})
+
+export const startUnityMatchBodyStakeAmountMax = 1000000;
+
+
+
+export const StartUnityMatchBody = zod.object({
+  "player1Id": zod.string().uuid(),
+  "player2Id": zod.string().uuid(),
+  "stakeAmount": zod.number().int().min(1).max(startUnityMatchBodyStakeAmountMax).describe('Whole NGN per player, never kobo'),
+  "gameType": zod.enum(['football_11v11'])
+})
+
+export const StartUnityMatchResponse = zod.object({
+  "success": zod.boolean(),
+  "matchId": zod.string().uuid(),
+  "matchToken": zod.string(),
+  "player1": zod.object({
+  "id": zod.string().uuid(),
+  "username": zod.string()
+}),
+  "player2": zod.object({
+  "id": zod.string().uuid(),
+  "username": zod.string()
+}),
+  "stakeAmount": zod.number().int(),
+  "status": zod.enum(['PENDING', 'ACTIVE', 'COMPLETED', 'CANCELLED']),
+  "tokenExpiresAt": zod.coerce.date()
+})
+
+
+/**
+ * Only the trusted authoritative server can report results. A tied report keeps escrow locked for Golden Goal; clients cannot authorize payouts.
+ */
+export const EndUnityMatchHeader = zod.object({
+  "X-Unity-Server-Key": zod.string()
+})
+
+export const endUnityMatchBodyMatchTokenMax = 2048;
+
+export const endUnityMatchBodyPlayer1ScoreMin = 0;
+export const endUnityMatchBodyPlayer1ScoreMax = 99;
+
+export const endUnityMatchBodyPlayer2ScoreMin = 0;
+export const endUnityMatchBodyPlayer2ScoreMax = 99;
+
+
+
+export const EndUnityMatchBody = zod.object({
+  "matchId": zod.string().uuid(),
+  "matchToken": zod.string().min(1).max(endUnityMatchBodyMatchTokenMax),
+  "player1Score": zod.number().int().min(endUnityMatchBodyPlayer1ScoreMin).max(endUnityMatchBodyPlayer1ScoreMax),
+  "player2Score": zod.number().int().min(endUnityMatchBodyPlayer2ScoreMin).max(endUnityMatchBodyPlayer2ScoreMax),
+  "winnerId": zod.string().uuid().nullable(),
+  "isDraw": zod.boolean()
+})
+
+export const EndUnityMatchResponse = zod.object({
+  "success": zod.boolean(),
+  "message": zod.string(),
+  "winnerPayout": zod.number().describe('NGN credited to winner'),
+  "commissionLogged": zod.number().describe('NGN credited to platform'),
+  "status": zod.enum(['PENDING', 'ACTIVE', 'COMPLETED', 'CANCELLED']),
+  "overtime": zod.boolean(),
+  "settled": zod.boolean()
+})
+
+
+/**
+ * Authenticate with Authorization Bearer matchToken, or the private server credential. Never send tokens in query strings.
+ */
+export const GetUnityMatchStatusParams = zod.object({
+  "matchId": zod.coerce.string().uuid()
+})
+
+export const GetUnityMatchStatusResponse = zod.object({
+  "matchId": zod.string().uuid(),
+  "status": zod.enum(['PENDING', 'ACTIVE', 'COMPLETED', 'CANCELLED']),
+  "gameType": zod.enum(['football_11v11']),
+  "player1Id": zod.string().uuid(),
+  "player2Id": zod.string().uuid(),
+  "stakeAmount": zod.number().int(),
+  "totalPool": zod.number().int(),
+  "player1Score": zod.number().int().nullable(),
+  "player2Score": zod.number().int().nullable(),
+  "winnerId": zod.string().uuid().nullable(),
+  "overtime": zod.boolean(),
+  "drawRule": zod.enum(['golden_goal']),
+  "winnerPayout": zod.number(),
+  "commissionLogged": zod.number(),
+  "startedAt": zod.coerce.date(),
+  "completedAt": zod.coerce.date().nullable(),
+  "sandboxOnly": zod.boolean()
+})
+
+
 export const GetFootballLobbyResponse = zod.object({
   "rooms": zod.array(zod.object({
   "id": zod.string().uuid(),

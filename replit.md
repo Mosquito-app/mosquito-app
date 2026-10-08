@@ -31,6 +31,7 @@ _Populate as you build — short repo map plus pointers to the source-of-truth f
 - Football has a PostgreSQL-leased simulation owner with snapshot/input notification relay between processes, so participants may connect to different server workers.
 - Football waiting rooms do not reserve funds. This follows the requested match-start deduction and avoids locking money in abandoned waiting rooms. Joining atomically rechecks both balances, locks both stakes, and starts the match. Preserve the separate existing Ludo funding behavior.
 - Both games use the same Mosquito Wallet and commission wallet. Football has its own room/ledger tables; never place football IDs in the Ludo-specific wallet room foreign key.
+- Unity Football uses a separate escrow/session ledger and the same Mosquito Wallet. The user chose a private trusted Unity game server as score authority: clients may poll with a match JWT but may not start or settle wagers. Keep the server credential out of Unity builds. Draws retain escrow for Golden Goal, never an automatic random winner. Integration contract and configuration: `docs/unity-football-bridge.md`.
 
 ## Product
 

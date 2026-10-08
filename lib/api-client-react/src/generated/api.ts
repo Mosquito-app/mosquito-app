@@ -35,6 +35,11 @@ import type {
   MoveInput,
   RegisterInput,
   Room,
+  UnityMatchInput,
+  UnityMatchResultInput,
+  UnityMatchSettlement,
+  UnityMatchStart,
+  UnityMatchStatus,
   WalletResponse,
   Withdrawal,
   WithdrawalInput
@@ -66,6 +71,250 @@ const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKe
   }
   return result;
 };
+
+export const getStartUnityMatchUrl = () => {
+
+
+
+
+  return `/api/match/start`
+}
+
+/**
+ * Private trusted-server operation. Stake amounts are whole NGN and sandbox-only. Both players must have authorized the stakes with the trusted server.
+ */
+export const startUnityMatch = async (unityMatchInput: UnityMatchInput, options?: Parameters<typeof customFetch>[1]): Promise<UnityMatchStart> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<UnityMatchStart>(getStartUnityMatchUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(unityMatchInput)
+  }
+);}
+
+
+
+
+
+export const getStartUnityMatchMutationKey = () => ['startUnityMatch'] as const;
+
+export const getStartUnityMatchMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof startUnityMatch>>, TError,StartUnityMatchMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof startUnityMatch>>, TError,StartUnityMatchMutationVariables, TContext> => {
+
+const mutationKey = getStartUnityMatchMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof startUnityMatch>>, StartUnityMatchMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  startUnityMatch(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type StartUnityMatchMutationResult = NonNullable<Awaited<ReturnType<typeof startUnityMatch>>>
+    export type StartUnityMatchMutationBody = BodyType<UnityMatchInput>
+    export type StartUnityMatchMutationError = ErrorType<void>
+    export type StartUnityMatchMutationVariables = {data: BodyType<UnityMatchInput>}
+
+    export const useStartUnityMatch = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof startUnityMatch>>, TError,StartUnityMatchMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof startUnityMatch>>,
+        TError,
+        StartUnityMatchMutationVariables,
+        TContext
+      > => {
+      return useMutation(getStartUnityMatchMutationOptions(options));
+    }
+
+export const getEndUnityMatchUrl = () => {
+
+
+
+
+  return `/api/match/end`
+}
+
+/**
+ * Only the trusted authoritative server can report results. A tied report keeps escrow locked for Golden Goal; clients cannot authorize payouts.
+ */
+export const endUnityMatch = async (unityMatchResultInput: UnityMatchResultInput, options?: Parameters<typeof customFetch>[1]): Promise<UnityMatchSettlement> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return customFetch<UnityMatchSettlement>(getEndUnityMatchUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(unityMatchResultInput)
+  }
+);}
+
+
+
+
+
+export const getEndUnityMatchMutationKey = () => ['endUnityMatch'] as const;
+
+export const getEndUnityMatchMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof endUnityMatch>>, TError,EndUnityMatchMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof endUnityMatch>>, TError,EndUnityMatchMutationVariables, TContext> => {
+
+const mutationKey = getEndUnityMatchMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof endUnityMatch>>, EndUnityMatchMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  endUnityMatch(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type EndUnityMatchMutationResult = NonNullable<Awaited<ReturnType<typeof endUnityMatch>>>
+    export type EndUnityMatchMutationBody = BodyType<UnityMatchResultInput>
+    export type EndUnityMatchMutationError = ErrorType<void>
+    export type EndUnityMatchMutationVariables = {data: BodyType<UnityMatchResultInput>}
+
+    export const useEndUnityMatch = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof endUnityMatch>>, TError,EndUnityMatchMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof endUnityMatch>>,
+        TError,
+        EndUnityMatchMutationVariables,
+        TContext
+      > => {
+      return useMutation(getEndUnityMatchMutationOptions(options));
+    }
+
+export const getGetUnityMatchStatusUrl = (matchId: string,) => {
+
+
+
+
+  return `/api/match/status/${matchId}`
+}
+
+/**
+ * Authenticate with Authorization Bearer matchToken, or the private server credential. Never send tokens in query strings.
+ */
+export const getUnityMatchStatus = async (matchId: string, options?: Parameters<typeof customFetch>[1]): Promise<UnityMatchStatus> => {
+
+  return customFetch<UnityMatchStatus>(getGetUnityMatchStatusUrl(matchId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetUnityMatchStatusQueryKey = (matchId: string,) => {
+    return [
+    `/api/match/status/${matchId}`
+    ] as const;
+    }
+
+
+export const getGetUnityMatchStatusQueryOptions = <TData = Awaited<ReturnType<typeof getUnityMatchStatus>>, TError = ErrorType<void>>(matchId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getUnityMatchStatus>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetUnityMatchStatusQueryKey(matchId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getUnityMatchStatus>>> = ({ signal }) => getUnityMatchStatus(matchId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: matchId !== null && matchId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getUnityMatchStatus>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetUnityMatchStatusQueryResult = NonNullable<Awaited<ReturnType<typeof getUnityMatchStatus>>>
+export type GetUnityMatchStatusQueryError = ErrorType<void>
+
+
+
+export function useGetUnityMatchStatus<TData = Awaited<ReturnType<typeof getUnityMatchStatus>>, TError = ErrorType<void>>(
+ matchId: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getUnityMatchStatus>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetUnityMatchStatusQueryOptions(matchId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export const getGetFootballLobbyUrl = () => {
 

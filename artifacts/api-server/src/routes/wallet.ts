@@ -13,6 +13,7 @@ import {
   depositIntentsTable,
   roomsTable,
   footballRoomsTable,
+  unityMatchesTable,
   usersTable,
   walletTransactionsTable,
   withdrawalsTable,
@@ -86,7 +87,11 @@ router.get("/wallet", async (req, res): Promise<void> => {
     const footballEscrows = await tx.select({ stakeKobo: footballRoomsTable.stakeKobo, status: footballRoomsTable.status })
       .from(footballRoomsTable).where(and(eq(footballRoomsTable.status, "active"),
         sql`(${footballRoomsTable.hostUserId} = ${user.id} or ${footballRoomsTable.opponentUserId} = ${user.id})`));
-    return { transactionRows, openRooms: [...openRooms, ...footballEscrows], withdrawalRows, balanceKobo: currentUser.balanceKobo };
+    const unityEscrows = await tx.select({ stakeKobo: unityMatchesTable.stakeKobo })
+      .from(unityMatchesTable).where(and(eq(unityMatchesTable.status, "ACTIVE"),
+        sql`(${unityMatchesTable.player1Id} = ${user.id} or ${unityMatchesTable.player2Id} = ${user.id})`));
+    return { transactionRows, openRooms: [...openRooms, ...footballEscrows,
+      ...unityEscrows.map(r => ({ ...r, status: "active" as const }))], withdrawalRows, balanceKobo: currentUser.balanceKobo };
   }, { isolationLevel: "repeatable read" });
 
   const escrowedKobo = openRooms.reduce(

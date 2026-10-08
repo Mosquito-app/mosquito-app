@@ -3,6 +3,7 @@ import cors from "cors";
 import pinoHttp from "pino-http";
 import router from "./routes";
 import { logger } from "./lib/logger";
+import { unityCors } from "./lib/unity-auth";
 
 const app: Express = express();
 
@@ -25,7 +26,11 @@ app.use(
     },
   }),
 );
-app.use(cors());
+app.use("/api/match", unityCors);
+app.use((req, res, next) => {
+  if (res.locals.unityCors) { next(); return; }
+  cors()(req, res, next);
+});
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
