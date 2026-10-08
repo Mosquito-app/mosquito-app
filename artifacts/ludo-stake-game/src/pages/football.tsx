@@ -10,9 +10,11 @@ import type { FootballRoom } from '@workspace/api-client-react';
 import { queryClient } from '@/lib/query-client';
 import { AuthFrame, InlineError, LoadingBlock, Shell, money } from '@/components/common';
 import { FootballPitch } from '@/components/football-pitch';
-import { CLUBS, clubLabel, loadClub, saveClub, hasWebGL2, WEBGL_MSG } from '@/components/football-3d/clubs';
+import { clubLabel, loadClub, saveClub, hasWebGL2, WEBGL_MSG } from '@/components/football-3d/clubs';
 import { xs } from '@/components/football-3d/types';
 import type { ControlBasis, FootballClubId } from '@/components/football-3d/types';
+import { ClubPicker } from '@/components/football-club-picker';
+import { useMatchDisplay } from '@/hooks/use-match-display';
 import { useFootballRealtime } from '@/hooks/use-football-realtime';
 import '@/football.css';
 
@@ -49,7 +51,8 @@ export default function FootballPage() {
     lastStatus.current = room.status;
   }, [room, refreshRelated]);
 
-  const live = !!room && room.status === 'active' && !!room.viewerTeam && rt.conn === 'live' && !['waiting', 'finished', 'halftime'].includes(xs(room.state).phase);
+  const display = useMatchDisplay(!!room && room.status === 'active');
+  const live = display.playable && !!room && room.status === 'active' && !!room.viewerTeam && rt.conn === 'live' && !['waiting', 'finished', 'halftime'].includes(xs(room.state).phase);
 
   // movement: joystick + keyboard
   const joy = useRef({ x: 0, y: 0 }); const keys = useRef(new Set<string>());
@@ -127,12 +130,61 @@ export default function FootballPage() {
   const LABELS: Record<string, string> = { first_half: '1ST HALF', first_added: '1ST HALF ADDED TIME', halftime: 'HALFTIME', second_half: '2ND HALF', second_added: '2ND HALF ADDED TIME', overtime: 'GOLDEN GOAL', finished: 'FULL TIME', waiting: 'PRE-MATCH' };
   const halfLabel = LABELS[xst.phase] ?? 'LIVE';
   const halfRemaining = xst.phaseRemainingMs ?? s.remainingMs;
-  const timingNote = xst.halfDurationMs !== undefined ? `${fmt(xst.halfDurationMs)} halves + ${fmt(xst.addedTimeMs ?? 0)} added each half, ${fmt(xst.halftimeBreakMs ?? 0)} halftime break` : '';
   const done = room.status === 'completed' || room.status === 'cancelled';
   const won = room.winnerUserId === user.id;
   const connLabel = rt.conn === 'live' ? 'LIVE' : rt.conn === 'connecting' ? 'CONNECTING' : 'RECONNECTING · POLLING 2s';
   const url = `${window.location.origin}${import.meta.env.BASE_URL}football/${room.id}`.replace(/([^:])\/\//g, '$1/');
   const kickoffNote = room.status === 'active' && paused ? s.lastEvent : '';
+
+  if (room.status !== 'waiting') {
+    const gate = room.status === 'active' && (display.portrait || !display.entered);
+    return <div className="fb-full" data-testid="screen-football-match">
+      <FootballPitch state={s} team={room.viewerTeam} onControlBasis={onBasis} />
+      <div className="fb-hud">
+        <button className="fb-exit" onClick={() => { display.leave(); setLocation('/'); }} data-testid="button-football-return"><ArrowLeft size={14} /> Lobby</button>
+        <div className="fb-score" data-testid="panel-football-score">
+          <div className="fb-team"><small>{clubLabel(xst.homeClub).toUpperCase()}{room.viewerTeam === 'home' ? ' · YOU' : ''}</small><b>{homeName}</b></div>
+          <div className="fb-mid"><div className="fb-goals" data-testid="text-football-score">{s.scoreHome}<i>:</i>{s.scoreAway}</div><div className="fb-clock" data-testid="text-football-clock">{halfLabel}{xst.phase === 'overtime' || xst.phase === 'finished' ? '' : ` · ${fmt(halfRemaining)}`}</div>{xst.phase !== 'overtime' && xst.phase !== 'finished' && <div className="fb-clock sub" data-testid="text-football-total-left">MATCH LEFT {fmt(s.remainingMs)}</div>}</div>
+          <div className="fb-team right"><small>{xst.awayClub ? clubLabel(xst.awayClub).toUpperCase() : 'TBD'}{room.viewerTeam === 'away' ? ' · YOU' : ''}</small><b>{awayName}</b></div>
+        </div>
+        <span className={`sandbox-pill conn-${rt.conn}`} data-testid="status-football-connection"><span className="pulse-dot" /> {connLabel}</span>
+      </div>
+      <div className="fb-banners">
+        {xst.phase === 'overtime' && <div className="fb-banner gold" data-testid="text-football-golden">GOLDEN GOAL. Tied after full time. The next goal wins.</div>}
+        {xst.phase === 'halftime' && <div className="fb-banner gold" data-testid="text-football-halftime">HALFTIME. Controls are paused. Second half in {fmt(halfRemaining)}.</div>}
+        {(xst.phase === 'first_added' || xst.phase === 'second_added') && <div className="fb-banner" data-testid="text-football-added">Added time: {fmt(halfRemaining)} left in this half.</div>}
+        {kickoffNote && <div className="fb-banner" data-testid="text-football-kickoff">{kickoffNote}</div>}
+        {s.lastEvent && !done && !kickoffNote && <div className="fb-banner" data-testid="text-football-event">{s.lastEvent}</div>}
+        {rt.error && <InlineError>{rt.error}</InlineError>}
+        {err && <InlineError>{err}</InlineError>}
+      </div>
+      <div className="fb-info" data-testid="panel-football-info">
+        <span data-testid="text-football-side">{room.viewerTeam ? `YOU ARE ${room.viewerTeam.toUpperCase()} · ATTACKING ${myDir!.toUpperCase()}` : 'SPECTATING'}</span>
+        <span data-testid="text-football-prize">PRIZE {money(room.prizeNaira)}</span>
+      </div>
+      <div className={`fb-controls ${live ? '' : 'off'}`} data-testid="panel-football-controls">
+        <div ref={stickRef} className="fb-stick" data-testid="control-joystick"
+          onPointerDown={e => { if (stickPtr.current !== null) return; stickPtr.current = e.pointerId; e.currentTarget.setPointerCapture(e.pointerId); moveStick(e); }}
+          onPointerMove={e => { if (stickPtr.current === e.pointerId) moveStick(e); }}
+          onPointerUp={endStick} onPointerCancel={endStick} onLostPointerCapture={endStick}>
+          <div className="fb-knob" style={{ transform: `translate(${knob.x}px, ${knob.y}px)` }} />
+        </div>
+        <div className="fb-actions">
+          <button className="fb-btn" disabled={!live} onPointerDown={e => { e.preventDefault(); act('pass'); }} data-testid="button-football-pass">Pass<small>J</small></button>
+          <button className="fb-btn shoot" disabled={!live} onPointerDown={e => { e.preventDefault(); act('shoot'); }} data-testid="button-football-shoot">Shoot<small>K</small></button>
+          <button className="fb-btn slide" disabled={!live} onPointerDown={slideDown} onPointerUp={slideUp} onPointerCancel={() => { window.clearTimeout(slideTimer.current); slideTimer.current = 0; }} data-testid="button-football-slide">Slide / Switch<small>L TACKLE · SPACE SWITCH</small></button>
+        </div>
+      </div>
+      {done && <div className="fb-gate" data-testid="text-football-result"><div className="fb-gate-card"><h2>{room.status === 'cancelled' ? 'Room cancelled' : 'Full time'}</h2><p>{room.status === 'cancelled' ? 'Waiting room cancelled. No stakes were debited.' : room.winnerUserId ? (won ? `You won. ${money(room.prizeNaira)} credited to your Mosquito Wallet test balance.` : 'Match ended. Opponent takes the prize.') : 'Match closed.'}</p><button className="primary-btn" onClick={() => { display.leave(); setLocation('/'); }} data-testid="button-football-lobby-done">Back to lobby <ArrowRight size={16} /></button></div></div>}
+      {gate && !done && <div className="fb-gate" data-testid="panel-football-gate"><div className="fb-gate-card">
+        {display.portrait ? <><h2>Rotate to landscape</h2><p>Turn your phone sideways in either direction. Your controls are disabled here, but the shared match clock keeps running.</p></> : <><h2>Ready for kickoff</h2><p>Enter Match goes fullscreen and tries to lock landscape. Not every phone or browser allows that; if yours does not, just rotate manually. Keys: WASD move, J pass, K shoot, L tackle, Space switch. Stylized original models, sandbox funds only. <ShieldCheck size={11} style={{ verticalAlign: '-1px' }} /></p></>}
+        {!display.portrait && <button className="primary-btn" onClick={() => void display.enter()} data-testid="button-football-enter">Enter Match <ArrowRight size={16} /></button>}
+        {display.portrait && <button className="quiet-btn" onClick={() => void display.enter()} data-testid="button-football-enter">Try fullscreen and lock</button>}
+        {display.note && <small data-testid="text-football-display-note">{display.note}</small>}
+      </div></div>}
+      {!gate && display.note && !done && <div className="fb-display-note" data-testid="text-football-display-note">{display.note}</div>}
+    </div>;
+  }
 
   return <Shell user={user}>
     <div className="fb-page">
@@ -146,7 +198,7 @@ export default function FootballPage() {
         <p className="fb-help">Share this link. Your opponent joins with a matching sandbox stake, and the whole team, 11 a side, is on the pitch.</p>
         <div className="fb-link" data-testid="text-football-invite">{url}</div>
         <div className="fb-row">
-          {!room.viewerTeam && <div className="fb-club-row"><small>YOUR CLUB</small><select className="fb-club-select" value={inviteClub} onChange={e => { const v = e.target.value as FootballClubId; setInviteClub(v); saveClub(v); }} data-testid="select-football-invite-club">{CLUBS.map(c => <option key={c.id} value={c.id}>{c.label}</option>)}</select></div>}
+          {!room.viewerTeam && <div className="fb-club-row"><small>YOUR CLUB</small><ClubPicker value={inviteClub} onChange={v => { setInviteClub(v); saveClub(v); }} testPrefix="football-invite" /></div>}
           {room.status === 'waiting' && <small className="fb-help" data-testid="text-football-host-club">Host plays as {clubLabel(xst.homeClub)}.{xst.awayClub ? ` Opponent: ${clubLabel(xst.awayClub)}.` : ''}</small>}
           {!room.viewerTeam && <button className="primary-btn" disabled={join.isPending} data-testid="button-join-football-invite" onClick={() => {
             setErr('');
@@ -160,40 +212,7 @@ export default function FootballPage() {
           {isHost && <button className="quiet-btn" disabled={cancel.isPending} data-testid="button-cancel-football" onClick={() => { setErr(''); cancel.mutate({ roomId }, { onSuccess: next => { queryClient.setQueryData(getGetFootballRoomQueryKey(roomId), next); refreshRelated(); setLocation('/'); }, onError: () => setErr('Could not cancel this match. Try again.') }); }}>{cancel.isPending ? 'Closing…' : 'Cancel match'}</button>}
         </div>
         {err && <InlineError>{err}</InlineError>}
-      </div> : <>
-        <div className="fb-score" data-testid="panel-football-score">
-          <div className="fb-team"><small>HOME{room.viewerTeam === 'home' ? ' · YOU' : ''} · {clubLabel(xst.homeClub).toUpperCase()}</small><b>{homeName}</b></div>
-          <div className="fb-mid"><div className="fb-goals" data-testid="text-football-score">{s.scoreHome}<i>:</i>{s.scoreAway}</div><div className="fb-clock" data-testid="text-football-clock">{halfLabel}{xst.phase === 'overtime' || xst.phase === 'finished' ? '' : ` · ${fmt(halfRemaining)}`}</div>{xst.phase !== 'overtime' && xst.phase !== 'finished' && <div className="fb-clock sub" data-testid="text-football-total-left">MATCH LEFT {fmt(s.remainingMs)}</div>}</div>
-          <div className="fb-team right"><small>AWAY{room.viewerTeam === 'away' ? ' · YOU' : ''} · {xst.awayClub ? clubLabel(xst.awayClub).toUpperCase() : 'TBD'}</small><b>{awayName}</b></div>
-        </div>
-        {xst.phase === 'overtime' && <div className="fb-banner gold" data-testid="text-football-golden">GOLDEN GOAL. Tied after full time. The next goal wins.</div>}
-        {xst.phase === 'halftime' && <div className="fb-banner gold" data-testid="text-football-halftime">HALFTIME. Controls are paused. Second half in {fmt(halfRemaining)}.</div>}
-        {(xst.phase === 'first_added' || xst.phase === 'second_added') && <div className="fb-banner" data-testid="text-football-added">Added time: {fmt(halfRemaining)} left in this half.</div>}
-        {kickoffNote && <div className="fb-banner" data-testid="text-football-kickoff">{kickoffNote}</div>}
-        {s.lastEvent && !done && !kickoffNote && <div className="fb-banner" data-testid="text-football-event">{s.lastEvent}</div>}
-        <FootballPitch state={s} team={room.viewerTeam} onControlBasis={onBasis} />
-        {done && <div className="fb-banner result" data-testid="text-football-result">{room.status === 'cancelled' ? 'Waiting room cancelled. No stakes were debited.' : room.winnerUserId ? (won ? `You won. ${money(room.prizeNaira)} credited to your Mosquito Wallet test balance.` : 'Match ended. Opponent takes the prize.') : 'Match closed.'}</div>}
-        <div className="fb-info">
-          <span data-testid="text-football-side">{room.viewerTeam ? `YOU ARE ${room.viewerTeam.toUpperCase()} · ATTACKING ${myDir!.toUpperCase()}` : 'SPECTATING'}</span>
-          <span>STAKE {money(room.stakeNaira)}</span><span data-testid="text-football-prize">PRIZE {money(room.prizeNaira)}</span><span>COMMISSION {money(room.commissionNaira)}</span>
-        </div>
-        {rt.error && <InlineError>{rt.error}</InlineError>}
-        {err && <InlineError>{err}</InlineError>}
-        <div className={`fb-controls ${live ? '' : 'off'}`} data-testid="panel-football-controls">
-          <div ref={stickRef} className="fb-stick" data-testid="control-joystick"
-            onPointerDown={e => { if (stickPtr.current !== null) return; stickPtr.current = e.pointerId; e.currentTarget.setPointerCapture(e.pointerId); moveStick(e); }}
-            onPointerMove={e => { if (stickPtr.current === e.pointerId) moveStick(e); }}
-            onPointerUp={endStick} onPointerCancel={endStick} onLostPointerCapture={endStick}>
-            <div className="fb-knob" style={{ transform: `translate(${knob.x}px, ${knob.y}px)` }} />
-          </div>
-          <div className="fb-actions">
-            <button className="fb-btn" disabled={!live} onPointerDown={e => { e.preventDefault(); act('pass'); }} data-testid="button-football-pass">Pass<small>J</small></button>
-            <button className="fb-btn shoot" disabled={!live} onPointerDown={e => { e.preventDefault(); act('shoot'); }} data-testid="button-football-shoot">Shoot<small>K</small></button>
-            <button className="fb-btn slide" disabled={!live} onPointerDown={slideDown} onPointerUp={slideUp} onPointerCancel={() => { window.clearTimeout(slideTimer.current); slideTimer.current = 0; }} data-testid="button-football-slide">Slide / Switch<small>L TACKLE · SPACE SWITCH</small></button>
-          </div>
-        </div>
-        <p className="fb-help">Tap Slide / Switch to tackle a nearby enemy carrier, otherwise it switches your player. Hold it to always switch. Keys: WASD or arrows move, J pass, K shoot, L tackle, Space switch. {timingNote ? `${timingNote}; ` : ''}a tie goes to golden goal. Stylized original player models, not licensed club assets. <ShieldCheck size={11} style={{ verticalAlign: '-1px' }} /> Sandbox funds only, test play.</p>
-      </>}
+      </div> : null}
     </div>
   </Shell>;
 }

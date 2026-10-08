@@ -39,8 +39,7 @@ const server = createServer(async (req, res) => {
       assert.ok(users.find(u => u.id === row.opponentUserId)?.username.startsWith("football_browser_"));
       const now = Date.now(), state = initialFootballState(now, row.state.homeClub, row.state.awayClub);
       const elapsed = req.url === "/__qa/prepare-golden" ? REGULATION_MS + 1
-        : stage === "halftime" ? FIRST_HALF_END_MS + 5000
-        : stage === "second_added" ? REGULATION_MS - 15000 : HALF_MS + 1000;
+        : stage === "second_half" ? HALF_MS + 1000 : 1000;
       startFootball(state, now - elapsed);
       updateFootballClock(state, now); state.pauseUntil = 0;
       state.lastTickAt = now;

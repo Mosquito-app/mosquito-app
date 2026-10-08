@@ -62,8 +62,8 @@ try {
   const joins = await Promise.all([1, 2].map(() => req("/football/rooms", opponent, { stakeNaira: 1000, roomId: first.id, club: "real_madrid" }, undefined, [200, 409])));
   const active = joins.find(r => r.status === 200)!.data;
   assert.equal(active.status, "active"); assert.equal(active.state.remainingMs, REGULATION_MS);
-  assert.equal(active.state.halfDurationMs, 240000); assert.equal(active.state.addedTimeMs, 60000);
-  assert.equal(active.state.halftimeBreakMs, 40000);
+  assert.equal(active.state.halfDurationMs, 180000); assert.equal(active.state.addedTimeMs, 0);
+  assert.equal(active.state.halftimeBreakMs, 0);
   assert.equal(active.state.homeClub, "barcelona"); assert.equal(active.state.awayClub, "real_madrid");
   assert.deepEqual((await req(`/football/rooms/${first.id}`, host)).data.state.homeClub, "barcelona");
   const joinedAgain = (await req("/football/rooms", opponent, { stakeNaira: 1000, roomId: first.id })).data;

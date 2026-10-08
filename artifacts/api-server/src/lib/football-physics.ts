@@ -1,9 +1,9 @@
 import type { FootballAnimation, FootballClub, FootballPlayer, FootballState, FootballTeam } from "@workspace/db";
 
 export const PITCH = { width: 68, length: 105, goalWidth: 18, goalHeight: 2.44 };
-export const HALF_MS = 240_000;
-export const ADDED_MS = 60_000;
-export const BREAK_MS = 40_000;
+export const HALF_MS = 180_000;
+export const ADDED_MS = 0;
+export const BREAK_MS = 0;
 export const FIRST_HALF_END_MS = HALF_MS + ADDED_MS;
 export const SECOND_HALF_START_MS = FIRST_HALF_END_MS + BREAK_MS;
 export const REGULATION_MS = FIRST_HALF_END_MS * 2 + BREAK_MS;
@@ -25,9 +25,11 @@ const formation = [
 /** Hydrate old JSON without extending already-funded six-minute matches. */
 export function normalizeFootballState(s: FootballState) {
   s.timingVersion ??= 1;
-  s.halfDurationMs ??= s.timingVersion === 2 ? HALF_MS : 180_000;
-  s.addedTimeMs ??= s.timingVersion === 2 ? ADDED_MS : 0;
-  s.halftimeBreakMs ??= s.timingVersion === 2 ? BREAK_MS : 0;
+  // Version 2 was offered with 4+1 minute halves and a 40-second break.
+  // Never change a funded room's agreed clock when hydrating old snapshots.
+  s.halfDurationMs ??= s.timingVersion === 2 ? 240_000 : HALF_MS;
+  s.addedTimeMs ??= s.timingVersion === 2 ? 60_000 : 0;
+  s.halftimeBreakMs ??= s.timingVersion === 2 ? 40_000 : 0;
   s.phaseRemainingMs ??= s.remainingMs;
   s.homeClub ??= "man_city"; s.awayClub ??= "liverpool";
   s.ball.z ??= BALL_RADIUS; s.ball.vz ??= 0;
@@ -64,7 +66,7 @@ export function initialFootballState(now = Date.now(), homeClub: FootballClub = 
       animation: "idle", animationStartedAt: now, animationUntil: 0,
     }))),
     ball: { x: 34, y: 52.5, z: BALL_RADIUS, vx: 0, vy: 0, vz: 0, ownerId: null },
-    homeClub, awayClub, timingVersion: 2, halfDurationMs: HALF_MS, addedTimeMs: ADDED_MS,
+    homeClub, awayClub, timingVersion: 1, halfDurationMs: HALF_MS, addedTimeMs: ADDED_MS,
     halftimeBreakMs: BREAK_MS, phaseRemainingMs: HALF_MS,
     scoreHome: 0, scoreAway: 0, controlledHome: "home-9", controlledAway: "away-9",
     phase: "waiting", homeDirection: -1, startedAt: null, serverTimeAt: new Date(now).toISOString(),

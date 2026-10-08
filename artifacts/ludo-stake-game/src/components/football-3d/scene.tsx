@@ -75,17 +75,16 @@ export function Scene({ sim }: { sim: MutableRefObject<Sim> }) {
     const c = cam.current; const camera = fs.camera as THREE.PerspectiveCamera;
     const d = attackDir(s, team);
     const desiredPos = new THREE.Vector3(); const desiredLook = new THREE.Vector3();
-    if (mode === 'follow') {
-      const far = Math.hypot(cx - ball.x, cz - ball.z);
-      desiredPos.set(fx * 0.8, 10 + Math.min(far, 25) * 0.35, fz - d * (15 + Math.min(far, 25) * 0.4));
-      desiredLook.set(fx, 0.5, fz + d * 7);
-      if (camera.fov !== 58) { camera.fov = 58; camera.updateProjectionMatrix(); }
-    } else {
-      desiredPos.set(-78, 30, THREE.MathUtils.clamp(fz * 0.8, -40, 40)); desiredLook.set(fx * 0.5, 0, desiredPos.z * 0.9 + (fz - desiredPos.z) * 0.1);
-      if (camera.fov !== 40) { camera.fov = 40; camera.updateProjectionMatrix(); }
+    {
+      // Close chase: behind the controlled player, biased toward the ball, looking down-pitch.
+      const tx = cx * 0.7 + ball.x * 0.3, tz = cz * 0.7 + ball.z * 0.3;
+      const far = Math.min(Math.hypot(cx - ball.x, cz - ball.z), 30);
+      desiredPos.set(tx * 0.97, 3.6 + far * 0.1, tz - d * (7.5 + far * 0.2));
+      desiredLook.set(tx, 1.0, tz + d * (9 + far * 0.15));
+      if (camera.fov !== 62) { camera.fov = 62; camera.updateProjectionMatrix(); }
     }
     if (!c.init) { c.pos.copy(desiredPos); c.look.copy(desiredLook); c.init = true; }
-    c.pos.lerp(desiredPos, damp(mode === 'follow' ? 3.2 : 2.2, dt)); c.look.lerp(desiredLook, damp(4, dt));
+    c.pos.lerp(desiredPos, damp(4, dt)); c.look.lerp(desiredLook, damp(5, dt));
     camera.position.copy(c.pos); camera.lookAt(c.look);
     const forward = camera.getWorldDirection(new THREE.Vector3());
     const len = Math.hypot(forward.x, forward.z) || 1;

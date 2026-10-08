@@ -50,7 +50,7 @@ try {
   await Promise.all([login(home, "home"), login(away, "away")]);
   await until(async () => /2,000/.test(await home.getByTestId("text-wallet-balance").innerText()), "Initial wallet query did not load");
   await home.getByTestId("card-game-11v11-football-duel").click();
-  await home.getByTestId("select-football-club").selectOption("man_city");
+  await home.getByTestId("card-football-club-man_city").click();
   await home.getByTestId("button-stake-1000").click();
   await home.getByTestId("button-find-match").click();
   await home.getByTestId("panel-football-waiting").waitFor();
@@ -66,9 +66,16 @@ try {
   assert.equal(waitingWallet.balanceNaira, 2000); assert.equal(waitingWallet.escrowedNaira, 0);
   // A signed-in friend can join from the invite, not only from the lobby.
   await away.goto(`${base}/football/${roomId}`);
-  await away.getByTestId("select-football-invite-club").selectOption("liverpool");
+  await away.getByTestId("card-football-invite-club-liverpool").click();
   await away.getByTestId("button-join-football-invite").click();
   await Promise.all([home.getByTestId("panel-football-score").waitFor(), away.getByTestId("panel-football-score").waitFor()]);
+  await away.getByTestId("panel-football-gate").waitFor();
+  assert.match(await away.getByTestId("panel-football-gate").innerText(), /Rotate to landscape/);
+  assert.equal(await away.getByTestId("button-football-shoot").isDisabled(), true);
+  await away.setViewportSize({ width: 844, height: 390 });
+  await Promise.all([home.getByTestId("button-football-enter").click(), away.getByTestId("button-football-enter").click()]);
+  await until(async () => await home.getByTestId("panel-football-gate").count() === 0 &&
+    await away.getByTestId("panel-football-gate").count() === 0, "Landscape enter gate never cleared");
   await until(() => frames[0].size > 10 && frames[1].size > 10, "No real football frames on both sockets");
   const shared = [...frames[0].keys()].filter(k => frames[1].has(k));
   assert.ok(shared.length >= 3);
@@ -90,7 +97,8 @@ try {
   await away.bringToFront();
   const joy = away.getByTestId("control-joystick");
   const bounds = await joy.boundingBox(); assert.ok(bounds);
-  assert.ok(bounds.y >= 0 && bounds.y + bounds.height <= 844, "Touch joystick below viewport");
+  const viewHeight = await away.evaluate(() => innerHeight);
+  assert.ok(bounds.y >= 0 && bounds.y + bounds.height <= viewHeight, "Touch joystick below viewport");
   const cdp = await mobile.newCDPSession(away);
   const x = bounds.x + bounds.width / 2, y = bounds.y + bounds.height / 2;
   const oldAway = await state(away, roomId), awayId = oldAway.controlledAway;
@@ -104,17 +112,13 @@ try {
   await away.waitForTimeout(400);
   const a2 = (await state(away, roomId)).players.find(p => p.id === awayId);
   assert.ok(Math.abs(a2.x - a1.x) < 0.35, "Touch release left movement stuck.");
-  await away.getByTestId("button-camera-tv").click();
-  await until(async () => await pitch(away).getAttribute("data-camera-mode") === "tv", "TV camera did not render");
-  await away.waitForTimeout(1500);
-  const tv0 = await state(away, roomId), tvPlayer = tv0.players.find(p => p.id === tv0.controlledAway);
-  await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ id: 1, x, y }] });
-  await cdp.send("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: [{ id: 1, x: x + 42, y }] });
-  await away.waitForTimeout(500);
-  await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
-  const tv1 = (await state(away, roomId)).players.find(p => p.id === tvPlayer.id);
-  assert.ok(tv1.y > tvPlayer.y + 0.4, "TV camera joystick was not mapped to screen-right.");
-  await away.getByTestId("button-camera-follow").click();
+  await away.setViewportSize({ width: 390, height: 844 });
+  await away.getByTestId("panel-football-gate").waitFor();
+  assert.equal(await away.getByTestId("button-football-shoot").isDisabled(), true);
+  await until(() => inputs[1].some(p => p.moveX === 0 && p.moveY === 0), "Portrait gate did not zero movement");
+  await away.setViewportSize({ width: 844, height: 390 });
+  if (await away.getByTestId("button-football-enter").count()) await away.getByTestId("button-football-enter").click();
+  await until(async () => await away.getByTestId("panel-football-gate").count() === 0, "Landscape resume blocked");
   await prepare("pass");
   await home.bringToFront();
   await home.getByTestId("button-football-pass").click();
@@ -129,20 +133,16 @@ try {
   await until(() => inputs[1].some(p => p.action === "switch"), "Mobile hold did not send switch");
   await until(() => [...frames[1].values()].some(s => s.sequence > beforeSwitch.sequence && s.controlledAway !== selectedAway), "Mobile switch never changed the server-selected player");
   const shootBounds = await away.getByTestId("button-football-shoot").boundingBox();
-  assert.ok(shootBounds && shootBounds.y + shootBounds.height <= 844, "Mobile action buttons below viewport");
+  assert.ok(shootBounds && shootBounds.y + shootBounds.height <= await away.evaluate(() => innerHeight), "Mobile action buttons below viewport");
   assert.equal(await away.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
   await mkdir("test-results", { recursive: true });
   await away.screenshot({ path: "test-results/football-mobile.png" });
   await home.screenshot({ path: "test-results/football-desktop.png", fullPage: true });
-  await prepare("halftime");
-  await Promise.all([home.getByTestId("text-football-halftime").waitFor(), away.getByTestId("text-football-halftime").waitFor()]);
-  assert.equal(await away.getByTestId("button-football-shoot").isDisabled(), true);
-  const frozen = await state(home, roomId);
-  await home.waitForTimeout(400);
-  assert.deepEqual((await state(home, roomId)).players, frozen.players, "Halftime must freeze play.");
-  await prepare("second_added");
-  await home.getByTestId("text-football-added").waitFor();
-  assert.match(await home.getByTestId("text-football-clock").innerText(), /2ND HALF ADDED/);
+  assert.equal(clubs.halfDurationMs, 180000);
+  assert.equal(clubs.addedTimeMs, 0); assert.equal(clubs.halftimeBreakMs, 0);
+  await prepare("second_half");
+  await until(async () => /2ND HALF/.test(await home.getByTestId("text-football-clock").innerText()), "Second-half clock did not update");
+  assert.equal((await state(home, roomId)).homeDirection, 1);
   await prepare("dive");
   await away.bringToFront();
   await until(async () => (await pitch(away).getAttribute("data-animation-kinds") ?? "").includes("dive"), "Keeper dive pose did not render");
@@ -159,12 +159,12 @@ try {
   assert.match(await home.getByTestId("text-football-result").innerText(), /1,800.*Mosquito Wallet/);
   assert.equal(await away.getByTestId("button-football-shoot").isDisabled(), true);
   await home.reload(); await home.getByTestId("text-football-result").waitFor();
-  await home.getByTestId("button-football-return").click();
+  await home.getByTestId("button-football-lobby-done").click();
   await until(async () => /2,800/.test(await home.getByTestId("text-wallet-balance").innerText()), "Winner wallet did not refresh");
   assert.deepEqual(errors, []);
   await writeFile("test-results/football-browser.json", JSON.stringify({
     passed: true, syntheticStakes: true, sharedFrameCount: shared.length,
-    checks: ["22 WebGL models", "WebGL2 context", "club persistence", "free waiting room", "invite join", "synchronized snapshots", "keyboard movement", "actual mobile touch and release", "TV camera input mapping", "pass", "switch", "slide", "keeper dive", "halftime pause", "added time UI", "3D golden goal", "result persistence", "wallet refresh", "no horizontal overflow"],
+    checks: ["22 WebGL models", "WebGL2 context", "club selection cards", "free waiting room", "invite join", "synchronized snapshots", "keyboard movement", "mobile landscape touch and release", "portrait gating and landscape resume", "pass", "switch", "slide", "keeper dive", "six-minute clock and ends switched", "3D golden goal", "result persistence", "wallet refresh", "no horizontal overflow"],
     winnerPrizeNaira: 1800, commissionNaira: 200,
   }, null, 2));
   console.log("PASS desktop + actual mobile touch football QA, identical server frames, pass/switch/shoot, golden goal, result reload and wallet refresh.");

@@ -4,18 +4,18 @@ import { shirtTexture } from './textures';
 import type { AnimKind } from './types';
 
 const G = {
-  torso: new THREE.BoxGeometry(0.42, 0.55, 0.24), shorts: new THREE.BoxGeometry(0.44, 0.24, 0.27),
-  head: new THREE.SphereGeometry(0.115, 12, 10), hair: new THREE.SphereGeometry(0.12, 10, 6, 0, Math.PI * 2, 0, Math.PI * 0.55),
+  torso: new THREE.BoxGeometry(0.46, 0.52, 0.25), shorts: new THREE.BoxGeometry(0.44, 0.24, 0.27),
+  head: new THREE.SphereGeometry(0.105, 16, 12), hair: new THREE.SphereGeometry(0.12, 10, 6, 0, Math.PI * 2, 0, Math.PI * 0.55),
   neck: new THREE.CylinderGeometry(0.045, 0.05, 0.08, 6),
   thigh: new THREE.CylinderGeometry(0.085, 0.07, 0.45, 8), shin: new THREE.CylinderGeometry(0.065, 0.05, 0.42, 8),
   boot: new THREE.BoxGeometry(0.11, 0.07, 0.26), upperArm: new THREE.CylinderGeometry(0.05, 0.045, 0.3, 6), foreArm: new THREE.CylinderGeometry(0.042, 0.035, 0.28, 6),
   hand: new THREE.SphereGeometry(0.04, 6, 5), sleeve: new THREE.CylinderGeometry(0.058, 0.055, 0.14, 6),
   ring: new THREE.RingGeometry(0.75, 0.95, 28), shadow: new THREE.CircleGeometry(0.55, 16),
 };
-const skins = ['#8a5a3c', '#6b4129', '#a8714a', '#4d2e1e'].map(c => new THREE.MeshLambertMaterial({ color: c }));
-const hairMat = new THREE.MeshLambertMaterial({ color: '#16110e' });
-const bootMat = new THREE.MeshLambertMaterial({ color: '#17191c' });
-const glove = new THREE.MeshLambertMaterial({ color: '#f1f1f1' });
+const skins = ['#8a5a3c', '#6b4129', '#a8714a', '#4d2e1e'].map(c => new THREE.MeshStandardMaterial({ color: c }));
+const hairMat = new THREE.MeshStandardMaterial({ color: '#16110e' });
+const bootMat = new THREE.MeshStandardMaterial({ color: '#17191c', roughness: 0.4 });
+const glove = new THREE.MeshStandardMaterial({ color: '#f1f1f1' });
 const shadowMat = new THREE.MeshBasicMaterial({ color: '#06150d', transparent: true, opacity: 0.35, depthWrite: false });
 const ringMat = new THREE.MeshBasicMaterial({ color: '#f5c94e', side: THREE.DoubleSide, transparent: true, opacity: 0.95 });
 
@@ -28,14 +28,14 @@ const grp = (p: THREE.Object3D, x = 0, y = 0, z = 0) => { const g = new THREE.Gr
 const mesh = (p: THREE.Object3D, geo: THREE.BufferGeometry, mat: THREE.Material | THREE.Material[], x = 0, y = 0, z = 0) => { const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); p.add(m); return m; };
 
 export function createRig(kit: Kit, number: number, gk: boolean, seed: number): Rig {
-  const root = new THREE.Group(); root.scale.setScalar(1.12);
+  const root = new THREE.Group(); root.scale.setScalar(1.25);
   const prim = gk ? '#e8b923' : kit.a;
-  const base = new THREE.MeshLambertMaterial({ map: shirtTexture(kit, null, gk) });
-  const numTex = new THREE.MeshLambertMaterial({ map: shirtTexture(kit, number, gk) });
+  const base = new THREE.MeshStandardMaterial({ map: shirtTexture(kit, null, gk) });
+  const numTex = new THREE.MeshStandardMaterial({ map: shirtTexture(kit, number, gk) });
   const shirt = [base, base, base, base, numTex, numTex];
-  const shortsM = new THREE.MeshLambertMaterial({ color: gk ? '#1b1b1b' : kit.shorts });
-  const sock = new THREE.MeshLambertMaterial({ color: gk ? '#1b1b1b' : kit.socks });
-  const sleeve = new THREE.MeshLambertMaterial({ color: prim });
+  const shortsM = new THREE.MeshStandardMaterial({ color: gk ? '#1b1b1b' : kit.shorts });
+  const sock = new THREE.MeshStandardMaterial({ color: gk ? '#1b1b1b' : kit.socks });
+  const sleeve = new THREE.MeshStandardMaterial({ color: prim });
   const skin = skins[seed % skins.length];
   const hips = grp(root, 0, 0.95, 0);
   mesh(hips, G.shorts, shortsM, 0, 0.02, 0); mesh(hips, G.torso, shirt, 0, 0.4, 0);

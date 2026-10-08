@@ -46,17 +46,33 @@ check(() => {
 });
 check(() => {
   const s = fresh();
+  assert.equal(REGULATION_MS, 360000);
+  assert.equal(s.halfDurationMs, 180000);
+  assert.equal(s.addedTimeMs, 0); assert.equal(s.halftimeBreakMs, 0);
   advanceFootball(s, {}, T + HALF_MS);
-  assert.equal(s.phase, "first_added"); assert.equal(s.phaseRemainingMs, ADDED_MS);
-  const positions = JSON.stringify(s.players.map(p => [p.x, p.y]));
-  advanceFootball(s, { home: { moveX: 1, moveY: 1, action: "shoot" } }, T + FIRST_HALF_END_MS);
-  assert.equal(s.phase, "halftime"); assert.equal(s.phaseRemainingMs, BREAK_MS);
-  assert.equal(JSON.stringify(s.players.map(p => [p.x, p.y])), positions, "Halftime must freeze play.");
-  advanceFootball(s, {}, T + SECOND_HALF_START_MS);
   assert.equal(s.phase, "second_half"); assert.equal(s.homeDirection, 1);
-  assert.equal(s.remainingMs, HALF_MS + ADDED_MS); assert.equal(s.ball.ownerId, "away-9");
-  advanceFootball(s, {}, T + SECOND_HALF_START_MS + HALF_MS);
-  assert.equal(s.phase, "second_added"); assert.equal(s.phaseRemainingMs, ADDED_MS);
+  assert.equal(s.phaseRemainingMs, HALF_MS);
+  assert.equal(s.remainingMs, HALF_MS); assert.equal(s.ball.ownerId, "away-9");
+});
+check(() => {
+  // Already-funded version-2 rooms keep the schedule both players accepted.
+  const s = fresh();
+  s.timingVersion = 2;
+  for (const key of ["halfDurationMs", "addedTimeMs", "halftimeBreakMs"] as const) delete (s as any)[key];
+  normalizeFootballState(s);
+  assert.equal(s.halfDurationMs, 240000);
+  assert.equal(s.addedTimeMs, 60000); assert.equal(s.halftimeBreakMs, 40000);
+  advanceFootball(s, {}, T + 240000);
+  assert.equal(s.phase, "first_added"); assert.equal(s.phaseRemainingMs, 60000);
+  const positions = JSON.stringify(s.players.map(p => [p.x, p.y]));
+  advanceFootball(s, { home: { moveX: 1, moveY: 1, action: "shoot" } }, T + 300000);
+  assert.equal(s.phase, "halftime"); assert.equal(s.phaseRemainingMs, 40000);
+  assert.equal(JSON.stringify(s.players.map(p => [p.x, p.y])), positions, "Halftime must freeze play.");
+  advanceFootball(s, {}, T + 340000);
+  assert.equal(s.phase, "second_half"); assert.equal(s.homeDirection, 1);
+  assert.equal(s.remainingMs, 300000); assert.equal(s.ball.ownerId, "away-9");
+  advanceFootball(s, {}, T + 580000);
+  assert.equal(s.phase, "second_added"); assert.equal(s.phaseRemainingMs, 60000);
 });
 check(() => {
   const s = fresh();
