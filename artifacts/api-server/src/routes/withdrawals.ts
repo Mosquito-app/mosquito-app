@@ -111,7 +111,7 @@ router.post("/withdrawals", async (req, res): Promise<void> => {
       .where(and(eq(usersTable.id, user.id), sql`${usersTable.balanceKobo} >= ${amountKobo}`));
     await tx.insert(walletTransactionsTable).values({
       userId: user.id,
-      type: "withdrawal",
+      type: "withdrawal_lock",
       amountKobo,
       description: `Sandbox withdrawal requested — ${reference.slice(-8)}`,
     });
