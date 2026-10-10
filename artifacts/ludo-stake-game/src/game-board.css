@@ -54,7 +54,7 @@
 .lb-match-clock { margin:0 0 18px; padding:16px; border:2px solid #173f30; border-radius:12px; background:#173f30; color:#fff2cf; }
 .lb-match-clock-header { display:flex; justify-content:space-between; align-items:center; gap:16px; }
 .lb-match-clock-header span { display:block; font:600 10px var(--app-font-mono); letter-spacing:.08em; }
-.lb-match-clock-header strong { display:block; font:700 clamp(24px,4vw,38px) var(--app-font-mono); font-variant-numeric:tabular-nums; margin-top:5px; }
+.lb-match-clock-header strong { display:block; font:700 clamp(32px,5vw,48px) var(--app-font-mono); font-variant-numeric:tabular-nums; margin-top:5px; }
 .lb-match-clock p { font-size:12px; line-height:1.5; margin:0; max-width:340px; }
 .lb-match-scores { display:flex; flex-wrap:wrap; gap:8px 24px; font-size:11px; border-top:1px solid #ffffff30; padding-top:10px; margin-top:10px; }
 .lb-match-clock.urgent { border-color:#e8625b; }

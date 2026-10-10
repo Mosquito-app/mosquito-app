@@ -7,7 +7,7 @@ import { once } from "node:events";
 import { eq } from "drizzle-orm";
 import { db, pool, roomsTable, usersTable, walletTransactionsTable, commissionLedgerTable, platformWalletTable, type LudoBoardState } from "@workspace/db";
 import app from "../src/app";
-import { MATCH_MS } from "../src/lib/ludo-match";
+import { MATCH_MS, matchDeadline } from "../src/lib/ludo-match";
 import { leadingColor, tokenRank } from "../src/lib/ludo-ranking";
 import { expireTurns } from "../src/lib/ludo-turns";
 
@@ -79,6 +79,8 @@ async function paidExactlyOnce(id: string, winner: Seat, loser: Seat) {
   assert.equal(commissions.length, 1); assert.equal(commissions[0].amountKobo, 40000);
 }
 try {
+  assert.equal(MATCH_MS, 480000, "Ludo playing time must be exactly eight minutes");
+  assert.equal(Date.parse(matchDeadline(0)), 480000, "Deadline must be exactly eight minutes after start");
   assert.deepEqual(tokenRank([-1, 0, 56, 57]), { tokensHome: 1, totalProgress: 116 });
   assert.equal(leadingColor({ redTokens: [57, -1, -1, -1], greenTokens: [56, 56, 56, 56] } as LudoBoardState), "red");
   assert.equal(leadingColor({ redTokens: [10, 10, -1, -1], greenTokens: [20, -1, -1, -1] } as LudoBoardState), "red");
@@ -86,6 +88,11 @@ try {
   console.log("PASS ranking: tokens home first, total current progress second, released tokens score, captures lose progress, exact ties");
 
   const first = await pair();
+  const acceptedDeadline = new Date(Date.now() + 14 * 60 * 1000).toISOString();
+  await configure(first.id, { matchDeadlineAt: acceptedDeadline });
+  await expireTurns();
+  assert.equal((await request(`/rooms/${first.id}`, first.red)).data.board.matchDeadlineAt, acceptedDeadline,
+    "Duration upgrades must not shorten an already assigned funded-match deadline");
   await configure(first.id, { redTokens: [57, -1, -1, -1], greenTokens: [56, 56, 56, 56], turnUserId: first.green.id, dice: [1, 2], remainingDice: [0, 1], hasRolled: true });
   await Promise.all([
     expireTurns(),
@@ -142,7 +149,7 @@ try {
   await configure(fourth.id, { matchDeadlineAt: new Date(Date.now() + 60000).toISOString(), redTokens: [57, 57, 57, 56], dice: [1, 3], remainingDice: [0, 1], hasRolled: true });
   const finished = (await request(`/rooms/${fourth.id}/move`, fourth.red, { tokenIndex: 3, diceIndices: [0] })).data;
   assert.equal(finished.board.endReason, "all_home"); await paidExactlyOnce(fourth.id, fourth.red, fourth.green);
-  console.log("PASS ordinary all-home win settles before the 14-minute limit");
+  console.log("PASS ordinary all-home win settles before the 8-minute limit");
 
   const fifth = await pair();
   const [legacy] = await db.select().from(roomsTable).where(eq(roomsTable.id, fifth.id));

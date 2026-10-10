@@ -37,7 +37,7 @@ _Populate as you build — short repo map plus pointers to the source-of-truth f
 
 Mosquito App offers Ludo Duel and mobile-first 11v11 Football Duel with local accounts and Paystack test-only Mosquito Wallet deposits/withdrawals. Wagered matches settle 90% to the winner and 10% to the platform.
 
-Ludo retains its two-dice Uncle Joe board, 14-minute ranking, and sudden-death draw break. New Football matches use two 3-minute halves (six minutes total), no added time or halftime break, with ends switched at three minutes. Tied full-time matches continue until the first golden goal. Existing funded Football games retain the clock both players accepted, including the previous 10:40 schedule; never reset or extend a funded room on hydration. Whot, Draft, and 8-Ball Pool remain coming soon.
+Ludo retains its two-dice Uncle Joe board, timeout ranking, and sudden-death draw break. New Football matches use two 3-minute halves (six minutes total), no added time or halftime break, with ends switched at three minutes. Tied full-time matches continue until the first golden goal. Existing funded Football games retain the clock both players accepted, including the previous 10:40 schedule; never reset or extend a funded room on hydration. Whot, Draft, and 8-Ball Pool remain coming soon.
 
 ## User preferences
 

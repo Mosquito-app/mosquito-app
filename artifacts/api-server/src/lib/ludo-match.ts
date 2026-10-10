@@ -6,7 +6,7 @@ import {
 import { normalizeBoard } from "./ludo-rules";
 import { leadingColor } from "./ludo-ranking";
 
-export const MATCH_MS = 14 * 60 * 1000;
+export const MATCH_MS = 8 * 60 * 1000;
 export const matchDeadline = (now = Date.now()) => new Date(now + MATCH_MS).toISOString();
 type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
 type Room = typeof roomsTable.$inferSelect;

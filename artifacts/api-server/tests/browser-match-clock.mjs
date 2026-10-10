@@ -58,7 +58,7 @@ try {
     await seat.page.getByTestId("status-connection").filter({ hasText: "LIVE" }).waitFor({ state: "attached" });
   }));
   const starting = await Promise.all(seats.map(seat => clock(seat.page)));
-  assert.ok(starting.every(value => value <= 840 && value >= 825));
+  assert.ok(starting.every(value => value <= 480 && value >= 465));
   assert.ok(Math.abs(starting[0] - starting[1]) <= 2, "Server time compensates for one-hour client clock skew");
   const original = await (await seats[0].context.request.get(roomUrl)).json();
   await seats[0].page.waitForTimeout(1300);
@@ -94,7 +94,7 @@ try {
   }
   assert.deepEqual(report.browserErrors, []);
   report.outcome = "passed";
-  console.log("PASS live shared 14-minute clock, one-hour client skew, ticking countdown, reload persistence, automatic overtime on both screens, real two-dice overtime roll, desktop/mobile layout.");
+  console.log("PASS live shared 8-minute clock, one-hour client skew, ticking countdown, reload persistence, automatic overtime on both screens, real two-dice overtime roll, desktop/mobile layout.");
 } catch (error) {
   report.outcome = "failed"; report.error = error.message;
   for (const [index, seat] of seats.entries()) await seat.page.screenshot({ path: new URL(`../test-results/match-clock-failure-${index}.png`, import.meta.url).pathname, fullPage: true }).catch(() => {});
