@@ -124,6 +124,11 @@ function messageOf(ws: WebSocket, type: string) {
 try {
   await request("/healthz");
   await request("/wallet", undefined, undefined, 401);
+  await request("/auth/register", undefined, {
+    username: "shortpassword",
+    email: "shortpassword@example.test",
+    password: "123",
+  }, 400);
   const host = await register("testhost");
   const green = await register("testgreen");
   const outsider = await register("testoutside");
@@ -136,6 +141,42 @@ try {
   assert.equal((await request("/auth/me", host)).data.user.id, host.id);
   console.log("PASS local registration, login, duplicates, authorization and expired sessions");
 
+  const passwordSeat = await register("passwordchange");
+  await request("/auth/reset-password", undefined, {
+    currentPassword: "sandbox-password-123",
+    newPassword: "123456",
+  }, 401);
+  await request("/auth/reset-password", passwordSeat, {
+    currentPassword: "sandbox-password-123",
+    newPassword: "123",
+  }, 400);
+  await request("/auth/reset-password", passwordSeat, {
+    currentPassword: "wrong-password",
+    newPassword: "123456",
+  }, 401);
+  const oldPasswordCookie = passwordSeat.cookie;
+  const reset = await request("/auth/reset-password", passwordSeat, {
+    currentPassword: "sandbox-password-123",
+    newPassword: "123456",
+  });
+  assert.equal(reset.data.success, true);
+  const freshSeat = {
+    ...passwordSeat,
+    cookie: reset.response.headers.get("set-cookie")!.split(";")[0],
+  };
+  await request("/auth/me", { ...passwordSeat, cookie: oldPasswordCookie }, undefined, 401);
+  await request("/auth/login", undefined, {
+    email: passwordSeat.email,
+    password: "sandbox-password-123",
+  }, 401);
+  const newPasswordLogin = await request("/auth/login", undefined, {
+    email: passwordSeat.email,
+    password: "123456",
+  });
+  assert.equal(newPasswordLogin.data.user.id, passwordSeat.id);
+  assert.equal((await request("/auth/me", freshSeat)).data.user.id, passwordSeat.id);
+  console.log("PASS authenticated password reset, 4-character minimum and session invalidation");
+
   await request("/deposits/initialize", host, { amountNaira: 1 }, 400);
   const hostRef = await credit(host);
   await credit(green);
@@ -146,6 +187,16 @@ try {
   deposits.get(bad.data.reference)!.domain = "live";
   assert.equal((await request("/deposits/verify", host, { reference: bad.data.reference })).data.status, "failed");
   assert.equal((await request("/wallet", host)).data.balanceNaira, 10000);
+  const configuredTestKey = process.env.PAYSTACK_TEST_SECRET_KEY;
+  delete process.env.PAYSTACK_TEST_SECRET_KEY;
+  await request("/withdrawals", host, {
+    amountNaira: 500,
+    requestId: randomUUID(),
+    recipientName: "Sandbox Player",
+    accountNumber: "0000000000",
+    bankCode: "011",
+  }, 503);
+  if (configuredTestKey) process.env.PAYSTACK_TEST_SECRET_KEY = configuredTestKey;
   recipientAccepted = false;
   await request("/withdrawals", host, { amountNaira: 500, requestId: randomUUID(), recipientName: "Sandbox Player", accountNumber: "0000000000", bankCode: "011" }, 400);
   assert.equal((await request("/wallet", host)).data.balanceNaira, 10000);
