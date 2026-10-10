@@ -47,7 +47,7 @@ export function RegisterPage() {
     <form className="auth-form" onSubmit={submit}>
       <label>Player name<input autoComplete="nickname" required minLength={3} maxLength={24} value={username} onChange={e => setUsername(e.target.value)} placeholder="How players will know you" data-testid="input-username" /></label>
       <label>Email address<input type="email" autoComplete="email" required value={email} onChange={e => setEmail(e.target.value)} placeholder="you@example.com" data-testid="input-email" /></label>
-      <label>Password<input type="password" autoComplete="new-password" required minLength={8} maxLength={72} value={password} onChange={e => setPassword(e.target.value)} placeholder="At least 8 characters" data-testid="input-password" /></label>
+      <label>Password<input type="password" autoComplete="new-password" required minLength={4} maxLength={72} value={password} onChange={e => setPassword(e.target.value)} placeholder="At least 4 characters" data-testid="input-password" /></label>
       {error && <InlineError>{error}</InlineError>}
       <button className="primary-btn full" type="submit" disabled={register.isPending} data-testid="button-register">{register.isPending ? 'Setting up your seat…' : 'Create account'} <ArrowRight size={17} /></button>
     </form>

@@ -476,7 +476,7 @@ export const registerBodyUsernameMax = 24;
 
 export const registerBodyEmailMax = 254;
 
-export const registerBodyPasswordMin = 8;
+export const registerBodyPasswordMin = 4;
 export const registerBodyPasswordMax = 72;
 
 
@@ -484,7 +484,7 @@ export const registerBodyPasswordMax = 72;
 export const RegisterBody = zod.object({
   "username": zod.string().min(registerBodyUsernameMin).max(registerBodyUsernameMax),
   "email": zod.string().email().max(registerBodyEmailMax),
-  "password": zod.string().min(registerBodyPasswordMin).max(registerBodyPasswordMax)
+  "password": zod.string().min(registerBodyPasswordMin, "Password must be at least 4 characters long").max(registerBodyPasswordMax)
 })
 
 export const registerResponseUserBalanceNairaMin = 0;
