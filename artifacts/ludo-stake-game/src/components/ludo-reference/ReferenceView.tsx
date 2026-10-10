@@ -146,6 +146,7 @@ export interface ViewProps {
   room: RoomView; meName: string; oppName: string; isMyTurn: boolean; isActive: boolean; isWaiting: boolean; isDone: boolean;
   matchSeconds: number | null; turnSeconds: number | null;
   walletText: string; walletState: 'ok' | 'loading' | 'error'; onWallet: () => void; onRetryWallet: () => void; onExit: () => void;
+  previewOnly?: boolean;
   conn: 'live' | 'connecting' | string; connLabel: string;
   legalTokens: Set<number>; onMove: (i: number) => void; selecting: boolean;
   dice: number[] | null; rolling: boolean; sel: Pick | null; canPick: Record<Pick, boolean>; onPick: (p: Pick) => void;
@@ -179,6 +180,7 @@ export function ReferenceView(p: ViewProps) {
   return <div className="lr-page" data-testid="page-ludo-reference">
     <header className="lr-header">
       <Brand />
+      {p.previewOnly && <span className="lr-preview-badge" role="note" aria-label="Design preview only. Player, balance, and match values are samples; no real account or funds are connected.">SAMPLE PREVIEW</span>}
       <button type="button" className="lr-wallet" onClick={p.walletState === 'error' ? p.onRetryWallet : p.onWallet} aria-label={p.walletState === 'error' ? 'Wallet balance unavailable. Retry' : `Open wallet. Balance ${p.walletText}`} data-testid="button-game-wallet">
         <b data-testid="text-game-balance">{p.walletState === 'loading' ? '...' : p.walletState === 'error' ? 'Retry' : p.walletText}</b><span className="lr-plus"><Plus size={16} /></span></button>
     </header>

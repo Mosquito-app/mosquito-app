@@ -12,8 +12,8 @@ const room: RoomView = {
 export default function ReferenceMatch() {
   const [sel, setSel] = useState<'d0' | 'd1' | 'both' | null>('both');
   return <ReferenceView room={room} meName="amaral" oppName="Tunde" isMyTurn isActive isWaiting={false} isDone={false}
-    matchSeconds={896} turnSeconds={21} walletText={'\u20A61,250'} walletState="ok" onWallet={() => {}} onRetryWallet={() => {}} onExit={() => {}}
-    conn="live" connLabel="Live" legalTokens={new Set([1, 2])} onMove={() => {}} selecting
+    matchSeconds={479} turnSeconds={21} walletText={'\u20A61,250'} walletState="ok" onWallet={() => {}} onRetryWallet={() => {}} onExit={() => {}}
+    previewOnly conn="preview" connLabel="Preview" legalTokens={new Set([1, 2])} onMove={() => {}} selecting
     dice={room.board.dice} rolling={false} sel={sel} canPick={{ d0: true, d1: true, both: true }} onPick={setSel} onRoll={() => {}} rollDisabled rollReady={false}
     turnText="Pick a die in the centre, then tap a glowing token." notice="" noticeBad={false} captureText="" actionError="" resultText="" />;
 }
