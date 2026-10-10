@@ -285,9 +285,13 @@ try {
   console.log("PASS atomic ₦4,000 pot → ₦3,600 prize + ₦400 commission, no double settlement and cancellation refunds once");
 
   const wdBody = { amountNaira: 500, requestId: randomUUID(), recipientName: "Sandbox Player", accountNumber: "9876543210", bankCode: "044" };
+  const [commissionBeforeWithdrawal] = await db.select().from(platformWalletTable).where(eq(platformWalletTable.id, "commission"));
   const withdrawals = await Promise.all([1, 2].map(() => request("/withdrawals", host, wdBody, 201)));
   assert.equal(withdrawals[0].data.id, withdrawals[1].data.id);
   assert.equal(withdrawals[0].data.status, "success");
+  assert.equal(transfers.get(withdrawals[0].data.reference)?.amount, 45_000);
+  const [commissionAfterWithdrawal] = await db.select().from(platformWalletTable).where(eq(platformWalletTable.id, "commission"));
+  assert.equal(commissionAfterWithdrawal.balanceKobo, commissionBeforeWithdrawal.balanceKobo + 5_000);
   assert.equal((await request("/wallet", host)).data.balanceNaira, 11100);
   await request(`/withdrawals/${withdrawals[0].data.id}/verify`, outsider, {}, 404);
   await request("/withdrawals", host, { ...wdBody, requestId: randomUUID(), amountNaira: 500000 }, 400);

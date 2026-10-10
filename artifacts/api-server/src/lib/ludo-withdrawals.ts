@@ -1,7 +1,9 @@
 import { and, eq, lt, sql } from "drizzle-orm";
-import { db, usersTable, walletTransactionsTable, withdrawalsTable } from "@workspace/db";
+import { db, platformWalletTable, usersTable, walletTransactionsTable, withdrawalsTable } from "@workspace/db";
 import { paystackTestRequest } from "./paystack-test";
 import { logger } from "./logger";
+
+export const WITHDRAWAL_SERVICE_FEE_KOBO = 5_000;
 
 type WithdrawalRow = typeof withdrawalsTable.$inferSelect;
 export function withdrawalDto(row: WithdrawalRow) {
@@ -9,7 +11,7 @@ export function withdrawalDto(row: WithdrawalRow) {
 }
 function matchesTransfer(row: WithdrawalRow, data: Record<string, unknown> | null) {
   return data?.domain === "test" && data.reference === row.reference &&
-    data.amount === row.amountKobo && data.currency === "NGN";
+    data.amount === row.amountKobo - WITHDRAWAL_SERVICE_FEE_KOBO && data.currency === "NGN";
 }
 async function finalize(row: WithdrawalRow, status: "success" | "failed", transferCode?: string) {
   await db.transaction(async tx => {
@@ -22,13 +24,21 @@ async function finalize(row: WithdrawalRow, status: "success" | "failed", transf
         userId: locked.userId, type: "withdrawal_release", amountKobo: locked.amountKobo,
         description: `Failed test withdrawal refunded — ${locked.reference.slice(-8)}`,
       });
+    } else {
+      await tx.insert(platformWalletTable).values({
+        id: "commission",
+        balanceKobo: WITHDRAWAL_SERVICE_FEE_KOBO,
+      }).onConflictDoUpdate({
+        target: platformWalletTable.id,
+        set: { balanceKobo: sql`${platformWalletTable.balanceKobo} + ${WITHDRAWAL_SERVICE_FEE_KOBO}` },
+      });
     }
     await tx.update(withdrawalsTable).set({ status, transferCode: transferCode ?? null }).where(eq(withdrawalsTable.id, row.id));
   });
 }
 export async function initiateTestTransfer(row: WithdrawalRow) {
   const result = await paystackTestRequest("/transfer", "POST", {
-    source: "balance", amount: row.amountKobo, currency: "NGN", recipient: row.recipientCode,
+    source: "balance", amount: row.amountKobo - WITHDRAWAL_SERVICE_FEE_KOBO, currency: "NGN", recipient: row.recipientCode,
     reference: row.reference, reason: "LudoRoom sandbox withdrawal — no real funds",
   });
   if (result.ok && matchesTransfer(row, result.data)) {
