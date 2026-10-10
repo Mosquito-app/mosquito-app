@@ -1,0 +1,7 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Outfit:wght@400;500;600;700;800&display=swap');
+@import './_shared/board.css';
+.baseline-board { --app-font-sans:'Outfit',sans-serif; --app-font-mono:'DM Mono',monospace; --app-font-serif:Georgia,serif; box-sizing:border-box; background:#102419; color:#f3ead2; min-height:100dvh; padding:20px; font-family:var(--app-font-sans); }
+.baseline-board *, .baseline-board *::before, .baseline-board *::after { box-sizing:border-box; }
+.baseline-board .lb-frame { max-width:520px; margin:0 auto; }
+.baseline-board h1 { font-size:20px; margin:0 0 15px; }
+.baseline-board p { font-size:12px; }

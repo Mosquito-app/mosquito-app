@@ -1,18 +1,16 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useLocation, useParams } from 'wouter';
-import { ArrowLeft, ArrowRight, BadgeCheck, Clock3, ShieldCheck } from 'lucide-react';
+import { ArrowRight, BadgeCheck, Clock3 } from 'lucide-react';
 import {
   getGetCurrentUserQueryKey, getGetLobbyQueryKey, getGetRoomQueryKey, getGetWalletQueryKey,
-  useCancelRoom, useGetCurrentUser, useGetRoom, useMoveToken, useRollDice,
+  useCancelRoom, useGetCurrentUser, useGetRoom, useGetWallet, useMoveToken, useRollDice,
 } from '@workspace/api-client-react';
 import type { Room } from '@workspace/api-client-react';
 import { queryClient } from '@/lib/query-client';
-import { AuthFrame, InlineError, LoadingBlock, Shell, money } from '@/components/common';
+import { AuthFrame, LoadingBlock, Shell, money } from '@/components/common';
 import { useRealtime } from '@/hooks/use-realtime';
-import { DiceFace, LudoBoard, cellFor, canMoveToken, destination } from '@/components/ludo-board';
-import type { Color } from '@/components/ludo-board';
-import '@/game-board.css';
-import { MatchClock } from '@/components/match-clock';
+import { cellFor, canMoveToken, destination } from '@/components/ludo-board';
+import { ReferenceView } from '@/components/ludo-reference/ReferenceView';
 
 export { cellFor, canMoveToken };
 
@@ -40,6 +38,7 @@ export default function GamePage() {
   const conn = useRealtime(!!user, roomId);
   const roomQuery = useGetRoom(roomId, { query: { queryKey: getGetRoomQueryKey(roomId), refetchInterval: 10000, enabled: !!roomId && !!user } });
   const room = roomQuery.data;
+  const wallet = useGetWallet({ query: { queryKey: getGetWalletQueryKey(), enabled: !!user, retry: false } });
   const roll = useRollDice(); const move = useMoveToken(); const cancel = useCancelRoom();
   const [actionError, setActionError] = useState('');
   const isActive = room?.status === 'active';
@@ -51,7 +50,6 @@ export default function GamePage() {
     void queryClient.invalidateQueries({ queryKey: getGetLobbyQueryKey() });
   };
   const fail = () => { setActionError('That move could not be completed. The board is refreshing.'); void queryClient.invalidateQueries({ queryKey: getGetRoomQueryKey(roomId) }); };
-  const [rollNonce, setRollNonce] = useState(0);
   type Pick = 'd0' | 'd1' | 'both';
   const [pick, setPick] = useState<Pick | null>(null);
   const remKey = room ? `${room.board.dice?.join(',')}|${room.board.remainingDice.join(',')}` : '';
@@ -63,7 +61,6 @@ export default function GamePage() {
   if (roomQuery.isError || !room) return <Shell user={user}><div className="page-content"><div className="room-error"><div className="section-overline">TABLE NOT FOUND</div><h1>This board went quiet.</h1><p>It may have closed, or the link is out of date.</p><div className="wd-actions"><button className="quiet-btn" onClick={() => void roomQuery.refetch()} data-testid="button-retry-room">Retry</button><button className="primary-btn" onClick={() => setLocation('/')} data-testid="button-back-lobby">Back to lobby <ArrowRight size={16} /></button></div></div></div></Shell>;
   const isHost = room.hostUserId === user.id;
   const opponent = isHost ? room.opponentUsername : room.hostUsername;
-  const theirColor: Color = room.myColor === 'red' ? 'green' : 'red';
   const isMyTurn = room.board.turnUserId === user.id;
   const isWaiting = room.status === 'waiting';
   const isDone = room.status === 'completed' || room.status === 'cancelled';
@@ -83,57 +80,28 @@ export default function GamePage() {
   const msg = room.board.turnMessage;
   const notice = msg === 'third_double' ? 'Third double in a row. The turn is forfeited before any movement.' : msg === 'capture_bonus' ? (isDone ? 'Capture +10. Match completed.' : room.board.hasRolled ? 'Capture +10. Remaining dice first; bonus roll next.' : 'Capture +10. Bonus roll ready.') : msg === 'double_bonus' ? 'Double rolled. Roll again after your dice are used.' : msg === 'no_moves' ? 'No legal move for that roll. Turn passed.' : msg === 'timeout' ? 'The turn clock ran out. Turn passed.' : '';
   const onMove = (index: number) => { if (!sel) return; setActionError(''); move.mutate({ roomId, data: { tokenIndex: index, diceIndices: indicesFor(sel) } }, { onSuccess: patch, onError: fail }); };
-  const optBtn = (p: Pick, label: string, faces: number[], sum?: number) => <button key={p} type="button" className={`lb-opt ${sel === p ? 'active' : ''}`} disabled={!canMove || !valid(p)} aria-pressed={sel === p} onClick={() => setPick(p)} data-testid={p === 'both' ? 'button-dice-combine' : `button-die-${p === 'd0' ? 0 : 1}`}>
-    {faces.map((v, k) => <DiceFace key={k} value={v} used={false} />)}<span>{label}{sum !== undefined && <span className="sum"> {sum}</span>}<small>{!valid(p) ? 'USED' : sel === p ? 'SELECTED' : 'AVAILABLE'}</small></span></button>;
-  const connLabel = conn === 'live' ? 'LIVE' : conn === 'connecting' ? 'CONNECTING' : 'RECONNECTING · POLLING 10s';
-  return <Shell user={user}>
-    <div className="game-page page-in">
-      <div className="game-nav"><button className="back-link" onClick={() => setLocation('/')} data-testid="button-return-lobby"><ArrowLeft size={16} /> Lobby</button><div className="match-code">ROOM <b>{room.id.slice(0, 8).toUpperCase()}</b></div><span className={`sandbox-pill conn-${conn}`} data-testid="status-connection"><span className="pulse-dot" /> {connLabel}</span></div>
-      <div className="game-title-row"><div><div className="section-overline">TWO-PLAYER MATCH · {room.status.toUpperCase()}</div><h1>Make your <em>move.</em></h1></div>
-        <div className="stake-reserved"><span><span className="pulse-dot" /> STAKE EACH</span><b>{money(room.stakeNaira)}</b><small>Sandbox funds only</small></div></div>
-      <MatchClock room={room} seconds={matchSeconds} />
-      <div className="match-layout">
-        <section className="board-column">
-          <div className="player-strip">
-            <div className={`player-chip ${isActive && isMyTurn ? 'turn-active' : ''}`}><span className={`player-avatar ${room.myColor}`}>{user.username.slice(0, 1).toUpperCase()}</span><div><b>{user.username} <small>YOU</small></b><span>{room.myColor.toUpperCase()} SEAT</span></div>{isActive && isMyTurn && <span className="turn-marker">YOUR TURN</span>}</div>
-            <div className="versus-mark">VS</div>
-            <div className={`player-chip opponent ${isActive && !isMyTurn ? 'turn-active' : ''}`}><span className={`player-avatar ${theirColor}`}>{opponent?.slice(0, 1).toUpperCase() || '·'}</span><div><b>{opponent || 'Waiting for player'}</b><span>{theirColor.toUpperCase()} SEAT</span></div>{isActive && !isMyTurn && <span className="turn-marker">THEIR TURN</span>}</div>
-          </div>
-          {isActive && seconds !== null && <div className={`turn-timer ${seconds <= 8 ? 'urgent' : ''}`} data-testid="text-turn-countdown"><span>{isMyTurn ? 'YOUR CLOCK' : 'THEIR CLOCK'}</span><b>{seconds}s</b><i style={{ transform: `scaleX(${Math.min(1, seconds / 30)})` }} /></div>}
-          <LudoBoard room={room} legalTokens={legalTokens} selecting={canMove && legalTokens.size > 0} onMove={onMove} />
-          {actionError && <InlineError>{actionError}</InlineError>}
-          <div className="game-controls">
-            <div className="lb-dice-panel" data-testid="panel-dice">
-            <p className={`lb-turn ${isMyTurn ? '' : 'wait'}`}>{isDone ? (room.board.winnerUserId === user.id ? 'You took the table.' : 'Match complete.') : isWaiting ? 'Waiting for a challenger.' : isMyTurn ? (room.board.hasRolled ? (anyLegal ? 'Pick a die, or both as a sum, then tap a glowing cap.' : 'No legal move. Waiting on the server.') : 'Your turn. Roll both dice.') : `Waiting on ${opponent || 'opponent'} to play.`}</p>
-            <div className="lb-dice-row">
-              {[0, 1].map(i => <button key={i} type="button" className={`lb-opt ${sel === (i === 0 ? 'd0' : 'd1') ? 'active' : ''}`} disabled={!canMove || !dieAvail(i)} aria-pressed={sel === (i === 0 ? 'd0' : 'd1')} onClick={() => setPick(i === 0 ? 'd0' : 'd1')} data-testid={`text-die-${i}`}><DiceFace key={`${rollNonce}-${i}`} rolling={roll.isPending} value={dice ? dice[i] : null} used={!!dice && !dieAvail(i)} selected={sel === (i === 0 ? 'd0' : 'd1')} /><span>Die {i + 1}: <b data-testid={`text-dice-value-${i}`}>{dice ? dice[i] : '-'}</b><small>{!dice ? 'NOT ROLLED' : dieAvail(i) ? 'SELECT TO MOVE' : 'USED'}</small></span></button>)}
-              {dice && <>
-                {optBtn('d0', 'Move die 1', [dice[0]])}
-                {optBtn('d1', 'Move die 2', [dice[1]])}
-                {optBtn('both', 'Both, sum', [dice[0], dice[1]], dice[0] + dice[1])}
-              </>}
-              <button className={`roll-btn ${clockAllowsPlay && isMyTurn && !room.board.hasRolled ? 'roll-ready' : ''}`} disabled={!clockAllowsPlay || !isMyTurn || room.board.hasRolled || roll.isPending} onClick={() => { setActionError(''); roll.mutate({ roomId }, { onSuccess: next => { setRollNonce(n => n + 1); patch(next); }, onError: fail }); }} data-testid="button-roll-dice">{roll.isPending ? 'Rolling...' : 'Roll dice'} <ArrowRight size={16} /></button>
-            </div>
-            {isActive && <div className="lb-doubles" data-testid="text-doubles">DOUBLES IN A ROW <b className={room.board.consecutiveDoubles > 0 ? 'on' : ''} /><b className={room.board.consecutiveDoubles > 1 ? 'on' : ''} /> {room.board.consecutiveDoubles}/2</div>}
-            {room.board.captureBonusPending && msg !== 'capture_bonus' && <div className="lb-notice" role="status" data-testid="text-capture-bonus">Capture +10 earned. Bonus roll coming after your dice.</div>}
-            {notice && <div className={`lb-notice ${msg === 'third_double' || msg === 'timeout' ? 'bad' : ''}`} role="status" data-testid="text-turn-notice">{notice}</div>}
-            <p className="lb-help"><b>Rules.</b> Pick die 1 or die 2 to move one token, or move both as a sum. Leave home only on a 6-6 or 6-1 roll. A single 6 enters the token and keeps the other die; combine both to enter and advance. Split dice between two tokens by choosing one die at a time. A double gives a bonus roll once both dice are used; a third double in a row forfeits the turn.</p>
-            </div>
-          </div>
-          {isWaiting && isHost && <div className="waiting-controls"><div><span className="pulse-dot" /> ROOM OPEN · SHARE THE STAKE WITH A FRIEND</div><button className="quiet-btn" disabled={cancel.isPending} onClick={() => cancel.mutate({ roomId }, { onSuccess: next => { patch(next); setLocation('/'); }, onError: () => setActionError('Could not cancel this room. Try again.') })} data-testid="button-cancel-room">{cancel.isPending ? 'Closing table…' : 'Cancel table'}</button></div>}
-          {isWaiting && !isHost && <div className="waiting-banner"><Clock3 size={17} /> Waiting for the match to start.</div>}
-          {isDone && <div className="completed-banner"><BadgeCheck size={18} /> Match closed. Settlement shows in your Mosquito Wallet.</div>}
-        </section>
-        <aside className="match-sidebar">
-          <div className="sidebar-card match-status-card"><div className="section-overline">PRIZE SPLIT</div><h3>{isWaiting ? 'Seat open.' : isDone ? 'Match finished.' : 'In play.'}</h3>
-            <div className="status-line"><span>Stake each</span><b>{money(room.stakeNaira)}</b></div>
-            <div className="status-line"><span>Pot</span><b data-testid="text-pot">{money(room.potNaira)}</b></div>
-            <div className="status-line"><span>Winner prize (90%)</span><b data-testid="text-prize">{money(room.prizeNaira)}</b></div>
-            <div className="status-line"><span>Commission (10%)</span><b data-testid="text-commission">{money(room.commissionNaira)}</b></div>
-            <div className="status-foot"><ShieldCheck size={14} /> TEST BALANCES ONLY</div></div>
-          <div className="sidebar-card how-card"><div className="section-overline">RULES</div><h3>Play it smart.</h3><ol><li><span>01</span>A 6-6 or 6-1 brings a token out.</li><li><span>02</span>Finish needs an exact count to 57.</li><li><span>03</span>Miss the 30 second clock and the server moves on.</li></ol></div>
-        </aside>
-      </div>
-    </div>
-  </Shell>;
+  const connLabel = conn === 'live' ? 'Live' : conn === 'connecting' ? 'Connecting' : 'Reconnecting, polling 10s';
+  const canPick = { d0: canMove && valid('d0'), d1: canMove && valid('d1'), both: canMove && valid('both') };
+  const turnText = isDone ? (room.board.winnerUserId === user.id ? 'You took the table.' : 'Match complete.') : isWaiting ? 'Waiting for a challenger.' : isMyTurn ? (room.board.hasRolled ? (anyLegal ? 'Pick a die in the centre, then tap a glowing token.' : 'No legal move. Waiting on the server.') : 'Your turn. Roll both dice.') : `Waiting on ${opponent || 'opponent'} to play.`;
+  const captureText = room.board.captureBonusPending && msg !== 'capture_bonus' ? 'Capture +10 earned. Bonus roll coming after your dice.' : '';
+  const winnerName = room.board.winnerUserId === room.hostUserId ? room.hostUsername : room.opponentUsername;
+  const resultText = room.status === 'completed' ? `Winner: ${winnerName}` : '';
+  const walletState = wallet.isLoading ? 'loading' : wallet.isError || !wallet.data ? 'error' : 'ok';
+  const extra = <>
+    {isWaiting && isHost && <div className="waiting-controls"><div><span className="pulse-dot" /> ROOM OPEN · SHARE THE STAKE WITH A FRIEND</div><button className="quiet-btn" disabled={cancel.isPending} onClick={() => cancel.mutate({ roomId }, { onSuccess: next => { patch(next); setLocation('/'); }, onError: () => setActionError('Could not cancel this room. Try again.') })} data-testid="button-cancel-room">{cancel.isPending ? 'Closing table…' : 'Cancel table'}</button></div>}
+    {isWaiting && !isHost && <div className="waiting-banner"><Clock3 size={17} /> Waiting for the match to start.</div>}
+    {isDone && <div className="completed-banner"><BadgeCheck size={18} /> Match closed. Settlement shows in your Mosquito Wallet.</div>}
+  </>;
+  return <ReferenceView
+    room={room} meName={user.username} oppName={opponent || ''} isMyTurn={isMyTurn} isActive={!!isActive} isWaiting={isWaiting} isDone={isDone}
+    matchSeconds={matchSeconds} turnSeconds={seconds}
+    walletText={money(wallet.data?.balanceNaira ?? 0)} walletState={walletState} onWallet={() => setLocation('/')} onRetryWallet={() => void wallet.refetch()} onExit={() => setLocation('/')}
+    conn={conn} connLabel={connLabel}
+    legalTokens={legalTokens} onMove={onMove} selecting={canMove && legalTokens.size > 0}
+    dice={dice} rolling={roll.isPending} sel={sel} canPick={canPick} onPick={setPick}
+    onRoll={() => { setActionError(''); roll.mutate({ roomId }, { onSuccess: next => { patch(next); }, onError: fail }); }}
+    rollDisabled={!clockAllowsPlay || !isMyTurn || room.board.hasRolled || roll.isPending}
+    rollReady={clockAllowsPlay && isMyTurn && !room.board.hasRolled}
+    turnText={turnText} notice={notice} noticeBad={msg === 'third_double' || msg === 'timeout'} captureText={captureText} actionError={actionError} resultText={resultText} extra={extra}
+  />;
 }
