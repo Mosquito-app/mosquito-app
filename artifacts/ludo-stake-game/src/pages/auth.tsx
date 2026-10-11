@@ -12,7 +12,20 @@ function registrationErrorMessage(error: unknown): string {
   if (error && typeof error === 'object' && 'data' in error) {
     const data = error.data;
     if (data && typeof data === 'object' && 'error' in data && typeof data.error === 'string') {
-      return data.error;
+      switch (data.error) {
+        case 'Email already registered':
+          return 'This email is already registered. Please click Sign In instead.';
+        case 'Username already registered':
+          return 'That player name is already taken. Choose another.';
+        case 'Password must be at least 4 characters long.':
+          return 'Password must be at least 4 characters long.';
+        case 'Enter a valid email address.':
+          return 'Enter a valid email address.';
+        case 'Enter a valid username.':
+          return 'Enter a valid player name.';
+        default:
+          return data.error;
+      }
     }
   }
   return 'Could not create that account. Please try again.';
