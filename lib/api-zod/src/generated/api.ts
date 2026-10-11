@@ -476,7 +476,7 @@ export const registerBodyUsernameMax = 24;
 
 export const registerBodyEmailMax = 254;
 
-export const registerBodyPasswordMin = 4;
+export const registerBodyPasswordMin = 8;
 export const registerBodyPasswordMax = 72;
 
 
@@ -484,7 +484,7 @@ export const registerBodyPasswordMax = 72;
 export const RegisterBody = zod.object({
   "username": zod.string().min(registerBodyUsernameMin).max(registerBodyUsernameMax),
   "email": zod.string().email().max(registerBodyEmailMax),
-  "password": zod.string().min(registerBodyPasswordMin, "Password must be at least 4 characters long").max(registerBodyPasswordMax)
+  "password": zod.string().min(registerBodyPasswordMin).max(registerBodyPasswordMax)
 })
 
 export const registerResponseUserBalanceNairaMin = 0;
@@ -565,7 +565,8 @@ export const GetWalletResponse = zod.object({
   "reference": zod.string(),
   "amountNaira": zod.number().int(),
   "status": zod.enum(['pending', 'success', 'failed']),
-  "createdAt": zod.coerce.date()
+  "createdAt": zod.coerce.date(),
+  "simulated": zod.boolean().describe('True when recipient resolution failed and the test payout was settled locally without a bank transfer.')
 })),
   "transactions": zod.array(zod.object({
   "id": zod.string(),
@@ -616,7 +617,7 @@ export const VerifyDepositResponse = zod.object({
 
 
 /**
- * @summary Reserve sandbox funds and initiate a Paystack test bank transfer
+ * @summary Reserve sandbox funds and use a Paystack test or local simulated transfer
  */
 export const createWithdrawalBodyAmountNairaMin = 500;
 export const createWithdrawalBodyAmountNairaMax = 500000;
@@ -641,7 +642,8 @@ export const CreateWithdrawalResponse = zod.object({
   "reference": zod.string(),
   "amountNaira": zod.number().int(),
   "status": zod.enum(['pending', 'success', 'failed']),
-  "createdAt": zod.coerce.date()
+  "createdAt": zod.coerce.date(),
+  "simulated": zod.boolean().describe('True when recipient resolution failed and the test payout was settled locally without a bank transfer.')
 })
 
 
@@ -657,7 +659,8 @@ export const VerifyWithdrawalResponse = zod.object({
   "reference": zod.string(),
   "amountNaira": zod.number().int(),
   "status": zod.enum(['pending', 'success', 'failed']),
-  "createdAt": zod.coerce.date()
+  "createdAt": zod.coerce.date(),
+  "simulated": zod.boolean().describe('True when recipient resolution failed and the test payout was settled locally without a bank transfer.')
 })
 
 

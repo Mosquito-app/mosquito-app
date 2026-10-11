@@ -19,6 +19,7 @@ const deposits = new Map<string, { amount: number; status: string; domain: strin
 const transfers = new Map<string, Record<string, unknown>>();
 let transferStatus = "success";
 let recipientAccepted = true;
+let recipientNetworkUnavailable = false;
 globalThis.fetch = async (input, init) => {
   const url = new URL(String(input));
   if (url.origin !== "https://api.paystack.co") return nativeFetch(input, init);
@@ -32,6 +33,9 @@ globalThis.fetch = async (input, init) => {
     const ref = url.pathname.split("/").at(-1)!;
     const item = deposits.get(ref);
     return item ? reply({ ...item, reference: ref, currency: "NGN" }) : reply(null, 404);
+  }
+  if (url.pathname === "/transferrecipient" && recipientNetworkUnavailable) {
+    throw new Error("Simulated Paystack test API timeout");
   }
   if (url.pathname === "/transferrecipient") return recipientAccepted
     ? reply({ domain: "test", recipient_code: "RCP_test_fixture" })
@@ -197,11 +201,45 @@ try {
     bankCode: "011",
   }, 503);
   if (configuredTestKey) process.env.PAYSTACK_TEST_SECRET_KEY = configuredTestKey;
+  const mockWithdrawalUser = await register("mockwithdrawal");
+  await credit(mockWithdrawalUser, 1000);
+  const [commissionBeforeSimulation] = await db.select().from(platformWalletTable)
+    .where(eq(platformWalletTable.id, "commission"));
+  const commissionBalanceBeforeSimulation = commissionBeforeSimulation?.balanceKobo ?? 0;
+  const simulatedBody = {
+    amountNaira: 500,
+    requestId: randomUUID(),
+    recipientName: "Sandbox Player",
+    accountNumber: "0000000000",
+    bankCode: "011",
+  };
   recipientAccepted = false;
-  await request("/withdrawals", host, { amountNaira: 500, requestId: randomUUID(), recipientName: "Sandbox Player", accountNumber: "0000000000", bankCode: "011" }, 400);
+  const simulatedInvalidRecipient = await request("/withdrawals", mockWithdrawalUser, simulatedBody, 201);
+  assert.equal(simulatedInvalidRecipient.data.status, "success");
+  assert.equal(simulatedInvalidRecipient.data.simulated, true);
+  assert.equal(simulatedInvalidRecipient.data.reference.startsWith("wd_"), true);
+  assert.equal(transfers.has(simulatedInvalidRecipient.data.reference), false);
+  const mockWalletAfterFirstSimulation = await request("/wallet", mockWithdrawalUser);
+  assert.equal(mockWalletAfterFirstSimulation.data.balanceNaira, 500);
+  assert.equal(mockWalletAfterFirstSimulation.data.withdrawals[0].simulated, true);
+  const simulatedRepeat = await request("/withdrawals", mockWithdrawalUser, simulatedBody, 201);
+  assert.equal(simulatedRepeat.data.id, simulatedInvalidRecipient.data.id);
+  recipientNetworkUnavailable = true;
+  const simulatedNetworkFailure = await request("/withdrawals", mockWithdrawalUser, {
+    ...simulatedBody,
+    requestId: randomUUID(),
+  }, 201);
+  assert.equal(simulatedNetworkFailure.data.status, "success");
+  assert.equal(simulatedNetworkFailure.data.simulated, true);
+  assert.equal((await request("/wallet", mockWithdrawalUser)).data.balanceNaira, 0);
+  recipientNetworkUnavailable = false;
+  recipientAccepted = true;
+  const [commissionAfterSimulation] = await db.select().from(platformWalletTable)
+    .where(eq(platformWalletTable.id, "commission"));
+  assert.equal(commissionAfterSimulation.balanceKobo, commissionBalanceBeforeSimulation + 10_000);
   assert.equal((await request("/wallet", host)).data.balanceNaira, 10000);
   recipientAccepted = true;
-  console.log("PASS deposit pending/success, concurrent credit-once, ownership, test-domain enforcement");
+  console.log("PASS test-mode withdrawal simulation on unresolved recipient/network failure, ₦50 fee and idempotency");
 
   const waiting = (await request("/rooms", host, { stakeNaira: 2000 }, 201)).data;
   assert.equal(waiting.status, "waiting");
@@ -324,7 +362,7 @@ try {
   assert.equal(winner.board.greenTokens[0], -1);
   assert.equal((await request("/wallet", host)).data.balanceNaira, 11600);
   const [commission] = await db.select().from(platformWalletTable);
-  assert.equal(commission.balanceKobo, 40000);
+  assert.equal(commission.balanceKobo, commissionBalanceBeforeSimulation + 50_000);
   assert.equal((await db.select().from(commissionLedgerTable)).length, 1);
   await request(`/rooms/${roomId}/move`, host, { tokenIndex: 3, diceIndices: [0] }, 400);
   assert.equal((await request("/wallet", host)).data.balanceNaira, 11600);
@@ -359,7 +397,7 @@ try {
   assert.equal(failed.status, "failed");
   await request(`/withdrawals/${failed.id}/verify`, host, {});
   assert.equal((await request("/wallet", host)).data.balanceNaira, 10600);
-  assert.equal((await db.select().from(withdrawalsTable)).length, 3);
+  assert.equal((await db.select().from(withdrawalsTable)).length, 5);
   process.env.PAYSTACK_TEST_SECRET_KEY = "sk_live_fixture_rejected";
   await request("/deposits/initialize", host, { amountNaira: 500 }, 503);
   await request("/withdrawals", host, { ...wdBody, requestId: randomUUID() }, 503);

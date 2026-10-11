@@ -13,4 +13,6 @@ export interface Withdrawal {
   amountNaira: number;
   status: WithdrawalStatus;
   createdAt: Date;
+  /** True when recipient resolution failed and the test payout was settled locally without a bank transfer. */
+  simulated: boolean;
 }

@@ -6,6 +6,7 @@ import { db, usersTable, walletTransactionsTable, withdrawalsTable } from "@work
 import { getAuthenticatedUser } from "../lib/ludo-auth";
 import { PaystackTestError, paystackTestRequest } from "../lib/paystack-test";
 import {
+  MOCK_TEST_RECIPIENT_CODE,
   initiateTestTransfer,
   reconcileWithdrawal,
   WITHDRAWAL_SERVICE_FEE_KOBO,
@@ -70,20 +71,24 @@ router.post("/withdrawals", async (req, res): Promise<void> => {
     });
     const code = recipient.data?.recipient_code;
     if (!recipient.ok || typeof code !== "string" || !code.trim()) {
-      req.log.warn({ statusCode: recipient.statusCode, reason: recipient.failureReason }, "Paystack test recipient could not be confirmed");
-      const status = recipient.statusCode >= 400 && recipient.statusCode < 500 ? 400 : 502;
-      res.status(status).json({ error: "Paystack could not confirm the test withdrawal recipient." });
-      return;
+      req.log.warn(
+        { statusCode: recipient.statusCode, reason: recipient.failureReason },
+        "Paystack test recipient unavailable; using local simulated withdrawal",
+      );
+      recipientCode = MOCK_TEST_RECIPIENT_CODE;
+    } else {
+      recipientCode = code;
     }
-    recipientCode = code;
   } catch (error) {
     if (error instanceof PaystackTestError) {
       res.status(error.status).json({ error: error.message });
       return;
     }
-    req.log.warn("Paystack test recipient service is temporarily unavailable");
-    res.status(502).json({ error: "Paystack could not confirm the test withdrawal recipient." });
-    return;
+    req.log.warn(
+      { errorType: error instanceof Error ? error.name : "unknown" },
+      "Paystack test recipient request failed; using local simulated withdrawal",
+    );
+    recipientCode = MOCK_TEST_RECIPIENT_CODE;
   }
 
   const reference = `wd_${randomBytes(18).toString("hex")}`;

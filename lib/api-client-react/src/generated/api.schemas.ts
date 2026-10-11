@@ -409,6 +409,8 @@ export interface Withdrawal {
   amountNaira: number;
   status: WithdrawalStatus;
   createdAt: string;
+  /** True when recipient resolution failed and the test payout was settled locally without a bank transfer. */
+  simulated: boolean;
 }
 
 export interface WalletResponse {

@@ -19,6 +19,7 @@ import {
   withdrawalsTable,
 } from "@workspace/db";
 import { getAuthenticatedUser } from "../lib/ludo-auth";
+import { withdrawalDto } from "../lib/ludo-withdrawals";
 
 const router: IRouter = Router();
 const PAYSTACK_BASE_URL = "https://api.paystack.co";
@@ -104,9 +105,7 @@ router.get("/wallet", async (req, res): Promise<void> => {
     totalBalanceNaira: (balanceKobo + escrowedKobo + withdrawalHeldKobo) / 100,
     escrowedNaira: Math.floor(escrowedKobo / 100),
     withdrawalHeldNaira: withdrawalHeldKobo / 100,
-    withdrawals: withdrawalRows.slice(0, 20).map(row => ({
-      id: row.id, reference: row.reference, amountNaira: row.amountKobo / 100, status: row.status, createdAt: row.createdAt,
-    })),
+    withdrawals: withdrawalRows.slice(0, 20).map(withdrawalDto),
     transactions: transactionRows.map((transaction) => ({
       id: transaction.id,
       type: transaction.type,

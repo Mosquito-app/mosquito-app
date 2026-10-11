@@ -4,15 +4,30 @@ import { paystackTestRequest } from "./paystack-test";
 import { logger } from "./logger";
 
 export const WITHDRAWAL_SERVICE_FEE_KOBO = 5_000;
+export const MOCK_TEST_RECIPIENT_CODE = "RCP_test_mock123";
+const SIMULATED_TEST_TRANSFER_PREFIX = "SIMULATED_TEST:";
 
 type WithdrawalRow = typeof withdrawalsTable.$inferSelect;
-export function withdrawalDto(row: WithdrawalRow) {
-  return { id: row.id, reference: row.reference, amountNaira: row.amountKobo / 100, status: row.status, createdAt: row.createdAt };
+export function isSimulatedWithdrawal(row: WithdrawalRow) {
+  return row.transferCode?.startsWith(SIMULATED_TEST_TRANSFER_PREFIX) ?? false;
 }
+
+export function withdrawalDto(row: WithdrawalRow) {
+  return {
+    id: row.id,
+    reference: row.reference,
+    amountNaira: row.amountKobo / 100,
+    status: row.status,
+    createdAt: row.createdAt,
+    simulated: isSimulatedWithdrawal(row),
+  };
+}
+
 function matchesTransfer(row: WithdrawalRow, data: Record<string, unknown> | null) {
   return data?.domain === "test" && data.reference === row.reference &&
     data.amount === row.amountKobo - WITHDRAWAL_SERVICE_FEE_KOBO && data.currency === "NGN";
 }
+
 async function finalize(row: WithdrawalRow, status: "success" | "failed", transferCode?: string) {
   await db.transaction(async tx => {
     const [locked] = await tx.select().from(withdrawalsTable).where(eq(withdrawalsTable.id, row.id)).for("update").limit(1);
@@ -36,7 +51,24 @@ async function finalize(row: WithdrawalRow, status: "success" | "failed", transf
     await tx.update(withdrawalsTable).set({ status, transferCode: transferCode ?? null }).where(eq(withdrawalsTable.id, row.id));
   });
 }
+
+export async function completeSimulatedTestTransfer(row: WithdrawalRow) {
+  if (row.recipientCode !== MOCK_TEST_RECIPIENT_CODE) {
+    throw new Error("Only mock-recipient withdrawals may use local test settlement.");
+  }
+  await finalize(
+    row,
+    "success",
+    `${SIMULATED_TEST_TRANSFER_PREFIX}${row.reference}`,
+  );
+}
+
 export async function initiateTestTransfer(row: WithdrawalRow) {
+  if (row.recipientCode === MOCK_TEST_RECIPIENT_CODE) {
+    await completeSimulatedTestTransfer(row);
+    return;
+  }
+
   const result = await paystackTestRequest("/transfer", "POST", {
     source: "balance", amount: row.amountKobo - WITHDRAWAL_SERVICE_FEE_KOBO, currency: "NGN", recipient: row.recipientCode,
     reference: row.reference, reason: "LudoRoom sandbox withdrawal — no real funds",
@@ -59,6 +91,11 @@ export async function initiateTestTransfer(row: WithdrawalRow) {
 }
 export async function reconcileWithdrawal(row: WithdrawalRow) {
   if (row.status !== "pending") return;
+  if (row.recipientCode === MOCK_TEST_RECIPIENT_CODE) {
+    await completeSimulatedTestTransfer(row);
+    return;
+  }
+
   const result = await paystackTestRequest(`/transfer/verify/${encodeURIComponent(row.reference)}`);
   if (result.ok && matchesTransfer(row, result.data)) {
     if (result.data?.status === "success") await finalize(row, "success");

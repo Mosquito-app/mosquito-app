@@ -1275,7 +1275,7 @@ export const getCreateWithdrawalUrl = () => {
 }
 
 /**
- * @summary Reserve sandbox funds and initiate a Paystack test bank transfer
+ * @summary Reserve sandbox funds and use a Paystack test or local simulated transfer
  */
 export const createWithdrawal = async (withdrawalInput: WithdrawalInput, options?: Parameters<typeof customFetch>[1]): Promise<Withdrawal> => {
 
@@ -1341,7 +1341,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type CreateWithdrawalMutationVariables = {data: BodyType<WithdrawalInput>}
 
     /**
- * @summary Reserve sandbox funds and initiate a Paystack test bank transfer
+ * @summary Reserve sandbox funds and use a Paystack test or local simulated transfer
  */
 export const useCreateWithdrawal = <TError = ErrorType<void>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createWithdrawal>>, TError,CreateWithdrawalMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}

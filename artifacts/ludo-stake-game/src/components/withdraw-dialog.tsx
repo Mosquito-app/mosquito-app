@@ -52,12 +52,14 @@ export function WithdrawDialog({ available, onClose }: { available: number; onCl
   return <div className="modal-back" role="dialog" aria-modal="true" aria-label="Mosquito Wallet test withdrawal" data-testid="dialog-withdraw">
     <div className="modal-card">
       <div className="modal-head"><div><div className="panel-kicker">MOSQUITO WALLET · SANDBOX ONLY</div><h2>Withdraw test funds</h2></div><button className="icon-btn" onClick={onClose} aria-label="Close" data-testid="button-close-withdraw"><X size={16} /></button></div>
-      <p className="modal-note">Paystack still needs bank details it can resolve, even in test mode. Transfers are simulated: no real bank money moves. Available: <b>{money(available)}</b></p>
+      <p className="modal-note">Paystack test mode is tried first. If it cannot resolve the recipient, the payout is completed as a local simulation. A ₦50 service fee is deducted; no real bank money moves. Available: <b>{money(available)}</b></p>
       {result ? <div className="wd-result" data-testid="status-withdraw-result">
         <small>Mosquito Wallet · Test withdrawal receipt</small>
         <StatusPill status={result.status} />
-        <b>{money(result.amountNaira)}</b><small>Ref {result.reference}</small>
-        <p>{result.status === 'pending' ? 'Transfer is pending. Verify to reconcile it; you will not be debited twice.' : result.status === 'success' ? 'Test transfer succeeded. Sandbox balance only.' : 'Test transfer failed. Held funds are released back to your balance.'}</p>
+         <b>{money(result.status === 'success' ? result.amountNaira - 50 : result.amountNaira)}</b>
+         <small>{result.status === 'success' ? `Net test payout after ₦50 fee · requested ${money(result.amountNaira)}` : `Requested amount · Ref ${result.reference}`}</small>
+         {result.status === 'success' && <small>Ref {result.reference}</small>}
+         <p>{result.status === 'pending' ? 'Transfer is pending. Verify to reconcile it; you will not be debited twice.' : result.status === 'success' && result.simulated ? 'Paystack could not resolve this test recipient, so this was settled locally. No bank transfer was sent.' : result.status === 'success' ? 'Paystack test transfer succeeded. Sandbox balance only; no real money moved.' : 'Test transfer failed. Held funds are released back to your balance.'}</p>
         <div className="wd-actions">{result.status === 'pending' && <VerifyButton id={result.id} />}<button className="dark-btn" onClick={onClose} data-testid="button-done-withdraw">Done</button></div>
       </div> : <form className="auth-form" onSubmit={submit}>
         <label>Amount (₦)<input type="number" min="500" max="500000" value={amount} onChange={e => setAmount(e.target.value)} data-testid="input-withdraw-amount" /></label>
@@ -65,7 +67,8 @@ export function WithdrawDialog({ available, onClose }: { available: number; onCl
         <div className="two-col"><label>Account number<input inputMode="numeric" maxLength={10} value={account} onChange={e => setAccount(e.target.value.replace(/\D/g, ''))} data-testid="input-withdraw-account" /></label>
           <label>Bank code<input inputMode="numeric" maxLength={6} value={bank} onChange={e => setBank(e.target.value.replace(/\D/g, ''))} data-testid="input-withdraw-bank" /></label></div>
         {error && <InlineError>{error}</InlineError>}
-        <button className="primary-btn full" type="submit" disabled={create.isPending} data-testid="button-submit-withdraw">{create.isPending ? 'Sending test transfer…' : 'Submit test withdrawal'} <ArrowRight size={17} /></button>
+         <small>₦50 fee · estimated test payout {money(Math.max(0, (Number(amount) || 0) - 50))}</small>
+         <button className="primary-btn full" type="submit" disabled={create.isPending} data-testid="button-submit-withdraw">{create.isPending ? 'Processing test withdrawal…' : 'Submit test withdrawal'} <ArrowRight size={17} /></button>
       </form>}
     </div>
   </div>;

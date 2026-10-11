@@ -294,7 +294,7 @@ paths:
     post:
       operationId: createWithdrawal
       tags: [wallet]
-      summary: Reserve sandbox funds and initiate a Paystack test bank transfer
+      summary: Reserve sandbox funds and use a Paystack test or local simulated transfer
       requestBody:
         required: true
         content:
@@ -303,17 +303,19 @@ paths:
               $ref: "#/components/schemas/WithdrawalInput"
       responses:
         "201":
-          description: Test withdrawal initiated
+          description: Test withdrawal initiated or locally simulated
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/Withdrawal"
         "400":
-          description: Invalid test destination or insufficient available balance
+          description: Invalid amount or insufficient available balance
         "401":
           description: Not signed in
         "502":
           description: Paystack test transfer unavailable
+        "503":
+          description: Paystack test mode is not configured
   /withdrawals/{withdrawalId}/verify:
     post:
       operationId: verifyWithdrawal
@@ -810,7 +812,7 @@ components:
           pattern: "^[0-9]{3,6}$"
     Withdrawal:
       type: object
-      required: [id, reference, amountNaira, status, createdAt]
+      required: [id, reference, amountNaira, status, createdAt, simulated]
       properties:
         id:
           type: string
@@ -824,6 +826,9 @@ components:
         createdAt:
           type: string
           format: date-time
+        simulated:
+          type: boolean
+          description: True when recipient resolution failed and the test payout was settled locally without a bank transfer.
     LobbyRoom:
       type: object
       required: [id, stakeNaira, hostUsername, createdAt]
