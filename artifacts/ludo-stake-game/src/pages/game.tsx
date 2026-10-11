@@ -60,11 +60,17 @@ export default function GamePage() {
   if (roomQuery.isLoading) return <Shell user={user}><div className="page-content"><LoadingBlock label="Setting the board" /></div></Shell>;
   if (roomQuery.isError || !room) return <Shell user={user}><div className="page-content"><div className="room-error"><div className="section-overline">TABLE NOT FOUND</div><h1>This board went quiet.</h1><p>It may have closed, or the link is out of date.</p><div className="wd-actions"><button className="quiet-btn" onClick={() => void roomQuery.refetch()} data-testid="button-retry-room">Retry</button><button className="primary-btn" onClick={() => setLocation('/')} data-testid="button-back-lobby">Back to lobby <ArrowRight size={16} /></button></div></div></div></Shell>;
   const isHost = room.hostUserId === user.id;
-  const opponent = isHost ? room.opponentUsername : room.hostUsername;
+  const opponents = room.players.filter(player => player.userId !== user.id).map(player => player.username);
+  const opponent = opponents.join(', ');
   const isMyTurn = room.board.turnUserId === user.id;
   const isWaiting = room.status === 'waiting';
   const isDone = room.status === 'completed' || room.status === 'cancelled';
-  const mine = room.myColor === 'red' ? room.board.redTokens : room.board.greenTokens;
+  const mine = {
+    red: room.board.redTokens,
+    green: room.board.greenTokens,
+    yellow: room.board.yellowTokens,
+    blue: room.board.blueTokens,
+  }[room.myColor];
   const dice = room.board.dice;
   const clockAllowsPlay = !!isActive && (room.board.isOvertime || matchSeconds !== 0) && seconds !== 0;
   const canMove = clockAllowsPlay && !move.isPending && isMyTurn && room.board.hasRolled && !!dice && remaining.length > 0;
@@ -82,14 +88,15 @@ export default function GamePage() {
   const onMove = (index: number) => { if (!sel) return; setActionError(''); move.mutate({ roomId, data: { tokenIndex: index, diceIndices: indicesFor(sel) } }, { onSuccess: patch, onError: fail }); };
   const connLabel = conn === 'live' ? 'Live' : conn === 'connecting' ? 'Connecting' : 'Reconnecting, polling 10s';
   const canPick = { d0: canMove && valid('d0'), d1: canMove && valid('d1'), both: canMove && valid('both') };
-  const turnText = isDone ? (room.board.winnerUserId === user.id ? 'You took the table.' : 'Match complete.') : isWaiting ? 'Waiting for a challenger.' : isMyTurn ? (room.board.hasRolled ? (anyLegal ? 'Pick a die in the centre, then tap a glowing token.' : 'No legal move. Waiting on the server.') : 'Your turn. Roll both dice.') : `Waiting on ${opponent || 'opponent'} to play.`;
+  const turnText = isDone ? (room.board.winnerUserId === user.id ? 'You took the table.' : 'Match complete.') : isWaiting ? 'Waiting for a second player.' : isMyTurn ? (room.board.hasRolled ? (anyLegal ? 'Pick a die in the centre, then tap a glowing token.' : 'No legal move. Waiting on the server.') : 'Your turn. Roll both dice.') : `Waiting on ${opponent || 'opponent'} to play.`;
   const captureText = room.board.captureBonusPending && msg !== 'capture_bonus' ? 'Capture +10 earned. Bonus roll coming after your dice.' : '';
-  const winnerName = room.board.winnerUserId === room.hostUserId ? room.hostUsername : room.opponentUsername;
+  const winnerName = room.players.find(player => player.userId === room.board.winnerUserId)?.username ?? '—';
   const resultText = room.status === 'completed' ? `Winner: ${winnerName}` : '';
   const walletState = wallet.isLoading ? 'loading' : wallet.isError || !wallet.data ? 'error' : 'ok';
   const extra = <>
-    {isWaiting && isHost && <div className="waiting-controls"><div><span className="pulse-dot" /> ROOM OPEN · SHARE THE STAKE WITH A FRIEND</div><button className="quiet-btn" disabled={cancel.isPending} onClick={() => cancel.mutate({ roomId }, { onSuccess: next => { patch(next); setLocation('/'); }, onError: () => setActionError('Could not cancel this room. Try again.') })} data-testid="button-cancel-room">{cancel.isPending ? 'Closing table…' : 'Cancel table'}</button></div>}
+    {isWaiting && isHost && <div className="waiting-controls"><div><span className="pulse-dot" /> ROOM OPEN · WAITING FOR A SECOND PLAYER</div><button className="quiet-btn" disabled={cancel.isPending} onClick={() => cancel.mutate({ roomId }, { onSuccess: next => { patch(next); setLocation('/'); }, onError: () => setActionError('Could not cancel this room. Try again.') })} data-testid="button-cancel-room">{cancel.isPending ? 'Closing table…' : 'Cancel table'}</button></div>}
     {isWaiting && !isHost && <div className="waiting-banner"><Clock3 size={17} /> Waiting for the match to start.</div>}
+    {isActive && room.board.joinWindowOpen && <div className="waiting-banner" role="status" data-testid="banner-join-window"><Clock3 size={17} /> Room is live with {room.playerCount} players. {room.maxPlayers - room.playerCount} seat(s) can still join before the first roll.</div>}
     {isDone && <div className="completed-banner"><BadgeCheck size={18} /> Match closed. Settlement shows in your Mosquito Wallet.</div>}
   </>;
   return <ReferenceView

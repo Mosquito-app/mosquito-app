@@ -6,11 +6,11 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { LobbyRoom } from './lobbyRoom';
-import type { StakeCount } from './stakeCount';
+import type { RoomTier } from './roomTier';
 
 export interface LobbyResponse {
   /** @nullable */
   myRoomId: string | null;
   rooms: LobbyRoom[];
-  stakeCounts: StakeCount[];
+  tiers: RoomTier[];
 }

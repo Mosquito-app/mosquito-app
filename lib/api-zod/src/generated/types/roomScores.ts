@@ -10,4 +10,6 @@ import type { PlayerRank } from './playerRank';
 export type RoomScores = {
   red: PlayerRank;
   green: PlayerRank;
+  yellow: PlayerRank;
+  blue: PlayerRank;
 };

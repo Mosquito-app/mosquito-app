@@ -831,30 +831,81 @@ components:
           description: True when recipient resolution failed and the test payout was settled locally without a bank transfer.
     LobbyRoom:
       type: object
-      required: [id, stakeNaira, hostUsername, createdAt]
+      required: [id, tierId, tierName, stakeNaira, potNaira, maxPotNaira, playerCount, maxPlayers, status, joinWindowOpen, players, createdAt]
       properties:
         id:
           type: string
+          format: uuid
+        tierId:
+          type: string
+          enum: [oga-chairman, big-doings, senior-man, sharp-guy, quick-clash, street-king, board-master, area-hustler, practice-ground]
+        tierName:
+          type: string
         stakeNaira:
           type: integer
-          enum: [500, 1000, 2000]
-        hostUsername:
+          minimum: 0
+        potNaira:
+          type: integer
+        maxPotNaira:
+          type: integer
+        playerCount:
+          type: integer
+          minimum: 1
+          maximum: 4
+        maxPlayers:
+          type: integer
+          enum: [2, 4]
+        status:
           type: string
+          enum: [waiting, active]
+        joinWindowOpen:
+          type: boolean
+        players:
+          type: array
+          items:
+            $ref: "#/components/schemas/RoomPlayer"
         createdAt:
           type: string
           format: date-time
-    StakeCount:
+    RoomTier:
       type: object
-      required: [stakeNaira, waitingPlayers]
+      required: [id, name, stakeNaira, minPlayers, maxPlayers, minPotNaira, maxPotNaira, openRoomCount]
       properties:
+        id:
+          type: string
+          enum: [oga-chairman, big-doings, senior-man, sharp-guy, quick-clash, street-king, board-master, area-hustler, practice-ground]
+        name:
+          type: string
         stakeNaira:
           type: integer
-          enum: [500, 1000, 2000]
-        waitingPlayers:
+          minimum: 0
+        minPlayers:
           type: integer
+          enum: [2]
+        maxPlayers:
+          type: integer
+          enum: [2, 4]
+        minPotNaira:
+          type: integer
+        maxPotNaira:
+          type: integer
+        openRoomCount:
+          type: integer
+    RoomPlayer:
+      type: object
+      required: [userId, username, color]
+      properties:
+        userId:
+          type: string
+          format: uuid
+        username:
+          type: string
+        color:
+          type: string
+          enum: [red, green, yellow, blue]
     LobbyResponse:
       type: object
-      required: [rooms, stakeCounts, myRoomId]
+      required: [rooms, tiers, myRoomId]
       properties:
         myRoomId:
           type: ["string", "null"]
@@ -862,23 +913,23 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/LobbyRoom"
-        stakeCounts:
+        tiers:
           type: array
           items:
-            $ref: "#/components/schemas/StakeCount"
+            $ref: "#/components/schemas/RoomTier"
     JoinRoomInput:
       type: object
-      required: [stakeNaira]
+      required: [tierId]
       properties:
         roomId:
           type: string
           format: uuid
-        stakeNaira:
-          type: integer
-          enum: [500, 1000, 2000]
+        tierId:
+          type: string
+          enum: [oga-chairman, big-doings, senior-man, sharp-guy, quick-clash, street-king, board-master, area-hustler, practice-ground]
     BoardState:
       type: object
-      required: [turnUserId, dice, remainingDice, consecutiveDoubles, turnMessage, hasRolled, redTokens, greenTokens, winnerUserId, turnDeadlineAt, matchDeadlineAt, isOvertime, endReason]
+      required: [turnUserId, playerOrder, joinWindowOpen, dice, remainingDice, consecutiveDoubles, turnMessage, hasRolled, redTokens, greenTokens, yellowTokens, blueTokens, winnerUserId, turnDeadlineAt, matchDeadlineAt, isOvertime, endReason]
       properties:
         matchDeadlineAt:
           type: ["string", "null"]
@@ -890,6 +941,13 @@ components:
           enum: [all_home, timeout, overtime, null]
         turnUserId:
           type: string
+        playerOrder:
+          type: array
+          items:
+            type: string
+            format: uuid
+        joinWindowOpen:
+          type: boolean
         turnDeadlineAt:
           type: ["string", "null"]
           format: date-time
@@ -928,6 +986,14 @@ components:
           type: array
           items:
             type: integer
+        yellowTokens:
+          type: array
+          items:
+            type: integer
+        blueTokens:
+          type: array
+          items:
+            type: integer
         winnerUserId:
           type: ["string", "null"]
     PlayerRank:
@@ -945,30 +1011,52 @@ components:
     Room:
       type: object
       required:
-        [id, stakeNaira, potNaira, prizeNaira, commissionNaira, status, hostUserId, hostUsername, opponentUserId, opponentUsername, myColor, board, createdAt, serverTimeAt, scores]
+        [id, tierId, tierName, stakeNaira, potNaira, prizeNaira, commissionNaira, maxPotNaira, maxPlayers, playerCount, players, status, hostUserId, hostUsername, opponentUserId, opponentUsername, myColor, board, createdAt, serverTimeAt, scores]
       properties:
         serverTimeAt:
           type: string
           format: date-time
         scores:
           type: object
-          required: [red, green]
+          required: [red, green, yellow, blue]
           properties:
             red:
               $ref: "#/components/schemas/PlayerRank"
             green:
               $ref: "#/components/schemas/PlayerRank"
+            yellow:
+              $ref: "#/components/schemas/PlayerRank"
+            blue:
+              $ref: "#/components/schemas/PlayerRank"
         id:
+          type: string
+        tierId:
+          type: ["string", "null"]
+          enum: [oga-chairman, big-doings, senior-man, sharp-guy, quick-clash, street-king, board-master, area-hustler, practice-ground, null]
+        tierName:
           type: string
         stakeNaira:
           type: integer
-          enum: [500, 1000, 2000]
+          minimum: 0
         potNaira:
           type: integer
         prizeNaira:
           type: integer
         commissionNaira:
           type: integer
+        maxPotNaira:
+          type: integer
+        maxPlayers:
+          type: integer
+          enum: [2, 4]
+        playerCount:
+          type: integer
+          minimum: 1
+          maximum: 4
+        players:
+          type: array
+          items:
+            $ref: "#/components/schemas/RoomPlayer"
         status:
           type: string
           enum: [waiting, active, completed, cancelled]
@@ -982,7 +1070,7 @@ components:
           type: ["string", "null"]
         myColor:
           type: string
-          enum: [red, green]
+          enum: [red, green, yellow, blue]
         board:
           $ref: "#/components/schemas/BoardState"
         createdAt:

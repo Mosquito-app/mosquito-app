@@ -5,9 +5,11 @@
  * Ludo Stake Game API. All wagering and balances are sandbox-only.
  * OpenAPI spec version: 0.1.0
  */
-import type { StakeCountStakeNaira } from './stakeCountStakeNaira';
 
-export interface StakeCount {
-  stakeNaira: StakeCountStakeNaira;
-  waitingPlayers: number;
-}
+export type RoomMaxPlayers = typeof RoomMaxPlayers[keyof typeof RoomMaxPlayers];
+
+
+export const RoomMaxPlayers = {
+  NUMBER_2: 2,
+  NUMBER_4: 4,
+} as const;

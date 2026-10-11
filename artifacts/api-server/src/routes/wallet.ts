@@ -81,7 +81,7 @@ router.get("/wallet", async (req, res): Promise<void> => {
       .where(
         and(
           inArray(roomsTable.status, ["waiting", "active"]),
-          sql`(${roomsTable.hostUserId} = ${user.id} or ${roomsTable.opponentUserId} = ${user.id})`,
+          sql`(${roomsTable.hostUserId} = ${user.id} or ${roomsTable.opponentUserId} = ${user.id} or ${roomsTable.thirdUserId} = ${user.id} or ${roomsTable.fourthUserId} = ${user.id})`,
         ),
       );
     const withdrawalRows = await tx.select().from(withdrawalsTable).where(eq(withdrawalsTable.userId, user.id)).orderBy(desc(withdrawalsTable.createdAt));

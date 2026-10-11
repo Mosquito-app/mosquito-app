@@ -6,7 +6,7 @@ import {
   useGetWallet, useInitializeDeposit, useJoinRoom, useLogout, getGetCurrentUserQueryKey,
   useGetFootballLobby, useJoinFootballRoom, getGetFootballLobbyQueryKey, getGetFootballRoomQueryKey,
 } from '@workspace/api-client-react';
-import type { Room, FootballRoom, WalletTransaction } from '@workspace/api-client-react';
+import type { Room, FootballRoom, WalletTransaction, JoinRoomInputTierId } from '@workspace/api-client-react';
 import { queryClient } from '@/lib/query-client';
 import { AuthFrame, InlineError, LoadingBlock, Shell, dateLabel, money } from '@/components/common';
 import { DepositReturn, rememberDeposit } from '@/components/deposit-return';
@@ -16,8 +16,8 @@ import { ClubPicker } from '@/components/football-club-picker';
 import { hasWebGL2, loadClub, saveClub, WEBGL_MSG } from '@/components/football-3d/clubs';
 import type { FootballClubId } from '@/components/football-3d/types';
 
-type Stake = 500 | 1000 | 2000;
-const STAKES: Stake[] = [500, 1000, 2000];
+type FootballStake = 500 | 1000 | 2000;
+const FOOTBALL_STAKES: FootballStake[] = [500, 1000, 2000];
 const GAMES = [
   { name: 'Ludo Duel', active: true, note: 'Two players, one shared table' },
   { name: 'Whot', active: false, note: 'Card duel' },
@@ -46,8 +46,8 @@ export default function LobbyPage() {
   const joinFootball = useJoinFootballRoom();
   const [mode, setMode] = useState<'ludo' | 'football'>('ludo');
   const join = useJoinRoom(); const logout = useLogout(); const initialize = useInitializeDeposit();
-  const [stake, setStake] = useState<Stake>(500);
   const [club, setClub] = useState<FootballClubId>(loadClub);
+  const [confirming, setConfirming] = useState<{ tierId: JoinRoomInputTierId; roomId?: string } | null>(null);
   const [depositOpen, setDepositOpen] = useState(false);
   const [withdrawOpen, setWithdrawOpen] = useState(false);
   const [depositAmount, setDepositAmount] = useState('2000');
@@ -59,9 +59,8 @@ export default function LobbyPage() {
   const openRooms = mode === 'football' ? footballLobby.data?.rooms : lobby.data?.rooms;
   const finding = mode === 'football' ? joinFootball.isPending : join.isPending;
   const roomsLoading = mode === 'football' ? footballLobby.isLoading : lobby.isLoading;
-  const counts = lobby.data?.stakeCounts || [];
-  const waiting = (value: number) => mode === 'football' ? footballLobby.data?.rooms.filter(r => r.stakeNaira === value).length ?? 0 : counts.find(item => item.stakeNaira === value)?.waitingPlayers || 0;
   const w = wallet.data;
+  const selectedTier = confirming ? lobby.data?.tiers.find(tier => tier.id === confirming.tierId) : undefined;
   const entered = (room: Room) => {
     queryClient.setQueryData(getGetRoomQueryKey(room.id), room);
     void queryClient.invalidateQueries({ queryKey: getGetLobbyQueryKey() });
@@ -74,16 +73,24 @@ export default function LobbyPage() {
     void queryClient.invalidateQueries({ queryKey: getGetWalletQueryKey() });
     setLocation(`/football/${room.id}`);
   };
-  const play = (value: Stake, roomId?: string) => {
+  const requestLudoJoin = (tierId: JoinRoomInputTierId, roomId?: string) => {
     setRoomError('');
-    if (mode === 'football') {
-      if (!hasWebGL2()) { setRoomError(WEBGL_MSG); return; }
-      joinFootball.mutate({ data: { stakeNaira: value, ...(roomId ? { roomId } : {}), club } }, {
-        onSuccess: enteredFootball,
-        onError: () => setRoomError('Could not join football. Both players need enough available test funds; the room may already be taken.'),
-      });
-    } else join.mutate({ data: { stakeNaira: value, ...(roomId ? { roomId } : {}) } }, {
-      onSuccess: entered, onError: () => setRoomError('Could not reserve that sandbox stake. Check your available balance, or resume your open table.'),
+    setConfirming({ tierId, ...(roomId ? { roomId } : {}) });
+  };
+  const playFootball = (value: FootballStake, roomId?: string) => {
+    setRoomError('');
+    if (!hasWebGL2()) { setRoomError(WEBGL_MSG); return; }
+    joinFootball.mutate({ data: { stakeNaira: value, ...(roomId ? { roomId } : {}), club } }, {
+      onSuccess: enteredFootball,
+      onError: () => setRoomError('Could not join football. Both players need enough available test funds; the room may already be taken.'),
+    });
+  };
+  const confirmLudoJoin = () => {
+    if (!confirming || !selectedTier || (w?.balanceNaira ?? 0) < selectedTier.stakeNaira) return;
+    setRoomError('');
+    join.mutate({ data: { tierId: confirming.tierId, ...(confirming.roomId ? { roomId: confirming.roomId } : {}) } }, {
+      onSuccess: room => { setConfirming(null); entered(room); },
+      onError: () => setRoomError('Could not reserve that sandbox stake. Check your available balance, or the room may have filled.'),
     });
   };
   const deposit = (event: FormEvent) => {
@@ -125,7 +132,7 @@ export default function LobbyPage() {
 
       <div className="room-pulse" data-testid="strip-room-pulse">
         <span><b>{openRooms?.length ?? 0}</b> open {mode === 'football' ? 'football rooms' : 'tables'}</span>
-        <span><b>{STAKES.reduce((n, v) => n + waiting(v), 0)}</b> players waiting</span>
+        <span><b>{mode === 'football' ? footballLobby.data?.rooms.length ?? 0 : lobby.data?.rooms.reduce((n, room) => n + room.playerCount, 0) ?? 0}</b> players in open rooms</span>
         <span className={currentRoomId ? 'live' : ''}>{currentRoomId ? 'Your table is active' : 'No active table'}</span>
       </div>
       <section className="games-section">
@@ -137,18 +144,36 @@ export default function LobbyPage() {
 
       <div className="content-grid">
         <section className="play-section">
-          <div className="section-head"><div><div className="section-overline">{mode === 'football' ? '11V11 FOOTBALL DUEL' : 'LUDO DUEL'}</div><h2>Pick your stakes.</h2></div></div>
+          <div className="section-head"><div><div className="section-overline">{mode === 'football' ? '11V11 FOOTBALL DUEL' : 'LUDO DUEL'}</div><h2>{mode === 'football' ? 'Pick your stakes.' : 'Choose a room tier.'}</h2></div></div>
           <p className="section-intro">{mode === 'football' ? 'Two 3-minute halves, no added time, no halftime break. Two full teams. A tied match goes to golden goal. Stakes lock when both players join. ' : 'Each player stakes the amount. '}Winner takes 90% of the pot; 10% is the table commission.</p>
-          <div className="stake-list">{STAKES.map(value => <button key={value} className={`stake-option ${stake === value ? 'selected' : ''}`} onClick={() => setStake(value)} data-testid={`button-stake-${value}`}>
-            <span className="stake-radio">{stake === value && <i />}</span><span className="stake-price">{money(value)}</span><span className="stake-foot">Pot {money(value * 2)} · Prize {money(value * 1.8)} · {waiting(value)} waiting</span><ArrowRight className="stake-arrow" size={17} /></button>)}</div>
-          {mode === 'football' && <div className="fb-club-row"><small>YOUR CLUB (PRIMARY KIT COLOURS)</small><ClubPicker value={club} onChange={v => { setClub(v); saveClub(v); }} testPrefix="football" /></div>}
+          {mode === 'football' ? <>
+            <div className="stake-list">{FOOTBALL_STAKES.map(value => <button key={value} className="stake-option" onClick={() => playFootball(value)} disabled={finding || !!currentRoomId} data-testid={`button-stake-${value}`}>
+              <span className="stake-radio"><i /></span><span className="stake-price">{money(value)}</span><span className="stake-foot">Stake each · Pot {money(value * 2)} · Prize {money(value * 1.8)}</span><ArrowRight className="stake-arrow" size={17} /></button>)}</div>
+            <div className="fb-club-row"><small>YOUR CLUB (PRIMARY KIT COLOURS)</small><ClubPicker value={club} onChange={v => { setClub(v); saveClub(v); }} testPrefix="football" /></div>
+          </> : <div className="tier-grid" data-testid="grid-room-tiers">
+            {lobby.data?.tiers.map(tier => <button type="button" key={tier.id} className="tier-card" onClick={() => requestLudoJoin(tier.id)} disabled={finding || !!currentRoomId} data-testid={`button-tier-${tier.id}`}>
+              <span className="tier-name">{tier.name}</span>
+              <span className="tier-seats">{tier.maxPlayers === 2 ? '2 players' : '2–4 players'}</span>
+              <strong>{tier.stakeNaira === 0 ? 'Free entry' : `${money(tier.stakeNaira)} entry`}</strong>
+              <span className="tier-pot">{tier.maxPlayers === 2 ? `Pot ${money(tier.minPotNaira)}` : `Pot ${money(tier.minPotNaira)}–${money(tier.maxPotNaira)}`}</span>
+              <small>{tier.openRoomCount ? `${tier.openRoomCount} open room${tier.openRoomCount === 1 ? '' : 's'}` : 'No open rooms yet'} · starts at 2</small>
+            </button>)}
+          </div>}
           {roomError && <InlineError>{roomError}</InlineError>}
-          <button className="primary-btn match-btn" onClick={() => play(stake)} disabled={finding || !!currentRoomId} data-testid="button-find-match">{finding ? 'Finding an opponent…' : currentRoomId ? 'Resume your match first' : mode === 'football' ? 'Play 11v11 Football' : 'Find a match'} <ArrowRight size={18} /></button>
-          <div className="stake-explain"><ShieldCheck size={15} /><span>{mode === 'football' ? 'Waiting is free. Both stakes enter escrow together at kickoff. Test funds only.' : 'Stake is reserved from your available sandbox balance. Test funds only.'}</span></div>
+          {mode === 'football' && <div className="stake-explain"><ShieldCheck size={15} /><span>Waiting is free. Both stakes enter escrow together at kickoff. Test funds only.</span></div>}
+          {mode === 'ludo' && <div className="stake-explain"><ShieldCheck size={15} /><span>Room opens at two players. Four-player rooms accept extra seats only before the first roll; your entry is reserved when you join. Test funds only.</span></div>}
           {mode === 'football' && footballLobby.isError && <InlineError>Football lobby unavailable. <button onClick={() => void footballLobby.refetch()}>Retry</button></InlineError>}
           <div className="open-rooms">
-            <div className="open-head"><div><div className="section-overline">WAITING {mode === 'football' ? 'FOOTBALL ROOMS' : 'TABLES'}</div><h3>Join someone in.</h3></div><span className="room-count">{openRooms?.length ?? 0} OPEN</span></div>
-            {roomsLoading ? <div className="room-skeleton"><span /><span /></div> : openRooms?.length ? <div className="room-list">{openRooms.map(room => { const mine = room.id === currentRoomId || room.hostUsername === user.username; return <div className="room-row" key={room.id} data-testid={`row-room-${room.id}`}><span className="room-seat"><span className="seat-dot" />{room.hostUsername}{mine && ' (you)'}</span><span className="room-wager">{money(room.stakeNaira)} <small>STAKE</small></span>{mine ? <Link href={`/${mode === 'football' ? 'football' : 'game'}/${room.id}`} className="join-btn" data-testid={`link-open-${room.id}`}>Open</Link> : <button className="join-btn" onClick={() => play(room.stakeNaira as Stake, room.id)} disabled={finding || !!currentRoomId} data-testid={`button-join-${room.id}`}>Join <ArrowRight size={14} /></button>}</div>; })}</div> : <div className="empty-rooms"><div className="empty-symbol"><Gamepad2 size={20} /></div><div><b>No waiting matches yet.</b><span>Start a match and a friend can join from this lobby.</span></div></div>}
+            <div className="open-head"><div><div className="section-overline">{mode === 'football' ? 'WAITING FOOTBALL ROOMS' : 'OPEN LUDO ROOMS'}</div><h3>Join someone in.</h3></div><span className="room-count">{openRooms?.length ?? 0} OPEN</span></div>
+            {roomsLoading ? <div className="room-skeleton"><span /><span /></div> : mode === 'football'
+              ? footballLobby.data?.rooms.length ? <div className="room-list">{footballLobby.data.rooms.map(room => <div className="room-row" key={room.id} data-testid={`row-room-${room.id}`}><span className="room-seat"><span className="seat-dot" />{room.hostUsername}</span><span className="room-wager">{money(room.stakeNaira)} <small>STAKE</small></span><button className="join-btn" onClick={() => playFootball(room.stakeNaira as FootballStake, room.id)} disabled={finding || !!currentRoomId} data-testid={`button-join-${room.id}`}>Join <ArrowRight size={14} /></button></div>)}</div>
+                : <div className="empty-rooms"><div className="empty-symbol"><Gamepad2 size={20} /></div><div><b>No waiting football rooms yet.</b><span>Choose a stake to open a room.</span></div></div>
+              : lobby.data?.rooms.length ? <div className="room-list">{lobby.data.rooms.map(room => <div className="room-row ludo-room-row" key={room.id} data-testid={`row-room-${room.id}`}>
+                <span className="room-seat"><span className="seat-dot" />{room.tierName}<small>{room.players.map(player => player.username).join(', ')} · {room.playerCount}/{room.maxPlayers} seats</small></span>
+                <span className="room-wager">{money(room.stakeNaira)} <small>ENTRY · POT {money(room.potNaira)}</small></span>
+                <button className="join-btn" onClick={() => requestLudoJoin(room.tierId, room.id)} disabled={finding || !!currentRoomId} data-testid={`button-join-${room.id}`}>Join <ArrowRight size={14} /></button>
+              </div>)}</div>
+                : <div className="empty-rooms"><div className="empty-symbol"><Gamepad2 size={20} /></div><div><b>No open tables yet.</b><span>Choose a tier to create one or join another player.</span></div></div>}
           </div>
         </section>
         <section className="activity-section">
@@ -160,5 +185,33 @@ export default function LobbyPage() {
       </div>
     </div>
     {withdrawOpen && <WithdrawDialog available={w?.balanceNaira ?? 0} onClose={() => setWithdrawOpen(false)} />}
+    {confirming && selectedTier && <div className="join-confirm-backdrop" onMouseDown={event => { if (event.target === event.currentTarget) setConfirming(null); }}>
+      <section className="join-confirm-card" role="dialog" aria-modal="true" aria-labelledby="join-confirm-title" data-testid="dialog-entry-confirmation">
+        <button type="button" className="join-confirm-close" aria-label="Close entry confirmation" onClick={() => setConfirming(null)}>×</button>
+        <div className="section-overline">MOSQUITO WALLET · ENTRY</div>
+        <h2 id="join-confirm-title">Join {selectedTier.name}?</h2>
+        <p>Your entry is reserved from your available wallet balance as soon as you join the room.</p>
+        <dl className="join-confirm-details">
+          <div><dt>Entry fee</dt><dd>{selectedTier.stakeNaira === 0 ? 'Free' : money(selectedTier.stakeNaira)}</dd></div>
+          <div><dt>Room size</dt><dd>{selectedTier.maxPlayers === 2 ? '2 players' : '2–4 players'}</dd></div>
+          <div><dt>Pot at 2 players</dt><dd>{money(selectedTier.minPotNaira)}</dd></div>
+          {selectedTier.maxPlayers > 2 && <div><dt>Pot at 4 players</dt><dd>{money(selectedTier.maxPotNaira)}</dd></div>}
+          <div><dt>Available balance</dt><dd>{wallet.isLoading ? 'Loading…' : money(w?.balanceNaira ?? 0)}</dd></div>
+        </dl>
+        {selectedTier.stakeNaira > (w?.balanceNaira ?? 0) && <div className="join-confirm-shortfall" role="alert">
+          Your available balance is below this entry fee. Add test funds before joining.
+        </div>}
+        {roomError && <InlineError>{roomError}</InlineError>}
+        <div className="join-confirm-actions">
+          {selectedTier.stakeNaira > (w?.balanceNaira ?? 0)
+            ? <button type="button" className="primary-btn" onClick={() => { setConfirming(null); setDepositOpen(true); }}>Add funds <ArrowRight size={16} /></button>
+            : <button type="button" className="primary-btn" onClick={confirmLudoJoin} disabled={join.isPending || wallet.isLoading || !!currentRoomId} data-testid="button-confirm-entry">
+              {join.isPending ? 'Reserving entry…' : selectedTier.stakeNaira === 0 ? 'Join free room' : 'Confirm and reserve'} <ArrowRight size={16} />
+            </button>}
+          <button type="button" className="quiet-btn" onClick={() => setConfirming(null)}>Not now</button>
+        </div>
+        <small className="join-confirm-note">Sandbox balance only. The 90% / 10% settlement is applied when the match ends.</small>
+      </section>
+    </div>}
   </Shell>;
 }

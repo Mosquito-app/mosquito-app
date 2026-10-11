@@ -6,11 +6,9 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export type RoomStakeNaira = typeof RoomStakeNaira[keyof typeof RoomStakeNaira];
+export type RoomTierMinPlayers = typeof RoomTierMinPlayers[keyof typeof RoomTierMinPlayers];
 
 
-export const RoomStakeNaira = {
-  NUMBER_500: 500,
-  NUMBER_1000: 1000,
-  NUMBER_2000: 2000,
+export const RoomTierMinPlayers = {
+  NUMBER_2: 2,
 } as const;

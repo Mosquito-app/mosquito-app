@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { LogOut, ScrollText, Info, X, Plus } from 'lucide-react';
+import type { Room } from '@workspace/api-client-react';
+import type { Color } from '../ludo-board';
 import { cellFor, pathCells } from './logic';
 import './ludo-reference.css';
 
@@ -12,19 +14,11 @@ import './ludo-reference.css';
  * Result: red bottom-left, logical green drawn YELLOW at top-right, decorative logical yellow drawn GREEN
  * top-left, decorative blue bottom-right. Colour names are swapped green<->yellow for display only.
  */
-export type Color = 'red' | 'green';
 type Pick = 'd0' | 'd1' | 'both';
 const DISPLAY: Record<string, string> = { red: 'red', green: 'yellow', yellow: 'green', blue: 'blue' };
-const SEAT_LABEL: Record<Color, string> = { red: 'Red', green: 'Yellow' };
+const SEAT_LABEL: Record<Color, string> = { red: 'Red', green: 'Yellow', yellow: 'Green', blue: 'Blue' };
 
-export interface RoomView {
-  id: string;
-  status: string;
-  stakeNaira: number; potNaira: number; prizeNaira: number; commissionNaira: number;
-  myColor: Color;
-  scores: { red: { tokensHome: number; totalProgress: number }; green: { tokensHome: number; totalProgress: number } };
-  board: { redTokens: number[]; greenTokens: number[]; dice: number[] | null; remainingDice: number[]; hasRolled: boolean; consecutiveDoubles: number; isOvertime: boolean };
-}
+export type RoomView = Room;
 
 const naira = (n: number) => `\u20A6${n.toLocaleString('en-NG')}`;
 const clockText = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
@@ -35,6 +29,8 @@ const SAFE = ['2-6', '6-12', '12-8', '8-2'];
 const PADS: Record<string, string> = {};
 [[1, 1], [1, 4], [4, 1], [4, 4]].forEach(([r, c]) => { PADS[`${r}-${c}`] = 'red'; });
 [[10, 10], [10, 13], [13, 10], [13, 13]].forEach(([r, c]) => { PADS[`${r}-${c}`] = 'green'; });
+[[1, 10], [1, 13], [4, 10], [4, 13]].forEach(([r, c]) => { PADS[`${r}-${c}`] = 'yellow'; });
+[[10, 1], [10, 4], [13, 1], [13, 4]].forEach(([r, c]) => { PADS[`${r}-${c}`] = 'blue'; });
 
 const PIPS: Record<number, number[]> = { 1: [4], 2: [2, 6], 3: [2, 4, 6], 4: [0, 2, 6, 8], 5: [0, 2, 4, 6, 8], 6: [0, 2, 3, 5, 6, 8] };
 function Die({ value, rolling }: { value: number | null; rolling?: boolean }) {
@@ -94,7 +90,11 @@ export function ReferenceBoard({ room, legalTokens, onMove, dice, rolling, sel, 
   const trackSet = new Set(pathCells.map(([r, c]) => `${r}-${c}`));
   const lanes = new Map<string, string>();
   for (let i = 1; i <= 5; i++) { lanes.set(`7-${i}`, 'red'); lanes.set(`7-${14 - i}`, 'green'); lanes.set(`${i}-7`, 'yellow'); lanes.set(`${14 - i}-7`, 'blue'); }
-  const tokens = (['red', 'green'] as Color[]).flatMap(color => (color === 'red' ? room.board.redTokens : room.board.greenTokens).map((position, index) => ({ color, position, index, at: cellFor(color, position, index) })));
+  const tokenRows: Record<Color, number[]> = {
+    red: room.board.redTokens, green: room.board.greenTokens,
+    yellow: room.board.yellowTokens, blue: room.board.blueTokens,
+  };
+  const tokens = (['red', 'green', 'yellow', 'blue'] as Color[]).flatMap(color => tokenRows[color].map((position, index) => ({ color, position, index, at: cellFor(color, position, index) })));
   const cells = [];
   for (let R = 0; R < 15; R++) for (let C = 0; C < 15; C++) {
     const r = C, c = 14 - R, key = `${r}-${c}`;
@@ -115,7 +115,7 @@ export function ReferenceBoard({ room, legalTokens, onMove, dice, rolling, sel, 
     return <button key={i} type="button" className={`lr-cdie ${sel === p ? 'active' : ''} ${used ? 'used' : ''}`} disabled={!canPick[p]} aria-pressed={sel === p} aria-label={dice ? `Die ${i + 1}: ${dice[i]}${used ? ', used' : ''}` : `Die ${i + 1}, not rolled`} onClick={() => onPick(p)} data-testid={`button-die-${i}`}>
       <Die value={dice ? dice[i] : null} rolling={rolling} /><span className="sr-only" data-testid={`text-dice-value-${i}`}>{dice ? dice[i] : '-'}</span></button>; };
   return <div className="lr-frame">
-    <div className="lr-grid" role="group" aria-label="Ludo board. Red seat bottom left, yellow seat top right. Green and blue homes are decoration.">
+    <div className="lr-grid" role="group" aria-label={`Four-color Ludo board. ${room.players.length} players joined.`}>
       {CORNERS.map(k => <div key={k.color} className={`lr-inset lr-i-${k.color}`} aria-hidden="true" style={{ left: `${(k.C + 1) * 100 / 15}%`, top: `${(k.R + 1) * 100 / 15}%` }}><Landmark kind={ART[k.color]} /></div>)}
       {cells}
       <svg className="lr-star" viewBox="0 0 3 3" aria-hidden="true">
@@ -160,7 +160,6 @@ export function ReferenceView(p: ViewProps) {
   const { room } = p;
   const overtime = p.isActive && room.board.isOvertime;
   const clock = room.status === 'waiting' ? '8:00' : p.isDone ? 'ENDED' : overtime ? '0:00' : p.matchSeconds === null ? '--:--' : clockText(p.matchSeconds);
-  const theirColor: Color = room.myColor === 'red' ? 'green' : 'red';
   const turnLabel = p.isDone ? p.resultText || 'Match complete' : p.isWaiting ? 'Waiting for a challenger' : p.isMyTurn ? 'Your turn' : `${p.oppName || 'Opponent'}'s turn`;
   const showTurn = p.isActive && p.turnSeconds !== null;
   const strip = (name: string, color: Color, me: boolean, active: boolean) => {
@@ -171,11 +170,7 @@ export function ReferenceView(p: ViewProps) {
         <span className="lr-pips" aria-label={`${SEAT_LABEL[color]} seat, ${sc.tokensHome} of 4 home`}>{[0, 1, 2, 3].map(i => <i key={i} className={`${DISPLAY[color]} ${i < sc.tokensHome ? 'on' : ''}`} />)}<em>{SEAT_LABEL[color]}</em></span></div>
     </div>;
   };
-  const strips = [
-    strip(p.oppName, theirColor, false, p.isActive && !p.isMyTurn),
-    null,
-    strip(p.meName, room.myColor, true, p.isActive && p.isMyTurn),
-  ];
+  const seats = Array.from({ length: room.maxPlayers }, (_, index) => room.players[index] ?? null);
   const bothSum = room.board.dice ? room.board.dice[0] + room.board.dice[1] : 0;
   return <div className="lr-page" data-testid="page-ludo-reference">
     <header className="lr-header">
@@ -196,9 +191,15 @@ export function ReferenceView(p: ViewProps) {
         {showTurn && <i style={{ transform: `scaleX(${Math.min(1, p.turnSeconds! / 30)})` }} />}
         <span>{turnLabel}</span>{showTurn && <b>{p.turnSeconds}s</b>}
       </div>
-      {strips[0]}
+      <div className="lr-roster" aria-label="Room players">
+        {seats.map((player, index) => {
+          const color = (['red', 'green', 'yellow', 'blue'] as Color[])[index];
+          return <div key={player?.userId ?? `empty-${color}`} className="lr-roster-seat">
+            {strip(player?.username ?? 'Open seat', color, color === room.myColor, !!player && room.board.turnUserId === player.userId)}
+          </div>;
+        })}
+      </div>
       <ReferenceBoard room={room} legalTokens={p.legalTokens} onMove={p.onMove} selecting={p.selecting} dice={p.dice} rolling={p.rolling} sel={p.sel} canPick={p.canPick} onPick={p.onPick} />
-      {strips[2]}
       <div className="lr-actions">
         <button type="button" className={`lr-roll ${p.rollReady ? 'ready' : ''}`} disabled={p.rollDisabled} onClick={p.onRoll} data-testid="button-roll-dice">{p.rolling ? 'Rolling' : 'Roll'}</button>
         {p.dice && room.board.remainingDice.length === 2 && <button type="button" className={`lr-combine ${p.sel === 'both' ? 'active' : ''}`} disabled={!p.canPick.both} aria-pressed={p.sel === 'both'} onClick={() => p.onPick('both')} data-testid="button-dice-combine">Both = {bothSum}</button>}
@@ -226,8 +227,7 @@ export function ReferenceView(p: ViewProps) {
     {dlg === 'info' && <Modal title="Match info" onClose={() => setDlg(null)} testid="dialog-match-info"><dl className="lr-info">
       <div><dt>Room</dt><dd>{room.id.slice(0, 8).toUpperCase()}</dd></div>
       <div><dt>Connection</dt><dd>{p.connLabel}</dd></div>
-      <div><dt>{SEAT_LABEL.red} seat</dt><dd data-testid="text-score-red">{room.scores.red.tokensHome}/4 home / {room.scores.red.totalProgress} steps</dd></div>
-      <div><dt>{SEAT_LABEL.green} seat</dt><dd data-testid="text-score-green">{room.scores.green.tokensHome}/4 home / {room.scores.green.totalProgress} steps</dd></div>
+       {room.players.map(player => <div key={player.userId}><dt>{SEAT_LABEL[player.color]} · {player.username}</dt><dd data-testid={`text-score-${player.color}`}>{room.scores[player.color].tokensHome}/4 home / {room.scores[player.color].totalProgress} steps</dd></div>)}
       <div><dt>Stake each</dt><dd>{naira(room.stakeNaira)}</dd></div>
       <div><dt>Pot</dt><dd data-testid="text-pot">{naira(room.potNaira)}</dd></div>
       <div><dt>Winner prize (90%)</dt><dd data-testid="text-prize">{naira(room.prizeNaira)}</dd></div>

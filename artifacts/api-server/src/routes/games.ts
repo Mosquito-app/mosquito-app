@@ -72,35 +72,39 @@ async function getRoomForViewer(roomId: string, viewerId: string) {
     .limit(1);
   if (!room) return null;
 
-  const myColor = colorFor(room, viewerId);
+  const myColor = colorForUser(room, viewerId);
   if (!myColor) return null;
 
-  const [host] = await db
-    .select({ username: usersTable.username })
+  const playerIds = roomPlayerIds(room);
+  const playerRows = await db
+    .select({ id: usersTable.id, username: usersTable.username })
     .from(usersTable)
-    .where(eq(usersTable.id, room.hostUserId))
-    .limit(1);
-  let opponentUsername: string | null = null;
-  if (room.opponentUserId) {
-    const [opponent] = await db
-      .select({ username: usersTable.username })
-      .from(usersTable)
-      .where(eq(usersTable.id, room.opponentUserId))
-      .limit(1);
-    opponentUsername = opponent?.username ?? null;
-  }
+    .where(inArray(usersTable.id, playerIds));
+  const usernameById = new Map(playerRows.map((player) => [player.id, player.username]));
+  const players = playerIds.map((userId, index) => ({
+    userId, username: usernameById.get(userId) ?? "Player", color: LUDO_COLORS[index],
+  }));
+  const tier = getRoomTier(room.tierId);
+  const poolKobo = room.stakeKobo * playerIds.length;
+  const { prizeKobo, commissionKobo } = splitPot(poolKobo);
 
   return GetRoomResponse.parse({
     id: room.id,
+    tierId: room.tierId,
+    tierName: tier?.name ?? "Legacy match",
     stakeNaira: Math.floor(room.stakeKobo / 100),
-    potNaira: room.stakeKobo * 2 / 100,
-    prizeNaira: splitPot(room.stakeKobo * 2).prizeKobo / 100,
-    commissionNaira: splitPot(room.stakeKobo * 2).commissionKobo / 100,
+    potNaira: poolKobo / 100,
+    prizeNaira: prizeKobo / 100,
+    commissionNaira: commissionKobo / 100,
+    maxPotNaira: room.stakeKobo * (tier?.maxPlayers ?? 2) / 100,
+    maxPlayers: tier?.maxPlayers ?? 2,
+    playerCount: playerIds.length,
+    players,
     status: room.status as RoomStatus,
     hostUserId: room.hostUserId,
-    hostUsername: host?.username ?? "Player",
+    hostUsername: usernameById.get(room.hostUserId) ?? "Player",
     opponentUserId: room.opponentUserId,
-    opponentUsername,
+    opponentUsername: room.opponentUserId ? usernameById.get(room.opponentUserId) ?? null : null,
     myColor,
     board: normalizeBoard(room.board),
     createdAt: room.createdAt,
@@ -120,17 +124,14 @@ async function loadLockedRoom(
     .where(eq(roomsTable.id, roomId))
     .for("update")
     .limit(1);
-  if (!room || !colorFor(room, viewerId)) {
+  if (!room || !colorForUser(room, viewerId)) {
     throw new GameActionError(404, "Match not found.");
   }
   return { ...room, board: normalizeBoard(room.board) };
 }
 
-function currentPlayerColor(room: {
-  hostUserId: string;
-  opponentUserId: string | null;
-}, userId: string) {
-  return colorFor(room, userId);
+function currentPlayerColor(room: Parameters<typeof colorForUser>[0], userId: string) {
+  return colorForUser(room, userId);
 }
 
 function sendGameError(
@@ -154,35 +155,68 @@ router.get("/lobby", async (req, res): Promise<void> => {
     return;
   }
 
-  const waitingRooms = await db
-    .select({
-      room: roomsTable,
-      hostUsername: usersTable.username,
-    })
+  const openRooms = await db
+    .select()
     .from(roomsTable)
-    .innerJoin(usersTable, eq(roomsTable.hostUserId, usersTable.id))
-    .where(eq(roomsTable.status, "waiting"))
+    .where(inArray(roomsTable.status, ["waiting", "active"]))
     .orderBy(desc(roomsTable.createdAt))
-    .limit(50);
-
-  const count500 = waitingRooms.filter((entry) => entry.room.stakeKobo === 50000).length;
-  const count1000 = waitingRooms.filter((entry) => entry.room.stakeKobo === 100000).length;
-  const payload = {
-    myRoomId: (await db.select({ id: roomsTable.id }).from(roomsTable).where(and(
-      inArray(roomsTable.status, ["waiting", "active"]),
-      or(eq(roomsTable.hostUserId, user.id), eq(roomsTable.opponentUserId, user.id)),
-    )).limit(1))[0]?.id ?? null,
-    rooms: waitingRooms.map(({ room, hostUsername }) => ({
+    .limit(100);
+  const joinable = openRooms.filter((room) => {
+    const tier = getRoomTier(room.tierId);
+    return tier
+      && !roomPlayerIds(room).includes(user.id)
+      && roomPlayerIds(room).length < tier.maxPlayers
+      && (room.status === "waiting" || normalizeBoard(room.board).joinWindowOpen);
+  }).slice(0, 50);
+  const allPlayerIds = [...new Set(joinable.flatMap((room) => roomPlayerIds(room)))];
+  const playerRows = allPlayerIds.length
+    ? await db.select({ id: usersTable.id, username: usersTable.username }).from(usersTable).where(inArray(usersTable.id, allPlayerIds))
+    : [];
+  const usernameById = new Map(playerRows.map((player) => [player.id, player.username]));
+  const myRoom = await db.select({ id: roomsTable.id }).from(roomsTable).where(and(
+    inArray(roomsTable.status, ["waiting", "active"]),
+    or(
+      eq(roomsTable.hostUserId, user.id),
+      eq(roomsTable.opponentUserId, user.id),
+      eq(roomsTable.thirdUserId, user.id),
+      eq(roomsTable.fourthUserId, user.id),
+    ),
+  )).limit(1);
+  const rooms = joinable.map((room) => {
+    const tier = getRoomTier(room.tierId)!;
+    const ids = roomPlayerIds(room);
+    return {
       id: room.id,
-      stakeNaira: Math.floor(room.stakeKobo / 100),
-      hostUsername,
+      tierId: tier.id,
+      tierName: tier.name,
+      stakeNaira: tier.stakeNaira,
+      potNaira: room.stakeKobo * ids.length / 100,
+      maxPotNaira: room.stakeKobo * tier.maxPlayers / 100,
+      playerCount: ids.length,
+      maxPlayers: tier.maxPlayers,
+      status: room.status as RoomStatus,
+      joinWindowOpen: room.status === "waiting" || normalizeBoard(room.board).joinWindowOpen,
+      players: ids.map((userId, index) => ({
+        userId,
+        username: usernameById.get(userId) ?? "Player",
+        color: LUDO_COLORS[index],
+      })),
       createdAt: room.createdAt,
+    };
+  });
+  const payload = {
+    myRoomId: myRoom[0]?.id ?? null,
+    rooms,
+    tiers: ROOM_TIERS.map((tier) => ({
+      id: tier.id,
+      name: tier.name,
+      stakeNaira: tier.stakeNaira,
+      minPlayers: tier.minPlayers,
+      maxPlayers: tier.maxPlayers,
+      minPotNaira: tier.stakeNaira * tier.minPlayers,
+      maxPotNaira: tier.stakeNaira * tier.maxPlayers,
+      openRoomCount: joinable.filter((room) => room.tierId === tier.id).length,
     })),
-    stakeCounts: [
-      { stakeNaira: 500, waitingPlayers: count500 },
-      { stakeNaira: 1000, waitingPlayers: count1000 },
-      { stakeNaira: 2000, waitingPlayers: waitingRooms.filter(entry => entry.room.stakeKobo === 200000).length },
-    ],
   };
 
   res.json(GetLobbyResponse.parse(payload));
@@ -196,19 +230,18 @@ router.post("/rooms", async (req, res): Promise<void> => {
   }
 
   const parsed = JoinRoomBody.safeParse(req.body);
-  if (!parsed.success || !STAKES_NAIRA.includes(parsed.data.stakeNaira as 500 | 1000 | 2000)) {
-    res.status(400).json({ error: "Choose a ₦500, ₦1,000 or ₦2,000 sandbox match." });
+  const tier = parsed.success ? getRoomTier(parsed.data.tierId) : undefined;
+  if (!parsed.success || !tier) {
+    res.status(400).json({ error: "Choose one of the available Mosquito App room tiers." });
     return;
   }
 
-  const stakeKobo = parsed.data.stakeNaira * 100;
+  const stakeKobo = tier.stakeNaira * 100;
   let joinedRoomId = "";
 
   try {
     await db.transaction(async (tx) => {
-      // Serialize this stake's queue check so simultaneous arrivals pair,
-      // rather than both reserving separate waiting rooms.
-      await tx.execute(sql`select pg_advisory_xact_lock(1280656463, ${stakeKobo})`);
+      await tx.execute(sql`select pg_advisory_xact_lock(1280656463, hashtext(${tier.id}))`);
       const [lockedUser] = await tx
         .select({ balanceKobo: usersTable.balanceKobo })
         .from(usersTable)
@@ -217,27 +250,36 @@ router.post("/rooms", async (req, res): Promise<void> => {
         .limit(1);
       const [existingRoom] = await tx.select({ id: roomsTable.id }).from(roomsTable).where(and(
         inArray(roomsTable.status, ["waiting", "active"]),
-        or(eq(roomsTable.hostUserId, user.id), eq(roomsTable.opponentUserId, user.id)),
+        or(
+          eq(roomsTable.hostUserId, user.id),
+          eq(roomsTable.opponentUserId, user.id),
+          eq(roomsTable.thirdUserId, user.id),
+          eq(roomsTable.fourthUserId, user.id),
+        ),
       )).limit(1);
       if (existingRoom) { joinedRoomId = existingRoom.id; return; }
       if (!lockedUser || lockedUser.balanceKobo < stakeKobo) {
         throw new GameActionError(400, "Your available sandbox balance is too low for this stake.");
       }
 
-      const [openRoom] = await tx
+      const eligibleRooms = await tx
         .select()
         .from(roomsTable)
         .where(
           and(
-            eq(roomsTable.status, "waiting"),
-            eq(roomsTable.stakeKobo, stakeKobo),
-            ne(roomsTable.hostUserId, user.id),
+            inArray(roomsTable.status, ["waiting", "active"]),
+            eq(roomsTable.tierId, tier.id),
             ...(parsed.data.roomId ? [eq(roomsTable.id, parsed.data.roomId)] : []),
           ),
         )
         .orderBy(asc(roomsTable.createdAt))
         .for("update", { skipLocked: true })
-        .limit(1);
+        .limit(50);
+      const openRoom = eligibleRooms.find((candidate) => {
+        const count = roomPlayerIds(candidate).length;
+        return count < tier.maxPlayers
+          && (candidate.status === "waiting" || normalizeBoard(candidate.board).joinWindowOpen);
+      });
       if (parsed.data.roomId && !openRoom) throw new GameActionError(400, "That waiting table is no longer available.");
 
       await tx
@@ -246,15 +288,30 @@ router.post("/rooms", async (req, res): Promise<void> => {
         .where(eq(usersTable.id, user.id));
 
       if (openRoom) {
-        const board = startBoard(openRoom.hostUserId);
-        board.turnUserId = openRoom.hostUserId;
-        board.turnDeadlineAt = deadline();
-        board.matchDeadlineAt = matchDeadline();
+        const board = normalizeBoard(openRoom.board);
+        const playerIds = roomPlayerIds(openRoom);
+        const nextSeat = playerIds.length;
+        if (nextSeat >= tier.maxPlayers) throw new GameActionError(400, "That room is full.");
+        const roomPatch = nextSeat === 1
+          ? { opponentUserId: user.id }
+          : nextSeat === 2
+            ? { thirdUserId: user.id }
+            : { fourthUserId: user.id };
+        board.playerOrder = [...playerIds, user.id];
+        const startsNow = openRoom.status === "waiting" && board.playerOrder.length >= tier.minPlayers;
+        if (startsNow) {
+          board.turnUserId = openRoom.hostUserId;
+          board.turnDeadlineAt = deadline();
+          board.matchDeadlineAt = matchDeadline();
+          board.joinWindowOpen = tier.maxPlayers > board.playerOrder.length;
+        } else if (openRoom.status === "active" && board.joinWindowOpen) {
+          board.joinWindowOpen = board.playerOrder.length < tier.maxPlayers;
+        }
         await tx
           .update(roomsTable)
           .set({
-            opponentUserId: user.id,
-            status: "active",
+            ...roomPatch,
+            status: startsNow ? "active" : openRoom.status,
             board,
             updatedAt: new Date(),
           })
@@ -264,9 +321,10 @@ router.post("/rooms", async (req, res): Promise<void> => {
         const [room] = await tx
           .insert(roomsTable)
           .values({
+            tierId: tier.id,
             stakeKobo,
             hostUserId: user.id,
-            board: startBoard(user.id),
+            board: startBoard(user.id, tier.maxPlayers),
           })
           .returning({ id: roomsTable.id });
         joinedRoomId = room.id;
@@ -344,7 +402,13 @@ router.post("/rooms/:roomId/roll", async (req, res): Promise<void> => {
       const dice: [number, number] = [randomInt(1, 7), randomInt(1, 7)];
       const color = currentPlayerColor(room, user.id);
       if (!color) throw new GameActionError(404, "Match not found.");
-      const board = applyRoll(room.board, color, dice, nextPlayerId(room, user.id), deadline());
+      const board = applyRoll(
+        { ...room.board, joinWindowOpen: false },
+        color,
+        dice,
+        nextPlayerId(room, user.id),
+        deadline(),
+      );
 
       await tx
         .update(roomsTable)
@@ -380,7 +444,7 @@ router.post("/rooms/:roomId/move", async (req, res): Promise<void> => {
   try {
     await db.transaction(async (tx) => {
       let room = await loadLockedRoom(tx, params.data.roomId, user.id);
-      if (room.status !== "active" || !room.opponentUserId) {
+      if (room.status !== "active" || roomPlayerIds(room).length < 2) {
         throw new GameActionError(400, "This match is not active.");
       }
       room = (await resolveMatchClock(tx, room)).room;
@@ -414,14 +478,20 @@ router.post("/rooms/:roomId/move", async (req, res): Promise<void> => {
         ...room.board,
         redTokens: color === "red" ? ownTokens : room.board.redTokens,
         greenTokens: color === "green" ? ownTokens : room.board.greenTokens,
+        yellowTokens: color === "yellow" ? ownTokens : room.board.yellowTokens,
+        blueTokens: color === "blue" ? ownTokens : room.board.blueTokens,
         remainingDice: room.board.remainingDice.filter(index => !indices.includes(index)),
       };
 
       board = applyCaptureBonus(board, color, selected);
       const won = tokensFor(board, color).every((tokenPosition) => tokenPosition >= 57);
-      const overtimeLeader = board.isOvertime ? leadingColor(board) : null;
+      const participantColors = roomPlayerIds(room)
+        .map((playerId) => colorForUser(room, playerId))
+        .filter((participantColor): participantColor is NonNullable<typeof participantColor> => participantColor !== null);
+      const overtimeLeader = board.isOvertime ? leadingColor(board, participantColors) : null;
       if (won || overtimeLeader) {
-        const winner = overtimeLeader ? overtimeLeader === "red" ? room.hostUserId : room.opponentUserId! : user.id;
+        const winner = overtimeLeader ? userForColor(room, overtimeLeader) : user.id;
+        if (!winner) throw new GameActionError(500, "Unable to identify the winning player.");
         await completeMatch(tx, room, board, winner, board.isOvertime ? "overtime" : "all_home");
         return;
       }

@@ -5,9 +5,9 @@
  * Ludo Stake Game API. All wagering and balances are sandbox-only.
  * OpenAPI spec version: 0.1.0
  */
-import type { JoinRoomInputStakeNaira } from './joinRoomInputStakeNaira';
+import type { JoinRoomInputTierId } from './joinRoomInputTierId';
 
 export interface JoinRoomInput {
   roomId?: string;
-  stakeNaira: JoinRoomInputStakeNaira;
+  tierId: JoinRoomInputTierId;
 }

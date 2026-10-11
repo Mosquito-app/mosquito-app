@@ -3,9 +3,14 @@ import type { Room } from '@workspace/api-client-react';
 export const pathCells: [number, number][] = [
   [6,1],[6,2],[6,3],[6,4],[6,5],[5,6],[4,6],[3,6],[2,6],[1,6],[0,6],[0,7],[0,8],[1,8],[2,8],[3,8],[4,8],[5,8],[6,9],[6,10],[6,11],[6,12],[6,13],[6,14],[7,14],[8,14],[8,13],[8,12],[8,11],[8,10],[8,9],[9,8],[10,8],[11,8],[12,8],[13,8],[14,8],[14,7],[14,6],[13,6],[12,6],[11,6],[10,6],[9,6],[8,5],[8,4],[8,3],[8,2],[8,1],[8,0],[7,0],[6,0],
 ];
-export type Color = 'red' | 'green';
-const OFFSET: Record<Color, number> = { red: 0, green: 26 };
-const BASE: Record<Color, [number, number][]> = { red: [[1,1],[1,4],[4,1],[4,4]], green: [[10,10],[10,13],[13,10],[13,13]] };
+export type Color = 'red' | 'green' | 'yellow' | 'blue';
+const OFFSET: Record<Color, number> = { red: 0, green: 26, yellow: 13, blue: 39 };
+const BASE: Record<Color, [number, number][]> = {
+  red: [[1,1],[1,4],[4,1],[4,4]],
+  green: [[10,10],[10,13],[13,10],[13,13]],
+  yellow: [[1,10],[1,13],[4,10],[4,13]],
+  blue: [[10,1],[10,4],[13,1],[13,4]],
+};
 const RECTS = [{ cls: 'lb-home-red', r: 0, c: 0, color: 'red' }, { cls: 'lb-home-yellow', r: 0, c: 9 }, { cls: 'lb-home-green', r: 9, c: 9, color: 'green' }, { cls: 'lb-home-blue', r: 9, c: 0 }];
 const STARTS: Record<string, string> = { '6-1': 'red', '1-8': 'yellow', '8-13': 'green', '13-6': 'blue' };
 const SAFE = ['2-6', '6-12', '12-8', '8-2'];
@@ -13,7 +18,13 @@ const SAFE = ['2-6', '6-12', '12-8', '8-2'];
 export function cellFor(color: Color, position: number, index: number): [number, number] {
   if (position < 0) return BASE[color][index];
   if (position <= 51) return pathCells[(position + OFFSET[color]) % 52];
-  if (position <= 56) return color === 'red' ? [7, 1 + (position - 52)] : [7, 13 - (position - 52)];
+  if (position <= 56) {
+    const step = position - 52;
+    if (color === 'red') return [7, 1 + step];
+    if (color === 'green') return [7, 13 - step];
+    if (color === 'yellow') return [1 + step, 7];
+    return [13 - step, 7];
+  }
   return [7, 7];
 }
 export const canMoveToken = (position: number, die: number | null) => die !== null && position >= 0 && position < 57 && position + die <= 57;
@@ -48,7 +59,13 @@ export function LudoBoard({ room, legalTokens, onMove, selecting }: { room: Room
   for (let i = 1; i <= 5; i++) { lanes.set(`7-${i}`, 'red'); lanes.set(`7-${14 - i}`, 'green'); lanes.set(`${i}-7`, 'yellow'); lanes.set(`${14 - i}-7`, 'blue'); }
   const pads = new Set<string>(); (Object.keys(BASE) as Color[]).forEach(c => BASE[c].forEach(([r, k]) => pads.add(`${r}-${k}`)));
   [[1,10],[1,13],[4,10],[4,13],[10,1],[10,4],[13,1],[13,4]].forEach(([r, k]) => pads.add(`${r}-${k}`));
-  const tokens = (['red', 'green'] as Color[]).flatMap(color => (color === 'red' ? room.board.redTokens : room.board.greenTokens).map((position, index) => ({ color, position, index, at: cellFor(color, position, index) })));
+  const tokenRows: Record<Color, number[]> = {
+    red: room.board.redTokens,
+    green: room.board.greenTokens,
+    yellow: room.board.yellowTokens,
+    blue: room.board.blueTokens,
+  };
+  const tokens = (['red', 'green', 'yellow', 'blue'] as Color[]).flatMap(color => tokenRows[color].map((position, index) => ({ color, position, index, at: cellFor(color, position, index) })));
   return <div className="lb-frame">
     <div className="lb-grid" role="group" aria-label="Ludo board, red and green seats active, yellow and blue decorative">
       {RECTS.map(home => <div key={home.cls} className="lb-home-inset" aria-hidden="true" style={{
@@ -77,6 +94,6 @@ export function LudoBoard({ room, legalTokens, onMove, selecting }: { room: Room
         </div>;
       })}
     </div>
-    <div className="lb-legend"><span><i className="red" /> Red seat{room.myColor === 'red' ? ' (you)' : ''}</span><span><i className="green" /> Green seat{room.myColor === 'green' ? ' (you)' : ''}</span><span><i className="deco" /> Yellow and blue homes are decoration</span>{selecting && <span className="hint">Glowing caps can move</span>}</div>
+      <div className="lb-legend">{room.players.map(player => <span key={player.userId}><i className={player.color} /> {player.username}{player.color === room.myColor ? ' (you)' : ''}</span>)}{selecting && <span className="hint">Glowing caps can move</span>}</div>
   </div>;
 }

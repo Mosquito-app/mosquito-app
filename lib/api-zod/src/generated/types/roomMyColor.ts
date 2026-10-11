@@ -12,4 +12,6 @@ export type RoomMyColor = typeof RoomMyColor[keyof typeof RoomMyColor];
 export const RoomMyColor = {
   red: 'red',
   green: 'green',
+  yellow: 'yellow',
+  blue: 'blue',
 } as const;

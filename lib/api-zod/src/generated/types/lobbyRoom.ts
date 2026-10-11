@@ -5,11 +5,27 @@
  * Ludo Stake Game API. All wagering and balances are sandbox-only.
  * OpenAPI spec version: 0.1.0
  */
-import type { LobbyRoomStakeNaira } from './lobbyRoomStakeNaira';
+import type { LobbyRoomMaxPlayers } from './lobbyRoomMaxPlayers';
+import type { LobbyRoomStatus } from './lobbyRoomStatus';
+import type { LobbyRoomTierId } from './lobbyRoomTierId';
+import type { RoomPlayer } from './roomPlayer';
 
 export interface LobbyRoom {
   id: string;
-  stakeNaira: LobbyRoomStakeNaira;
-  hostUsername: string;
+  tierId: LobbyRoomTierId;
+  tierName: string;
+  /** @minimum 0 */
+  stakeNaira: number;
+  potNaira: number;
+  maxPotNaira: number;
+  /**
+     * @minimum 1
+     * @maximum 4
+     */
+  playerCount: number;
+  maxPlayers: LobbyRoomMaxPlayers;
+  status: LobbyRoomStatus;
+  joinWindowOpen: boolean;
+  players: RoomPlayer[];
   createdAt: Date;
 }

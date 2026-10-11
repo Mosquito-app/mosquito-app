@@ -477,55 +477,140 @@ export interface WithdrawalInput {
   bankCode: string;
 }
 
-export type LobbyRoomStakeNaira = typeof LobbyRoomStakeNaira[keyof typeof LobbyRoomStakeNaira];
+export type LobbyRoomTierId = typeof LobbyRoomTierId[keyof typeof LobbyRoomTierId];
 
 
-export const LobbyRoomStakeNaira = {
-  NUMBER_500: 500,
-  NUMBER_1000: 1000,
-  NUMBER_2000: 2000,
+export const LobbyRoomTierId = {
+  'oga-chairman': 'oga-chairman',
+  'big-doings': 'big-doings',
+  'senior-man': 'senior-man',
+  'sharp-guy': 'sharp-guy',
+  'quick-clash': 'quick-clash',
+  'street-king': 'street-king',
+  'board-master': 'board-master',
+  'area-hustler': 'area-hustler',
+  'practice-ground': 'practice-ground',
 } as const;
+
+export type LobbyRoomMaxPlayers = typeof LobbyRoomMaxPlayers[keyof typeof LobbyRoomMaxPlayers];
+
+
+export const LobbyRoomMaxPlayers = {
+  NUMBER_2: 2,
+  NUMBER_4: 4,
+} as const;
+
+export type LobbyRoomStatus = typeof LobbyRoomStatus[keyof typeof LobbyRoomStatus];
+
+
+export const LobbyRoomStatus = {
+  waiting: 'waiting',
+  active: 'active',
+} as const;
+
+export type RoomPlayerColor = typeof RoomPlayerColor[keyof typeof RoomPlayerColor];
+
+
+export const RoomPlayerColor = {
+  red: 'red',
+  green: 'green',
+  yellow: 'yellow',
+  blue: 'blue',
+} as const;
+
+export interface RoomPlayer {
+  userId: string;
+  username: string;
+  color: RoomPlayerColor;
+}
 
 export interface LobbyRoom {
   id: string;
-  stakeNaira: LobbyRoomStakeNaira;
-  hostUsername: string;
+  tierId: LobbyRoomTierId;
+  tierName: string;
+  /** @minimum 0 */
+  stakeNaira: number;
+  potNaira: number;
+  maxPotNaira: number;
+  /**
+     * @minimum 1
+     * @maximum 4
+     */
+  playerCount: number;
+  maxPlayers: LobbyRoomMaxPlayers;
+  status: LobbyRoomStatus;
+  joinWindowOpen: boolean;
+  players: RoomPlayer[];
   createdAt: string;
 }
 
-export type StakeCountStakeNaira = typeof StakeCountStakeNaira[keyof typeof StakeCountStakeNaira];
+export type RoomTierId = typeof RoomTierId[keyof typeof RoomTierId];
 
 
-export const StakeCountStakeNaira = {
-  NUMBER_500: 500,
-  NUMBER_1000: 1000,
-  NUMBER_2000: 2000,
+export const RoomTierId = {
+  'oga-chairman': 'oga-chairman',
+  'big-doings': 'big-doings',
+  'senior-man': 'senior-man',
+  'sharp-guy': 'sharp-guy',
+  'quick-clash': 'quick-clash',
+  'street-king': 'street-king',
+  'board-master': 'board-master',
+  'area-hustler': 'area-hustler',
+  'practice-ground': 'practice-ground',
 } as const;
 
-export interface StakeCount {
-  stakeNaira: StakeCountStakeNaira;
-  waitingPlayers: number;
+export type RoomTierMinPlayers = typeof RoomTierMinPlayers[keyof typeof RoomTierMinPlayers];
+
+
+export const RoomTierMinPlayers = {
+  NUMBER_2: 2,
+} as const;
+
+export type RoomTierMaxPlayers = typeof RoomTierMaxPlayers[keyof typeof RoomTierMaxPlayers];
+
+
+export const RoomTierMaxPlayers = {
+  NUMBER_2: 2,
+  NUMBER_4: 4,
+} as const;
+
+export interface RoomTier {
+  id: RoomTierId;
+  name: string;
+  /** @minimum 0 */
+  stakeNaira: number;
+  minPlayers: RoomTierMinPlayers;
+  maxPlayers: RoomTierMaxPlayers;
+  minPotNaira: number;
+  maxPotNaira: number;
+  openRoomCount: number;
 }
 
 export interface LobbyResponse {
   /** @nullable */
   myRoomId: string | null;
   rooms: LobbyRoom[];
-  stakeCounts: StakeCount[];
+  tiers: RoomTier[];
 }
 
-export type JoinRoomInputStakeNaira = typeof JoinRoomInputStakeNaira[keyof typeof JoinRoomInputStakeNaira];
+export type JoinRoomInputTierId = typeof JoinRoomInputTierId[keyof typeof JoinRoomInputTierId];
 
 
-export const JoinRoomInputStakeNaira = {
-  NUMBER_500: 500,
-  NUMBER_1000: 1000,
-  NUMBER_2000: 2000,
+export const JoinRoomInputTierId = {
+  'oga-chairman': 'oga-chairman',
+  'big-doings': 'big-doings',
+  'senior-man': 'senior-man',
+  'sharp-guy': 'sharp-guy',
+  'quick-clash': 'quick-clash',
+  'street-king': 'street-king',
+  'board-master': 'board-master',
+  'area-hustler': 'area-hustler',
+  'practice-ground': 'practice-ground',
 } as const;
 
 export interface JoinRoomInput {
   roomId?: string;
-  stakeNaira: JoinRoomInputStakeNaira;
+  tierId: JoinRoomInputTierId;
 }
 
 /**
@@ -569,6 +654,8 @@ export interface BoardState {
   /** @nullable */
   endReason: BoardStateEndReason;
   turnUserId: string;
+  playerOrder: string[];
+  joinWindowOpen: boolean;
   /** @nullable */
   turnDeadlineAt: string | null;
   /**
@@ -593,6 +680,8 @@ export interface BoardState {
   hasRolled: boolean;
   redTokens: number[];
   greenTokens: number[];
+  yellowTokens: number[];
+  blueTokens: number[];
   /** @nullable */
   winnerUserId: string | null;
 }
@@ -613,15 +702,16 @@ export interface PlayerRank {
 export type RoomScores = {
   red: PlayerRank;
   green: PlayerRank;
+  yellow: PlayerRank;
+  blue: PlayerRank;
 };
 
-export type RoomStakeNaira = typeof RoomStakeNaira[keyof typeof RoomStakeNaira];
+export type RoomMaxPlayers = typeof RoomMaxPlayers[keyof typeof RoomMaxPlayers];
 
 
-export const RoomStakeNaira = {
-  NUMBER_500: 500,
-  NUMBER_1000: 1000,
-  NUMBER_2000: 2000,
+export const RoomMaxPlayers = {
+  NUMBER_2: 2,
+  NUMBER_4: 4,
 } as const;
 
 export type RoomStatus = typeof RoomStatus[keyof typeof RoomStatus];
@@ -640,16 +730,30 @@ export type RoomMyColor = typeof RoomMyColor[keyof typeof RoomMyColor];
 export const RoomMyColor = {
   red: 'red',
   green: 'green',
+  yellow: 'yellow',
+  blue: 'blue',
 } as const;
 
 export interface Room {
   serverTimeAt: string;
   scores: RoomScores;
   id: string;
-  stakeNaira: RoomStakeNaira;
+  /** @nullable */
+  tierId: RoomTierId;
+  tierName: string;
+  /** @minimum 0 */
+  stakeNaira: number;
   potNaira: number;
   prizeNaira: number;
   commissionNaira: number;
+  maxPotNaira: number;
+  maxPlayers: RoomMaxPlayers;
+  /**
+     * @minimum 1
+     * @maximum 4
+     */
+  playerCount: number;
+  players: RoomPlayer[];
   status: RoomStatus;
   hostUserId: string;
   hostUsername: string;

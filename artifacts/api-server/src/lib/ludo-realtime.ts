@@ -79,7 +79,12 @@ export function installRealtime(server: Server) {
           !/^[0-9a-f-]{36}$/i.test(message.roomId)) { ws.close(1008, "Invalid subscription"); return; }
         const [room] = await db.select({ id: roomsTable.id }).from(roomsTable).where(and(
           eq(roomsTable.id, message.roomId),
-          or(eq(roomsTable.hostUserId, sub.userId), eq(roomsTable.opponentUserId, sub.userId)),
+          or(
+            eq(roomsTable.hostUserId, sub.userId),
+            eq(roomsTable.opponentUserId, sub.userId),
+            eq(roomsTable.thirdUserId, sub.userId),
+            eq(roomsTable.fourthUserId, sub.userId),
+          ),
         )).limit(1);
         if (!room) { ws.close(1008, "Match not found"); return; }
         sub.roomId = room.id;

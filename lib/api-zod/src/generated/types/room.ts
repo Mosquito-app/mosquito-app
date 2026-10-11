@@ -6,19 +6,33 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { BoardState } from './boardState';
+import type { RoomMaxPlayers } from './roomMaxPlayers';
 import type { RoomMyColor } from './roomMyColor';
+import type { RoomPlayer } from './roomPlayer';
 import type { RoomScores } from './roomScores';
-import type { RoomStakeNaira } from './roomStakeNaira';
 import type { RoomStatus } from './roomStatus';
+import type { RoomTierId } from './roomTierId';
 
 export interface Room {
   serverTimeAt: Date;
   scores: RoomScores;
   id: string;
-  stakeNaira: RoomStakeNaira;
+  /** @nullable */
+  tierId: RoomTierId;
+  tierName: string;
+  /** @minimum 0 */
+  stakeNaira: number;
   potNaira: number;
   prizeNaira: number;
   commissionNaira: number;
+  maxPotNaira: number;
+  maxPlayers: RoomMaxPlayers;
+  /**
+     * @minimum 1
+     * @maximum 4
+     */
+  playerCount: number;
+  players: RoomPlayer[];
   status: RoomStatus;
   hostUserId: string;
   hostUsername: string;

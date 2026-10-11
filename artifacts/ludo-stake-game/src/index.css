@@ -429,6 +429,32 @@ button, a, input { -webkit-tap-highlight-color: transparent; }
 .match-btn { margin-top:12px;width:100%;height:44px;justify-content:space-between;padding:0 17px; }
 .stake-explain { margin-top:10px;display:flex;gap:7px;color:#7c897d;font-size:10px;line-height:1.45; }
 .stake-explain svg { flex:0 0 auto;color:#698276; }
+.tier-grid { display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px; }
+.tier-card { min-width:0;min-height:145px;display:flex;flex-direction:column;align-items:flex-start;gap:6px;text-align:left;padding:13px;border:1px solid #315443;border-radius:11px;background:linear-gradient(145deg,#173729,#10271e);color:#f4eedc;cursor:pointer;transition:transform .16s,border-color .16s,box-shadow .16s; }
+.tier-card:hover:not(:disabled) { transform:translateY(-2px);border-color:#e3b544;box-shadow:0 8px 18px #09160f66; }
+.tier-card:disabled { opacity:.55;cursor:not-allowed; }
+.tier-name { font-size:13px;font-weight:800;color:#f4c954; }
+.tier-seats { font-size:9px;color:#b8c5b7; }
+.tier-card strong { font:600 14px var(--app-font-mono); }
+.tier-pot { font-size:10px;color:#e9dfc7; }
+.tier-card small { margin-top:auto;color:#94a89a;font-size:9px; }
+.ludo-room-row .room-seat { align-items:flex-start;flex-direction:column;gap:3px; }
+.ludo-room-row .room-seat small { color:#9aaa9a;font-size:9px;font-weight:500; }
+.join-confirm-backdrop { position:fixed;inset:0;z-index:1000;display:grid;place-items:center;padding:18px;background:#07130dcc;backdrop-filter:blur(5px); }
+.join-confirm-card { position:relative;width:min(100%,440px);max-height:90dvh;overflow:auto;padding:25px;border:1px solid #b38c3c;border-radius:18px;background:linear-gradient(150deg,#18392a,#0e241b);color:#f6f0de;box-shadow:0 22px 70px #0009; }
+.join-confirm-card h2 { margin:7px 30px 7px 0;font-size:24px;letter-spacing:-.04em; }
+.join-confirm-card>p { margin:0 0 17px;color:#b9c6b9;font-size:12px;line-height:1.5; }
+.join-confirm-close { position:absolute;right:15px;top:13px;width:32px;height:32px;border:1px solid #526858;border-radius:50%;background:#203f30;color:#fff;font-size:22px;line-height:1;cursor:pointer; }
+.join-confirm-details { margin:0;display:grid;gap:2px; }
+.join-confirm-details div { display:flex;justify-content:space-between;gap:12px;padding:9px 0;border-bottom:1px solid #ffffff1b;font-size:12px; }
+.join-confirm-details dt { color:#b4c2b4; }
+.join-confirm-details dd { margin:0;text-align:right;font-weight:800; }
+.join-confirm-shortfall { margin-top:12px;padding:10px;border-radius:8px;background:#6d291f;color:#ffded3;font-size:11px; }
+.join-confirm-actions { display:flex;gap:9px;margin-top:18px; }
+.join-confirm-actions>* { flex:1; }
+.join-confirm-note { display:block;margin-top:12px;color:#9bac9e;font-size:9px;line-height:1.4; }
+@media (max-width:900px) { .tier-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+@media (max-width:420px) { .tier-grid { grid-template-columns:1fr 1fr;gap:7px; } .tier-card { min-height:135px;padding:10px; } .join-confirm-card { padding:21px 17px; } .ludo-room-row { gap:7px;flex-wrap:wrap;padding:8px 0; } .ludo-room-row .room-seat { flex:1 1 100%; } }
 .open-rooms { margin-top:26px;border-top:1px solid #d9d4c6;padding-top:19px; }
 .open-head { display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:11px; }
 .open-head h3 { margin:5px 0 0;font-size:17px;letter-spacing:-.04em; }

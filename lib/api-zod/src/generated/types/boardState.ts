@@ -16,6 +16,8 @@ export interface BoardState {
   /** @nullable */
   endReason: BoardStateEndReason;
   turnUserId: string;
+  playerOrder: string[];
+  joinWindowOpen: boolean;
   /** @nullable */
   turnDeadlineAt: Date | null;
   /**
@@ -40,6 +42,8 @@ export interface BoardState {
   hasRolled: boolean;
   redTokens: number[];
   greenTokens: number[];
+  yellowTokens: number[];
+  blueTokens: number[];
   /** @nullable */
   winnerUserId: string | null;
 }

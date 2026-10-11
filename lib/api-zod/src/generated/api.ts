@@ -667,17 +667,43 @@ export const VerifyWithdrawalResponse = zod.object({
 /**
  * @summary List available two-player matches and stake counts
  */
+export const getLobbyResponseRoomsItemStakeNairaMin = 0;
+
+export const getLobbyResponseRoomsItemPlayerCountMax = 4;
+
+export const getLobbyResponseTiersItemStakeNairaMin = 0;
+
+
+
 export const GetLobbyResponse = zod.object({
   "myRoomId": zod.string().nullable(),
   "rooms": zod.array(zod.object({
-  "id": zod.string(),
-  "stakeNaira": zod.union([zod.literal(500),zod.literal(1000),zod.literal(2000)]),
-  "hostUsername": zod.string(),
+  "id": zod.string().uuid(),
+  "tierId": zod.enum(['oga-chairman', 'big-doings', 'senior-man', 'sharp-guy', 'quick-clash', 'street-king', 'board-master', 'area-hustler', 'practice-ground']),
+  "tierName": zod.string(),
+  "stakeNaira": zod.number().int().min(getLobbyResponseRoomsItemStakeNairaMin),
+  "potNaira": zod.number().int(),
+  "maxPotNaira": zod.number().int(),
+  "playerCount": zod.number().int().min(1).max(getLobbyResponseRoomsItemPlayerCountMax),
+  "maxPlayers": zod.union([zod.literal(2),zod.literal(4)]),
+  "status": zod.enum(['waiting', 'active']),
+  "joinWindowOpen": zod.boolean(),
+  "players": zod.array(zod.object({
+  "userId": zod.string().uuid(),
+  "username": zod.string(),
+  "color": zod.enum(['red', 'green', 'yellow', 'blue'])
+})),
   "createdAt": zod.coerce.date()
 })),
-  "stakeCounts": zod.array(zod.object({
-  "stakeNaira": zod.union([zod.literal(500),zod.literal(1000),zod.literal(2000)]),
-  "waitingPlayers": zod.number().int()
+  "tiers": zod.array(zod.object({
+  "id": zod.enum(['oga-chairman', 'big-doings', 'senior-man', 'sharp-guy', 'quick-clash', 'street-king', 'board-master', 'area-hustler', 'practice-ground']),
+  "name": zod.string(),
+  "stakeNaira": zod.number().int().min(getLobbyResponseTiersItemStakeNairaMin),
+  "minPlayers": zod.literal(2),
+  "maxPlayers": zod.union([zod.literal(2),zod.literal(4)]),
+  "minPotNaira": zod.number().int(),
+  "maxPotNaira": zod.number().int(),
+  "openRoomCount": zod.number().int()
 }))
 })
 
@@ -687,7 +713,7 @@ export const GetLobbyResponse = zod.object({
  */
 export const JoinRoomBody = zod.object({
   "roomId": zod.string().uuid().optional(),
-  "stakeNaira": zod.union([zod.literal(500),zod.literal(1000),zod.literal(2000)])
+  "tierId": zod.enum(['oga-chairman', 'big-doings', 'senior-man', 'sharp-guy', 'quick-clash', 'street-king', 'board-master', 'area-hustler', 'practice-ground'])
 })
 
 export const joinRoomResponseScoresRedTokensHomeMin = 0;
@@ -701,6 +727,22 @@ export const joinRoomResponseScoresGreenTokensHomeMax = 4;
 
 export const joinRoomResponseScoresGreenTotalProgressMin = 0;
 export const joinRoomResponseScoresGreenTotalProgressMax = 232;
+
+export const joinRoomResponseScoresYellowTokensHomeMin = 0;
+export const joinRoomResponseScoresYellowTokensHomeMax = 4;
+
+export const joinRoomResponseScoresYellowTotalProgressMin = 0;
+export const joinRoomResponseScoresYellowTotalProgressMax = 232;
+
+export const joinRoomResponseScoresBlueTokensHomeMin = 0;
+export const joinRoomResponseScoresBlueTokensHomeMax = 4;
+
+export const joinRoomResponseScoresBlueTotalProgressMin = 0;
+export const joinRoomResponseScoresBlueTotalProgressMax = 232;
+
+export const joinRoomResponseStakeNairaMin = 0;
+
+export const joinRoomResponsePlayerCountMax = 4;
 
 export const joinRoomResponseBoardDiceItemMax = 6;
 
@@ -724,24 +766,44 @@ export const JoinRoomResponse = zod.object({
   "green": zod.object({
   "tokensHome": zod.number().int().min(joinRoomResponseScoresGreenTokensHomeMin).max(joinRoomResponseScoresGreenTokensHomeMax),
   "totalProgress": zod.number().int().min(joinRoomResponseScoresGreenTotalProgressMin).max(joinRoomResponseScoresGreenTotalProgressMax)
+}),
+  "yellow": zod.object({
+  "tokensHome": zod.number().int().min(joinRoomResponseScoresYellowTokensHomeMin).max(joinRoomResponseScoresYellowTokensHomeMax),
+  "totalProgress": zod.number().int().min(joinRoomResponseScoresYellowTotalProgressMin).max(joinRoomResponseScoresYellowTotalProgressMax)
+}),
+  "blue": zod.object({
+  "tokensHome": zod.number().int().min(joinRoomResponseScoresBlueTokensHomeMin).max(joinRoomResponseScoresBlueTokensHomeMax),
+  "totalProgress": zod.number().int().min(joinRoomResponseScoresBlueTotalProgressMin).max(joinRoomResponseScoresBlueTotalProgressMax)
 })
 }),
   "id": zod.string(),
-  "stakeNaira": zod.union([zod.literal(500),zod.literal(1000),zod.literal(2000)]),
+  "tierId": zod.union([zod.literal('oga-chairman'),zod.literal('big-doings'),zod.literal('senior-man'),zod.literal('sharp-guy'),zod.literal('quick-clash'),zod.literal('street-king'),zod.literal('board-master'),zod.literal('area-hustler'),zod.literal('practice-ground'),zod.literal(null)]).nullable(),
+  "tierName": zod.string(),
+  "stakeNaira": zod.number().int().min(joinRoomResponseStakeNairaMin),
   "potNaira": zod.number().int(),
   "prizeNaira": zod.number().int(),
   "commissionNaira": zod.number().int(),
+  "maxPotNaira": zod.number().int(),
+  "maxPlayers": zod.union([zod.literal(2),zod.literal(4)]),
+  "playerCount": zod.number().int().min(1).max(joinRoomResponsePlayerCountMax),
+  "players": zod.array(zod.object({
+  "userId": zod.string().uuid(),
+  "username": zod.string(),
+  "color": zod.enum(['red', 'green', 'yellow', 'blue'])
+})),
   "status": zod.enum(['waiting', 'active', 'completed', 'cancelled']),
   "hostUserId": zod.string(),
   "hostUsername": zod.string(),
   "opponentUserId": zod.string().nullable(),
   "opponentUsername": zod.string().nullable(),
-  "myColor": zod.enum(['red', 'green']),
+  "myColor": zod.enum(['red', 'green', 'yellow', 'blue']),
   "board": zod.object({
   "matchDeadlineAt": zod.coerce.date().nullable(),
   "isOvertime": zod.boolean(),
   "endReason": zod.union([zod.literal('all_home'),zod.literal('timeout'),zod.literal('overtime'),zod.literal(null)]).nullable(),
   "turnUserId": zod.string(),
+  "playerOrder": zod.array(zod.string().uuid()),
+  "joinWindowOpen": zod.boolean(),
   "turnDeadlineAt": zod.coerce.date().nullable(),
   "dice": zod.array(zod.number().int().min(1).max(joinRoomResponseBoardDiceItemMax)).min(joinRoomResponseBoardDiceMin).max(joinRoomResponseBoardDiceMax).nullable(),
   "remainingDice": zod.array(zod.union([zod.literal(0),zod.literal(1)])).max(joinRoomResponseBoardRemainingDiceMax),
@@ -751,6 +813,8 @@ export const JoinRoomResponse = zod.object({
   "hasRolled": zod.boolean(),
   "redTokens": zod.array(zod.number().int()),
   "greenTokens": zod.array(zod.number().int()),
+  "yellowTokens": zod.array(zod.number().int()),
+  "blueTokens": zod.array(zod.number().int()),
   "winnerUserId": zod.string().nullable()
 }),
   "createdAt": zod.coerce.date()
@@ -776,6 +840,22 @@ export const getRoomResponseScoresGreenTokensHomeMax = 4;
 export const getRoomResponseScoresGreenTotalProgressMin = 0;
 export const getRoomResponseScoresGreenTotalProgressMax = 232;
 
+export const getRoomResponseScoresYellowTokensHomeMin = 0;
+export const getRoomResponseScoresYellowTokensHomeMax = 4;
+
+export const getRoomResponseScoresYellowTotalProgressMin = 0;
+export const getRoomResponseScoresYellowTotalProgressMax = 232;
+
+export const getRoomResponseScoresBlueTokensHomeMin = 0;
+export const getRoomResponseScoresBlueTokensHomeMax = 4;
+
+export const getRoomResponseScoresBlueTotalProgressMin = 0;
+export const getRoomResponseScoresBlueTotalProgressMax = 232;
+
+export const getRoomResponseStakeNairaMin = 0;
+
+export const getRoomResponsePlayerCountMax = 4;
+
 export const getRoomResponseBoardDiceItemMax = 6;
 
 export const getRoomResponseBoardDiceMin = 2;
@@ -798,24 +878,44 @@ export const GetRoomResponse = zod.object({
   "green": zod.object({
   "tokensHome": zod.number().int().min(getRoomResponseScoresGreenTokensHomeMin).max(getRoomResponseScoresGreenTokensHomeMax),
   "totalProgress": zod.number().int().min(getRoomResponseScoresGreenTotalProgressMin).max(getRoomResponseScoresGreenTotalProgressMax)
+}),
+  "yellow": zod.object({
+  "tokensHome": zod.number().int().min(getRoomResponseScoresYellowTokensHomeMin).max(getRoomResponseScoresYellowTokensHomeMax),
+  "totalProgress": zod.number().int().min(getRoomResponseScoresYellowTotalProgressMin).max(getRoomResponseScoresYellowTotalProgressMax)
+}),
+  "blue": zod.object({
+  "tokensHome": zod.number().int().min(getRoomResponseScoresBlueTokensHomeMin).max(getRoomResponseScoresBlueTokensHomeMax),
+  "totalProgress": zod.number().int().min(getRoomResponseScoresBlueTotalProgressMin).max(getRoomResponseScoresBlueTotalProgressMax)
 })
 }),
   "id": zod.string(),
-  "stakeNaira": zod.union([zod.literal(500),zod.literal(1000),zod.literal(2000)]),
+  "tierId": zod.union([zod.literal('oga-chairman'),zod.literal('big-doings'),zod.literal('senior-man'),zod.literal('sharp-guy'),zod.literal('quick-clash'),zod.literal('street-king'),zod.literal('board-master'),zod.literal('area-hustler'),zod.literal('practice-ground'),zod.literal(null)]).nullable(),
+  "tierName": zod.string(),
+  "stakeNaira": zod.number().int().min(getRoomResponseStakeNairaMin),
   "potNaira": zod.number().int(),
   "prizeNaira": zod.number().int(),
   "commissionNaira": zod.number().int(),
+  "maxPotNaira": zod.number().int(),
+  "maxPlayers": zod.union([zod.literal(2),zod.literal(4)]),
+  "playerCount": zod.number().int().min(1).max(getRoomResponsePlayerCountMax),
+  "players": zod.array(zod.object({
+  "userId": zod.string().uuid(),
+  "username": zod.string(),
+  "color": zod.enum(['red', 'green', 'yellow', 'blue'])
+})),
   "status": zod.enum(['waiting', 'active', 'completed', 'cancelled']),
   "hostUserId": zod.string(),
   "hostUsername": zod.string(),
   "opponentUserId": zod.string().nullable(),
   "opponentUsername": zod.string().nullable(),
-  "myColor": zod.enum(['red', 'green']),
+  "myColor": zod.enum(['red', 'green', 'yellow', 'blue']),
   "board": zod.object({
   "matchDeadlineAt": zod.coerce.date().nullable(),
   "isOvertime": zod.boolean(),
   "endReason": zod.union([zod.literal('all_home'),zod.literal('timeout'),zod.literal('overtime'),zod.literal(null)]).nullable(),
   "turnUserId": zod.string(),
+  "playerOrder": zod.array(zod.string().uuid()),
+  "joinWindowOpen": zod.boolean(),
   "turnDeadlineAt": zod.coerce.date().nullable(),
   "dice": zod.array(zod.number().int().min(1).max(getRoomResponseBoardDiceItemMax)).min(getRoomResponseBoardDiceMin).max(getRoomResponseBoardDiceMax).nullable(),
   "remainingDice": zod.array(zod.union([zod.literal(0),zod.literal(1)])).max(getRoomResponseBoardRemainingDiceMax),
@@ -825,6 +925,8 @@ export const GetRoomResponse = zod.object({
   "hasRolled": zod.boolean(),
   "redTokens": zod.array(zod.number().int()),
   "greenTokens": zod.array(zod.number().int()),
+  "yellowTokens": zod.array(zod.number().int()),
+  "blueTokens": zod.array(zod.number().int()),
   "winnerUserId": zod.string().nullable()
 }),
   "createdAt": zod.coerce.date()
@@ -850,6 +952,22 @@ export const rollDiceResponseScoresGreenTokensHomeMax = 4;
 export const rollDiceResponseScoresGreenTotalProgressMin = 0;
 export const rollDiceResponseScoresGreenTotalProgressMax = 232;
 
+export const rollDiceResponseScoresYellowTokensHomeMin = 0;
+export const rollDiceResponseScoresYellowTokensHomeMax = 4;
+
+export const rollDiceResponseScoresYellowTotalProgressMin = 0;
+export const rollDiceResponseScoresYellowTotalProgressMax = 232;
+
+export const rollDiceResponseScoresBlueTokensHomeMin = 0;
+export const rollDiceResponseScoresBlueTokensHomeMax = 4;
+
+export const rollDiceResponseScoresBlueTotalProgressMin = 0;
+export const rollDiceResponseScoresBlueTotalProgressMax = 232;
+
+export const rollDiceResponseStakeNairaMin = 0;
+
+export const rollDiceResponsePlayerCountMax = 4;
+
 export const rollDiceResponseBoardDiceItemMax = 6;
 
 export const rollDiceResponseBoardDiceMin = 2;
@@ -872,24 +990,44 @@ export const RollDiceResponse = zod.object({
   "green": zod.object({
   "tokensHome": zod.number().int().min(rollDiceResponseScoresGreenTokensHomeMin).max(rollDiceResponseScoresGreenTokensHomeMax),
   "totalProgress": zod.number().int().min(rollDiceResponseScoresGreenTotalProgressMin).max(rollDiceResponseScoresGreenTotalProgressMax)
+}),
+  "yellow": zod.object({
+  "tokensHome": zod.number().int().min(rollDiceResponseScoresYellowTokensHomeMin).max(rollDiceResponseScoresYellowTokensHomeMax),
+  "totalProgress": zod.number().int().min(rollDiceResponseScoresYellowTotalProgressMin).max(rollDiceResponseScoresYellowTotalProgressMax)
+}),
+  "blue": zod.object({
+  "tokensHome": zod.number().int().min(rollDiceResponseScoresBlueTokensHomeMin).max(rollDiceResponseScoresBlueTokensHomeMax),
+  "totalProgress": zod.number().int().min(rollDiceResponseScoresBlueTotalProgressMin).max(rollDiceResponseScoresBlueTotalProgressMax)
 })
 }),
   "id": zod.string(),
-  "stakeNaira": zod.union([zod.literal(500),zod.literal(1000),zod.literal(2000)]),
+  "tierId": zod.union([zod.literal('oga-chairman'),zod.literal('big-doings'),zod.literal('senior-man'),zod.literal('sharp-guy'),zod.literal('quick-clash'),zod.literal('street-king'),zod.literal('board-master'),zod.literal('area-hustler'),zod.literal('practice-ground'),zod.literal(null)]).nullable(),
+  "tierName": zod.string(),
+  "stakeNaira": zod.number().int().min(rollDiceResponseStakeNairaMin),
   "potNaira": zod.number().int(),
   "prizeNaira": zod.number().int(),
   "commissionNaira": zod.number().int(),
+  "maxPotNaira": zod.number().int(),
+  "maxPlayers": zod.union([zod.literal(2),zod.literal(4)]),
+  "playerCount": zod.number().int().min(1).max(rollDiceResponsePlayerCountMax),
+  "players": zod.array(zod.object({
+  "userId": zod.string().uuid(),
+  "username": zod.string(),
+  "color": zod.enum(['red', 'green', 'yellow', 'blue'])
+})),
   "status": zod.enum(['waiting', 'active', 'completed', 'cancelled']),
   "hostUserId": zod.string(),
   "hostUsername": zod.string(),
   "opponentUserId": zod.string().nullable(),
   "opponentUsername": zod.string().nullable(),
-  "myColor": zod.enum(['red', 'green']),
+  "myColor": zod.enum(['red', 'green', 'yellow', 'blue']),
   "board": zod.object({
   "matchDeadlineAt": zod.coerce.date().nullable(),
   "isOvertime": zod.boolean(),
   "endReason": zod.union([zod.literal('all_home'),zod.literal('timeout'),zod.literal('overtime'),zod.literal(null)]).nullable(),
   "turnUserId": zod.string(),
+  "playerOrder": zod.array(zod.string().uuid()),
+  "joinWindowOpen": zod.boolean(),
   "turnDeadlineAt": zod.coerce.date().nullable(),
   "dice": zod.array(zod.number().int().min(1).max(rollDiceResponseBoardDiceItemMax)).min(rollDiceResponseBoardDiceMin).max(rollDiceResponseBoardDiceMax).nullable(),
   "remainingDice": zod.array(zod.union([zod.literal(0),zod.literal(1)])).max(rollDiceResponseBoardRemainingDiceMax),
@@ -899,6 +1037,8 @@ export const RollDiceResponse = zod.object({
   "hasRolled": zod.boolean(),
   "redTokens": zod.array(zod.number().int()),
   "greenTokens": zod.array(zod.number().int()),
+  "yellowTokens": zod.array(zod.number().int()),
+  "blueTokens": zod.array(zod.number().int()),
   "winnerUserId": zod.string().nullable()
 }),
   "createdAt": zod.coerce.date()
@@ -936,6 +1076,22 @@ export const moveTokenResponseScoresGreenTokensHomeMax = 4;
 export const moveTokenResponseScoresGreenTotalProgressMin = 0;
 export const moveTokenResponseScoresGreenTotalProgressMax = 232;
 
+export const moveTokenResponseScoresYellowTokensHomeMin = 0;
+export const moveTokenResponseScoresYellowTokensHomeMax = 4;
+
+export const moveTokenResponseScoresYellowTotalProgressMin = 0;
+export const moveTokenResponseScoresYellowTotalProgressMax = 232;
+
+export const moveTokenResponseScoresBlueTokensHomeMin = 0;
+export const moveTokenResponseScoresBlueTokensHomeMax = 4;
+
+export const moveTokenResponseScoresBlueTotalProgressMin = 0;
+export const moveTokenResponseScoresBlueTotalProgressMax = 232;
+
+export const moveTokenResponseStakeNairaMin = 0;
+
+export const moveTokenResponsePlayerCountMax = 4;
+
 export const moveTokenResponseBoardDiceItemMax = 6;
 
 export const moveTokenResponseBoardDiceMin = 2;
@@ -958,24 +1114,44 @@ export const MoveTokenResponse = zod.object({
   "green": zod.object({
   "tokensHome": zod.number().int().min(moveTokenResponseScoresGreenTokensHomeMin).max(moveTokenResponseScoresGreenTokensHomeMax),
   "totalProgress": zod.number().int().min(moveTokenResponseScoresGreenTotalProgressMin).max(moveTokenResponseScoresGreenTotalProgressMax)
+}),
+  "yellow": zod.object({
+  "tokensHome": zod.number().int().min(moveTokenResponseScoresYellowTokensHomeMin).max(moveTokenResponseScoresYellowTokensHomeMax),
+  "totalProgress": zod.number().int().min(moveTokenResponseScoresYellowTotalProgressMin).max(moveTokenResponseScoresYellowTotalProgressMax)
+}),
+  "blue": zod.object({
+  "tokensHome": zod.number().int().min(moveTokenResponseScoresBlueTokensHomeMin).max(moveTokenResponseScoresBlueTokensHomeMax),
+  "totalProgress": zod.number().int().min(moveTokenResponseScoresBlueTotalProgressMin).max(moveTokenResponseScoresBlueTotalProgressMax)
 })
 }),
   "id": zod.string(),
-  "stakeNaira": zod.union([zod.literal(500),zod.literal(1000),zod.literal(2000)]),
+  "tierId": zod.union([zod.literal('oga-chairman'),zod.literal('big-doings'),zod.literal('senior-man'),zod.literal('sharp-guy'),zod.literal('quick-clash'),zod.literal('street-king'),zod.literal('board-master'),zod.literal('area-hustler'),zod.literal('practice-ground'),zod.literal(null)]).nullable(),
+  "tierName": zod.string(),
+  "stakeNaira": zod.number().int().min(moveTokenResponseStakeNairaMin),
   "potNaira": zod.number().int(),
   "prizeNaira": zod.number().int(),
   "commissionNaira": zod.number().int(),
+  "maxPotNaira": zod.number().int(),
+  "maxPlayers": zod.union([zod.literal(2),zod.literal(4)]),
+  "playerCount": zod.number().int().min(1).max(moveTokenResponsePlayerCountMax),
+  "players": zod.array(zod.object({
+  "userId": zod.string().uuid(),
+  "username": zod.string(),
+  "color": zod.enum(['red', 'green', 'yellow', 'blue'])
+})),
   "status": zod.enum(['waiting', 'active', 'completed', 'cancelled']),
   "hostUserId": zod.string(),
   "hostUsername": zod.string(),
   "opponentUserId": zod.string().nullable(),
   "opponentUsername": zod.string().nullable(),
-  "myColor": zod.enum(['red', 'green']),
+  "myColor": zod.enum(['red', 'green', 'yellow', 'blue']),
   "board": zod.object({
   "matchDeadlineAt": zod.coerce.date().nullable(),
   "isOvertime": zod.boolean(),
   "endReason": zod.union([zod.literal('all_home'),zod.literal('timeout'),zod.literal('overtime'),zod.literal(null)]).nullable(),
   "turnUserId": zod.string(),
+  "playerOrder": zod.array(zod.string().uuid()),
+  "joinWindowOpen": zod.boolean(),
   "turnDeadlineAt": zod.coerce.date().nullable(),
   "dice": zod.array(zod.number().int().min(1).max(moveTokenResponseBoardDiceItemMax)).min(moveTokenResponseBoardDiceMin).max(moveTokenResponseBoardDiceMax).nullable(),
   "remainingDice": zod.array(zod.union([zod.literal(0),zod.literal(1)])).max(moveTokenResponseBoardRemainingDiceMax),
@@ -985,6 +1161,8 @@ export const MoveTokenResponse = zod.object({
   "hasRolled": zod.boolean(),
   "redTokens": zod.array(zod.number().int()),
   "greenTokens": zod.array(zod.number().int()),
+  "yellowTokens": zod.array(zod.number().int()),
+  "blueTokens": zod.array(zod.number().int()),
   "winnerUserId": zod.string().nullable()
 }),
   "createdAt": zod.coerce.date()
@@ -1010,6 +1188,22 @@ export const cancelRoomResponseScoresGreenTokensHomeMax = 4;
 export const cancelRoomResponseScoresGreenTotalProgressMin = 0;
 export const cancelRoomResponseScoresGreenTotalProgressMax = 232;
 
+export const cancelRoomResponseScoresYellowTokensHomeMin = 0;
+export const cancelRoomResponseScoresYellowTokensHomeMax = 4;
+
+export const cancelRoomResponseScoresYellowTotalProgressMin = 0;
+export const cancelRoomResponseScoresYellowTotalProgressMax = 232;
+
+export const cancelRoomResponseScoresBlueTokensHomeMin = 0;
+export const cancelRoomResponseScoresBlueTokensHomeMax = 4;
+
+export const cancelRoomResponseScoresBlueTotalProgressMin = 0;
+export const cancelRoomResponseScoresBlueTotalProgressMax = 232;
+
+export const cancelRoomResponseStakeNairaMin = 0;
+
+export const cancelRoomResponsePlayerCountMax = 4;
+
 export const cancelRoomResponseBoardDiceItemMax = 6;
 
 export const cancelRoomResponseBoardDiceMin = 2;
@@ -1032,24 +1226,44 @@ export const CancelRoomResponse = zod.object({
   "green": zod.object({
   "tokensHome": zod.number().int().min(cancelRoomResponseScoresGreenTokensHomeMin).max(cancelRoomResponseScoresGreenTokensHomeMax),
   "totalProgress": zod.number().int().min(cancelRoomResponseScoresGreenTotalProgressMin).max(cancelRoomResponseScoresGreenTotalProgressMax)
+}),
+  "yellow": zod.object({
+  "tokensHome": zod.number().int().min(cancelRoomResponseScoresYellowTokensHomeMin).max(cancelRoomResponseScoresYellowTokensHomeMax),
+  "totalProgress": zod.number().int().min(cancelRoomResponseScoresYellowTotalProgressMin).max(cancelRoomResponseScoresYellowTotalProgressMax)
+}),
+  "blue": zod.object({
+  "tokensHome": zod.number().int().min(cancelRoomResponseScoresBlueTokensHomeMin).max(cancelRoomResponseScoresBlueTokensHomeMax),
+  "totalProgress": zod.number().int().min(cancelRoomResponseScoresBlueTotalProgressMin).max(cancelRoomResponseScoresBlueTotalProgressMax)
 })
 }),
   "id": zod.string(),
-  "stakeNaira": zod.union([zod.literal(500),zod.literal(1000),zod.literal(2000)]),
+  "tierId": zod.union([zod.literal('oga-chairman'),zod.literal('big-doings'),zod.literal('senior-man'),zod.literal('sharp-guy'),zod.literal('quick-clash'),zod.literal('street-king'),zod.literal('board-master'),zod.literal('area-hustler'),zod.literal('practice-ground'),zod.literal(null)]).nullable(),
+  "tierName": zod.string(),
+  "stakeNaira": zod.number().int().min(cancelRoomResponseStakeNairaMin),
   "potNaira": zod.number().int(),
   "prizeNaira": zod.number().int(),
   "commissionNaira": zod.number().int(),
+  "maxPotNaira": zod.number().int(),
+  "maxPlayers": zod.union([zod.literal(2),zod.literal(4)]),
+  "playerCount": zod.number().int().min(1).max(cancelRoomResponsePlayerCountMax),
+  "players": zod.array(zod.object({
+  "userId": zod.string().uuid(),
+  "username": zod.string(),
+  "color": zod.enum(['red', 'green', 'yellow', 'blue'])
+})),
   "status": zod.enum(['waiting', 'active', 'completed', 'cancelled']),
   "hostUserId": zod.string(),
   "hostUsername": zod.string(),
   "opponentUserId": zod.string().nullable(),
   "opponentUsername": zod.string().nullable(),
-  "myColor": zod.enum(['red', 'green']),
+  "myColor": zod.enum(['red', 'green', 'yellow', 'blue']),
   "board": zod.object({
   "matchDeadlineAt": zod.coerce.date().nullable(),
   "isOvertime": zod.boolean(),
   "endReason": zod.union([zod.literal('all_home'),zod.literal('timeout'),zod.literal('overtime'),zod.literal(null)]).nullable(),
   "turnUserId": zod.string(),
+  "playerOrder": zod.array(zod.string().uuid()),
+  "joinWindowOpen": zod.boolean(),
   "turnDeadlineAt": zod.coerce.date().nullable(),
   "dice": zod.array(zod.number().int().min(1).max(cancelRoomResponseBoardDiceItemMax)).min(cancelRoomResponseBoardDiceMin).max(cancelRoomResponseBoardDiceMax).nullable(),
   "remainingDice": zod.array(zod.union([zod.literal(0),zod.literal(1)])).max(cancelRoomResponseBoardRemainingDiceMax),
@@ -1059,6 +1273,8 @@ export const CancelRoomResponse = zod.object({
   "hasRolled": zod.boolean(),
   "redTokens": zod.array(zod.number().int()),
   "greenTokens": zod.array(zod.number().int()),
+  "yellowTokens": zod.array(zod.number().int()),
+  "blueTokens": zod.array(zod.number().int()),
   "winnerUserId": zod.string().nullable()
 }),
   "createdAt": zod.coerce.date()
