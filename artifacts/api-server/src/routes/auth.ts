@@ -21,11 +21,10 @@ import {
 const router: IRouter = Router();
 
 const ResetPasswordBody = z.object({
-  currentPassword: z.string().min(1).max(72),
+  currentPassword: z.string().min(1),
   newPassword: z
     .string()
     .min(4, "Password must be at least 4 characters long")
-    .max(72),
 });
 
 function toUserResponse(user: {
@@ -42,11 +41,38 @@ function toUserResponse(user: {
   };
 }
 
+function normalizeEmailBody(body: unknown): unknown {
+  if (!body || typeof body !== "object" || Array.isArray(body)) return body;
+  const record = body as Record<string, unknown>;
+  return {
+    ...record,
+    email:
+      typeof record.email === "string"
+        ? record.email.trim().toLowerCase()
+        : record.email,
+  };
+}
+
 router.post("/auth/register", async (req, res): Promise<void> => {
-  const parsed = RegisterBody.safeParse(req.body);
+  const parsed = RegisterBody.safeParse(normalizeEmailBody(req.body));
   if (!parsed.success) {
+    const passwordIssue = parsed.error.issues.some(
+      (issue) => issue.path[0] === "password",
+    );
+    const emailIssue = parsed.error.issues.some(
+      (issue) => issue.path[0] === "email",
+    );
+    const usernameIssue = parsed.error.issues.some(
+      (issue) => issue.path[0] === "username",
+    );
     res.status(400).json({
-      error: "Enter a valid username, email, and password (at least 4 characters).",
+      error: passwordIssue
+        ? "Password must be at least 4 characters long."
+        : emailIssue
+          ? "Enter a valid email address."
+          : usernameIssue
+            ? "Enter a valid username."
+            : "Enter valid account details.",
     });
     return;
   }
@@ -54,9 +80,7 @@ router.post("/auth/register", async (req, res): Promise<void> => {
   const username = parsed.data.username.trim().toLowerCase();
   const email = parsed.data.email.trim().toLowerCase();
   if (!/^[a-z0-9_]{3,24}$/.test(username)) {
-    res.status(400).json({
-      error: "Username must be 3–24 characters using letters, numbers, or underscores.",
-    });
+    res.status(400).json({ error: "Username must be 3–24 characters using letters, numbers, or underscores." });
     return;
   }
 
@@ -75,7 +99,7 @@ router.post("/auth/register", async (req, res): Promise<void> => {
       });
 
     await createSession(user.id, res);
-    res.status(201).json(RegisterResponse.parse({ user: toUserResponse(user) }));
+    res.status(200).json(RegisterResponse.parse({ user: toUserResponse(user) }));
   } catch (error) {
     const cause =
       typeof error === "object" && error !== null && "cause" in error
@@ -86,7 +110,14 @@ router.post("/auth/register", async (req, res): Promise<void> => {
         ? cause.code
         : undefined;
     if (code === "23505") {
-      res.status(409).json({ error: "That email or username is already registered." });
+      const [existingEmail] = await db
+        .select({ id: usersTable.id })
+        .from(usersTable)
+        .where(eq(usersTable.email, email))
+        .limit(1);
+      res.status(409).json({
+        error: existingEmail ? "Email already registered" : "Username already registered",
+      });
       return;
     }
 
@@ -99,9 +130,14 @@ router.post("/auth/register", async (req, res): Promise<void> => {
 });
 
 router.post("/auth/login", async (req, res): Promise<void> => {
-  const parsed = LoginBody.safeParse(req.body);
+  const parsed = LoginBody.safeParse(normalizeEmailBody(req.body));
   if (!parsed.success) {
-    res.status(400).json({ error: "Enter a valid email and password." });
+    res.status(400).json({
+      error:
+        parsed.error.issues.find((issue) => issue.path[0] === "password")?.message ??
+        parsed.error.issues[0]?.message ??
+        "Enter a valid email and password.",
+    });
     return;
   }
 

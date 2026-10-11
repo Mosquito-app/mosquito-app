@@ -88,7 +88,7 @@ async function request(path: string, seat?: Seat, body?: unknown, expected: numb
 }
 async function register(name: string): Promise<Seat> {
   const email = `${name}@example.test`;
-  const { data, response } = await request("/auth/register", undefined, { username: name, email, password: "sandbox-password-123" }, 201);
+  const { data, response } = await request("/auth/register", undefined, { username: name, email, password: "sandbox-password-123" }, 200);
   return { id: data.user.id, email, cookie: response.headers.get("set-cookie")!.split(";")[0] };
 }
 async function credit(seat: Seat, amount = 10000) {
@@ -128,15 +128,47 @@ function messageOf(ws: WebSocket, type: string) {
 try {
   await request("/healthz");
   await request("/wallet", undefined, undefined, 401);
-  await request("/auth/register", undefined, {
+  const tooShort = await request("/auth/register", undefined, {
     username: "shortpassword",
     email: "shortpassword@example.test",
     password: "123",
   }, 400);
+  assert.equal(tooShort.data.error, "Password must be at least 4 characters long.");
+  const normalizedRegistration = await request("/auth/register", undefined, {
+    username: "normaluser",
+    email: "  MixedCase@Example.test  ",
+    password: "1234",
+  }, 200);
+  assert.equal(normalizedRegistration.data.user.email, "mixedcase@example.test");
+  const normalizedSeat = {
+    id: normalizedRegistration.data.user.id,
+    email: normalizedRegistration.data.user.email,
+    cookie: normalizedRegistration.response.headers.get("set-cookie")!.split(";")[0],
+  };
+  assert.equal((await request("/auth/me", normalizedSeat)).data.user.id, normalizedSeat.id);
+  const normalizedLogin = await request("/auth/login", undefined, {
+    email: "  MIXEDCASE@EXAMPLE.TEST ",
+    password: "1234",
+  });
+  assert.equal(normalizedLogin.data.user.id, normalizedSeat.id);
+  const longPassword = "p".repeat(80);
+  const longPasswordAccount = await request("/auth/register", undefined, {
+    username: "longpassword",
+    email: "longpassword@example.test",
+    password: longPassword,
+  }, 200);
+  const longPasswordLogin = await request("/auth/login", undefined, {
+    email: "longpassword@example.test",
+    password: longPassword,
+  });
+  assert.equal(longPasswordLogin.data.user.id, longPasswordAccount.data.user.id);
   const host = await register("testhost");
   const green = await register("testgreen");
   const outsider = await register("testoutside");
-  await request("/auth/register", undefined, { username: "testhost", email: host.email, password: "sandbox-password-123" }, 409);
+  const duplicateEmail = await request("/auth/register", undefined, { username: "differentname", email: host.email, password: "1234" }, 409);
+  assert.equal(duplicateEmail.data.error, "Email already registered");
+  const duplicateUsername = await request("/auth/register", undefined, { username: "testhost", email: "different@example.test", password: "1234" }, 409);
+  assert.equal(duplicateUsername.data.error, "Username already registered");
   await request("/auth/login", undefined, { email: host.email, password: "wrong" }, 401);
   await db.update(sessionsTable).set({ expiresAt: new Date(Date.now() - 1000) }).where(eq(sessionsTable.userId, host.id));
   await request("/auth/me", host, undefined, 401);

@@ -8,6 +8,16 @@ import { AuthFrame, InlineError } from '@/components/common';
 
 const signedIn = (result: AuthResponse) => { queryClient.clear(); queryClient.setQueryData(getGetCurrentUserQueryKey(), result); };
 
+function registrationErrorMessage(error: unknown): string {
+  if (error && typeof error === 'object' && 'data' in error) {
+    const data = error.data;
+    if (data && typeof data === 'object' && 'error' in data && typeof data.error === 'string') {
+      return data.error;
+    }
+  }
+  return 'Could not create that account. Please try again.';
+}
+
 export function LoginPage() {
   const [, setLocation] = useLocation();
   const login = useLogin();
@@ -38,16 +48,16 @@ export function RegisterPage() {
   const [error, setError] = useState('');
   const submit = (event: FormEvent) => {
     event.preventDefault(); setError('');
-    register.mutate({ data: { username: username.trim(), email: email.trim(), password } }, {
+    register.mutate({ data: { username: username.trim(), email: email.trim().toLowerCase(), password } }, {
       onSuccess: result => { signedIn(result); setLocation('/'); },
-      onError: () => setError('Could not create that account. Check the details or try another email.'),
+      onError: error => setError(registrationErrorMessage(error)),
     });
   };
   return <AuthFrame mode="register" heading="Pull up a chair." copy="Create a local account and get straight to the board.">
     <form className="auth-form" onSubmit={submit}>
       <label>Player name<input autoComplete="nickname" required minLength={3} maxLength={24} value={username} onChange={e => setUsername(e.target.value)} placeholder="How players will know you" data-testid="input-username" /></label>
-      <label>Email address<input type="email" autoComplete="email" required value={email} onChange={e => setEmail(e.target.value)} placeholder="you@example.com" data-testid="input-email" /></label>
-      <label>Password<input type="password" autoComplete="new-password" required minLength={4} maxLength={72} value={password} onChange={e => setPassword(e.target.value)} placeholder="At least 4 characters" data-testid="input-password" /></label>
+      <label>Email address<input type="email" autoComplete="email" required value={email} onChange={e => setEmail(e.target.value)} onBlur={e => setEmail(e.target.value.trim().toLowerCase())} placeholder="you@example.com" data-testid="input-email" /></label>
+      <label>Password<input type="password" autoComplete="new-password" required minLength={4} value={password} onChange={e => setPassword(e.target.value)} placeholder="At least 4 characters" data-testid="input-password" /></label>
       {error && <InlineError>{error}</InlineError>}
       <button className="primary-btn full" type="submit" disabled={register.isPending} data-testid="button-register">{register.isPending ? 'Setting up your seat…' : 'Create account'} <ArrowRight size={17} /></button>
     </form>

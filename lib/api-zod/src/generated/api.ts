@@ -476,15 +476,14 @@ export const registerBodyUsernameMax = 24;
 
 export const registerBodyEmailMax = 254;
 
-export const registerBodyPasswordMin = 8;
-export const registerBodyPasswordMax = 72;
+export const registerBodyPasswordMin = 4;
 
 
 
 export const RegisterBody = zod.object({
   "username": zod.string().min(registerBodyUsernameMin).max(registerBodyUsernameMax),
   "email": zod.string().email().max(registerBodyEmailMax),
-  "password": zod.string().min(registerBodyPasswordMin).max(registerBodyPasswordMax)
+  "password": zod.string().min(registerBodyPasswordMin)
 })
 
 export const registerResponseUserBalanceNairaMin = 0;
@@ -506,13 +505,12 @@ export const RegisterResponse = zod.object({
  */
 export const loginBodyEmailMax = 254;
 
-export const loginBodyPasswordMax = 72;
 
 
 
 export const LoginBody = zod.object({
   "email": zod.string().email().max(loginBodyEmailMax),
-  "password": zod.string().min(1).max(loginBodyPasswordMax)
+  "password": zod.string().min(1)
 })
 
 export const loginResponseUserBalanceNairaMin = 0;
