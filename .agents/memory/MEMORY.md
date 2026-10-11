@@ -4,4 +4,5 @@
 - [Browser QA boundaries](browser-payment-qa.md) — Native-browser fallback, payment evidence limits, and software-WebGL teardown; never treat synthetic stakes as deposits.
 - [Two-dice rules](two-dice-rules.md) — Home entry consumes a six, doubles replace six-only bonuses, and upgrades preserve existing rooms and stakes.
 - [Ludo screenshot layout](ludo-reference-layout.md) — Keep the supplied teal, gold, red and wooden-board composition while leaving seat colors authoritative.
+- [Ludo room picker style](ludo-room-picker-style.md) — Follow the warm peach, gold-bordered room cards while retaining Mosquito App branding and server-owned room data.
 - [Match timeout rules](match-timeout-rules.md) — At 8 minutes rank finished tokens, then progress; exact ties enter sudden death until the first tie-breaking movement.

@@ -2,5 +2,7 @@
 type ModuleMap = Record<string, () => Promise<Record<string, unknown>>>;
 export const modules: ModuleMap = {
   "./components/mockups/mosquito-ludo-reference/Current.tsx": () => import("../components/mockups/mosquito-ludo-reference/Current.tsx"),
-  "./components/mockups/mosquito-ludo-reference/ReferenceMatch.tsx": () => import("../components/mockups/mosquito-ludo-reference/ReferenceMatch.tsx")
+  "./components/mockups/mosquito-ludo-reference/ReferenceMatch.tsx": () => import("../components/mockups/mosquito-ludo-reference/ReferenceMatch.tsx"),
+  "./components/mockups/mosquito-ludo-rooms/Current.tsx": () => import("../components/mockups/mosquito-ludo-rooms/Current.tsx"),
+  "./components/mockups/mosquito-ludo-rooms/ReferenceRooms.tsx": () => import("../components/mockups/mosquito-ludo-rooms/ReferenceRooms.tsx")
 };

@@ -12,8 +12,8 @@ export function Brand({ compact = false }: { compact?: boolean }) {
   </Link>;
 }
 
-export function Shell({ children, user, onLogout }: { children: ReactNode; user?: { username: string }; onLogout?: () => void }) {
-  return <div className="app-shell noise">
+export function Shell({ children, user, onLogout, roomPicker = false }: { children: ReactNode; user?: { username: string }; onLogout?: () => void; roomPicker?: boolean }) {
+  return <div className={`app-shell noise ${roomPicker ? 'room-picker-shell' : ''}`}>
     <aside className="side-rail">
       <Brand />
       <div className="rail-label">THE TABLE</div>

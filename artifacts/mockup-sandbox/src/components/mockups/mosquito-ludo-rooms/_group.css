@@ -1,0 +1,304 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Outfit:wght@400;500;600;700;800&display=swap');
+
+.room-mockup,
+.room-mockup * {
+  box-sizing: border-box;
+}
+
+.room-mockup {
+  min-height: 100dvh;
+  font-family: 'Outfit', sans-serif;
+}
+
+.room-mock-current {
+  padding: 22px;
+  background: radial-gradient(circle at 80% -10%, #1f4a3a, #0e2019 60%);
+  color: #f3ead2;
+}
+
+.room-mock-current .current-heading {
+  margin: 0 0 18px;
+}
+
+.room-mock-current .current-heading small {
+  color: #a9bba9;
+  font: 500 9px 'DM Mono', monospace;
+  letter-spacing: .13em;
+}
+
+.room-mock-current .current-heading h1 {
+  margin: 5px 0 0;
+  font-size: 23px;
+  letter-spacing: -.05em;
+}
+
+.room-mock-current .tier-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 9px;
+}
+
+.room-mock-current .tier-card {
+  min-width: 0;
+  min-height: 145px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  text-align: left;
+  padding: 13px;
+  border: 1px solid #315443;
+  border-radius: 11px;
+  background: linear-gradient(145deg, #173729, #10271e);
+  color: #f4eedc;
+}
+
+.room-mock-current .tier-name {
+  font-size: 13px;
+  font-weight: 800;
+  color: #f4c954;
+}
+
+.room-mock-current .tier-seats {
+  font-size: 9px;
+  color: #b8c5b7;
+}
+
+.room-mock-current .tier-card strong {
+  font: 600 14px 'DM Mono', monospace;
+}
+
+.room-mock-current .tier-pot {
+  color: #e9dfc7;
+  font-size: 10px;
+}
+
+.room-mock-current .tier-card small {
+  margin-top: auto;
+  color: #94a89a;
+  font-size: 9px;
+}
+
+.room-mock-reference {
+  background-color: #fae9e3;
+  background-image:
+    radial-gradient(circle at 5px 6px, rgba(185, 101, 87, .11) 1px, transparent 1.6px),
+    radial-gradient(circle at 18px 19px, rgba(216, 174, 44, .11) 2px, transparent 2.7px);
+  background-size: 28px 28px;
+  color: #38280f;
+}
+
+.room-mock-header {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  min-height: 84px;
+  padding: 12px 15px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: #ffbf48;
+  box-shadow: 0 3px 0 rgba(153, 102, 17, .12);
+}
+
+.room-mock-avatar {
+  width: 38px;
+  height: 38px;
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  border: 2px solid #604018;
+  border-radius: 50%;
+  background: #2f6844;
+  color: #fff4d4;
+  font-weight: 800;
+}
+
+.room-mock-brand {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  line-height: .95;
+  color: #3c260c;
+  font-weight: 900;
+  letter-spacing: -.05em;
+}
+
+.room-mock-brand strong {
+  font-size: 15px;
+}
+
+.room-mock-brand span {
+  font-size: 12px;
+}
+
+.room-mock-wallet {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.room-mock-balance {
+  min-width: 77px;
+  border: 2px solid #bc2631;
+  border-radius: 999px;
+  padding: 6px 9px;
+  background: #9f1d28;
+  color: white;
+  text-align: center;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.room-mock-plus {
+  width: 32px;
+  height: 32px;
+  border: 2px solid #e1a520;
+  border-radius: 50%;
+  background: #f3c73d;
+  color: #fff9e8;
+  font-size: 22px;
+  line-height: 1;
+}
+
+.room-mock-content {
+  width: min(100%, 520px);
+  margin: 0 auto;
+  padding: 19px 15px 28px;
+}
+
+.room-mock-back {
+  width: 39px;
+  height: 39px;
+  margin: 0 0 14px 4px;
+  border: 2px solid #e9cf75;
+  border-radius: 11px;
+  background: #ffc247;
+  color: white;
+  box-shadow: 0 3px 0 #d89b29;
+  font-size: 24px;
+  font-weight: 800;
+}
+
+.room-mock-card-list {
+  display: grid;
+  gap: 14px;
+}
+
+.room-mock-card {
+  min-height: 190px;
+  padding: 13px 22px 15px;
+  border: 2px solid #d2ae1e;
+  border-radius: 43px;
+  background: rgba(255, 237, 228, .9);
+  box-shadow: 0 3px 0 rgba(198, 157, 30, .08);
+}
+
+.room-mock-card h2 {
+  margin: 0 0 8px;
+  text-align: center;
+  color: #3d2a0d;
+  font-size: 19px;
+  font-weight: 900;
+  letter-spacing: -.025em;
+  text-transform: uppercase;
+}
+
+.room-mock-seats {
+  min-height: 40px;
+  padding: 5px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 7px;
+  border: 1px solid #d4b639;
+  border-radius: 999px;
+  color: #39280e;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.room-mock-seat-icons {
+  display: flex;
+  gap: 6px;
+}
+
+.room-mock-seat {
+  width: 25px;
+  height: 25px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(18, 115, 63, .12);
+  border-radius: 50%;
+  background: #11844c;
+  color: white;
+  font-size: 9px;
+  font-weight: 800;
+}
+
+.room-mock-fee {
+  margin: 8px 0 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 17px;
+  font-weight: 900;
+}
+
+.room-mock-coin {
+  width: 21px;
+  height: 21px;
+  display: grid;
+  place-items: center;
+  border: 2px solid #f5d45d;
+  border-radius: 50%;
+  background: #f5aa18;
+  color: white;
+  font-size: 12px;
+}
+
+.room-mock-pot {
+  margin: 1px 0 0;
+  color: #8b6a3a;
+  text-align: center;
+  font-size: 9px;
+  font-weight: 700;
+}
+
+.room-mock-actions {
+  position: relative;
+  min-height: 52px;
+  margin-top: 8px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.room-mock-join {
+  width: min(178px, 72%);
+  min-height: 49px;
+  border: 2px solid #93db91;
+  border-radius: 10px;
+  background: linear-gradient(#42dc42, #16ae32);
+  box-shadow: 0 3px 0 #12882b, inset 0 1px 0 rgba(255, 255, 255, .45);
+  color: white;
+  font: 900 20px 'Outfit', sans-serif;
+  letter-spacing: .04em;
+}
+
+.room-mock-bell {
+  position: absolute;
+  right: 9px;
+  color: #ef3150;
+  font-size: 23px;
+}
+
+@media (max-width: 370px) {
+  .room-mock-header { gap: 7px; padding-inline: 10px; }
+  .room-mock-avatar { width: 34px; height: 34px; }
+  .room-mock-balance { min-width: 69px; padding-inline: 6px; }
+  .room-mock-card { padding-inline: 16px; }
+  .room-mock-seat { width: 22px; height: 22px; }
+}
