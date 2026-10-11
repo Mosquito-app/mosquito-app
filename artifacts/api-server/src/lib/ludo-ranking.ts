@@ -1,4 +1,6 @@
 import type { LudoBoardState } from "@workspace/db";
+import type { LudoColor } from "./ludo-room-tiers";
+import { tokensFor } from "./ludo-rules";
 
 /** Current progress, not cumulative rolls: captures send progress back to zero.
  * A cap in base scores 0; entering the starting square scores 1; finish scores 58. */
@@ -10,11 +12,19 @@ export function tokenRank(tokens: number[]) {
 }
 
 export function boardScores(board: LudoBoardState) {
-  return { red: tokenRank(board.redTokens), green: tokenRank(board.greenTokens) };
+  return {
+    red: tokenRank(tokensFor(board, "red")),
+    green: tokenRank(tokensFor(board, "green")),
+    yellow: tokenRank(tokensFor(board, "yellow")),
+    blue: tokenRank(tokensFor(board, "blue")),
+  };
 }
 
-export function leadingColor(board: LudoBoardState): "red" | "green" | null {
-  const { red, green } = boardScores(board);
-  const difference = red.tokensHome - green.tokensHome || red.totalProgress - green.totalProgress;
-  return difference > 0 ? "red" : difference < 0 ? "green" : null;
+export function leadingColor(board: LudoBoardState, colors: LudoColor[] = ["red", "green"]): LudoColor | null {
+  if (colors.length < 2) return null;
+  const scores = boardScores(board);
+  const ranked = colors.map((color) => ({ color, ...scores[color] }))
+    .sort((a, b) => b.tokensHome - a.tokensHome || b.totalProgress - a.totalProgress);
+  const first = ranked[0], second = ranked[1];
+  return first.tokensHome === second.tokensHome && first.totalProgress === second.totalProgress ? null : first.color;
 }

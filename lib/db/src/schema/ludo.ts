@@ -23,6 +23,8 @@ export type DepositStatus = "pending" | "success" | "failed";
 
 export type LudoBoardState = {
   turnUserId: string;
+  playerOrder?: string[];
+  joinWindowOpen?: boolean;
   dice: number[] | null;
   remainingDice: number[];
   consecutiveDoubles: number;
@@ -31,6 +33,8 @@ export type LudoBoardState = {
   hasRolled: boolean;
   redTokens: number[];
   greenTokens: number[];
+  yellowTokens?: number[];
+  blueTokens?: number[];
   winnerUserId: string | null;
   turnDeadlineAt: string | null;
   // Legacy JSON boards may omit these; normalizeBoard supplies API defaults.
@@ -83,12 +87,15 @@ export const roomsTable = pgTable(
   "ludo_rooms",
   {
     id: uuid("id").defaultRandom().primaryKey(),
+    tierId: text("tier_id"),
     stakeKobo: integer("stake_kobo").notNull(),
     status: text("status").$type<RoomStatus>().notNull().default("waiting"),
     hostUserId: uuid("host_user_id")
       .notNull()
       .references(() => usersTable.id),
     opponentUserId: uuid("opponent_user_id").references(() => usersTable.id),
+    thirdUserId: uuid("third_user_id").references(() => usersTable.id),
+    fourthUserId: uuid("fourth_user_id").references(() => usersTable.id),
     board: jsonb("board").$type<LudoBoardState>().notNull(),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
@@ -102,6 +109,8 @@ export const roomsTable = pgTable(
     index("ludo_rooms_lobby_idx").on(table.status, table.stakeKobo, table.createdAt),
     index("ludo_rooms_host_user_idx").on(table.hostUserId, table.status),
     index("ludo_rooms_opponent_user_idx").on(table.opponentUserId, table.status),
+    index("ludo_rooms_third_user_idx").on(table.thirdUserId, table.status),
+    index("ludo_rooms_fourth_user_idx").on(table.fourthUserId, table.status),
   ],
 );
 

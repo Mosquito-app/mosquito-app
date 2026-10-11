@@ -1,12 +1,22 @@
 import type { LudoBoardState } from "@workspace/db";
+import type { LudoColor } from "./ludo-room-tiers";
 
-type Color = "red" | "green";
+const TOKEN_KEY: Record<LudoColor, "redTokens" | "greenTokens" | "yellowTokens" | "blueTokens"> = {
+  red: "redTokens", green: "greenTokens", yellow: "yellowTokens", blue: "blueTokens",
+};
+const COLOR_OFFSET: Record<LudoColor, number> = { red: 0, green: 26, yellow: 13, blue: 39 };
 
 /** Keep legacy saved rooms playable without changing tokens, ownership or stakes. */
 export function normalizeBoard(board: LudoBoardState): LudoBoardState {
   const paired = Array.isArray(board.dice) && board.dice.length === 2;
   return {
     ...board,
+    redTokens: board.redTokens ?? [-1, -1, -1, -1],
+    greenTokens: board.greenTokens ?? [-1, -1, -1, -1],
+    yellowTokens: board.yellowTokens ?? [-1, -1, -1, -1],
+    blueTokens: board.blueTokens ?? [-1, -1, -1, -1],
+    playerOrder: board.playerOrder ?? [],
+    joinWindowOpen: board.joinWindowOpen ?? false,
     dice: paired ? board.dice : null,
     hasRolled: paired && board.hasRolled,
     remainingDice: paired && board.hasRolled ? board.remainingDice ?? [0, 1] : [],
@@ -19,8 +29,8 @@ export function normalizeBoard(board: LudoBoardState): LudoBoardState {
   };
 }
 
-export function tokensFor(board: LudoBoardState, color: Color) {
-  return color === "red" ? board.redTokens : board.greenTokens;
+export function tokensFor(board: LudoBoardState, color: LudoColor) {
+  return board[TOKEN_KEY[color]] ?? [-1, -1, -1, -1];
 }
 
 /** The six used to leave home is consumed; a second selected die moves from 0. */
@@ -37,7 +47,7 @@ export function moveDestination(position: number, values: number[], fullRoll: nu
   return position + sum <= 57 ? position + sum : null;
 }
 
-export function hasLegalMove(board: LudoBoardState, color: Color) {
+export function hasLegalMove(board: LudoBoardState, color: LudoColor) {
   if (!board.dice || board.remainingDice.length === 0) return false;
   const options = board.remainingDice.map(index => [board.dice![index]]);
   if (board.remainingDice.length === 2) options.push(board.remainingDice.map(index => board.dice![index]));
@@ -59,7 +69,7 @@ export function finishRoll(board: LudoBoardState, nextPlayer: string, nextDeadli
 }
 
 /** Production callers supply crypto-generated dice; no client-supplied roll is used. */
-export function applyRoll(board: LudoBoardState, color: Color, dice: [number, number], nextPlayer: string, nextDeadline: string): LudoBoardState {
+export function applyRoll(board: LudoBoardState, color: LudoColor, dice: [number, number], nextPlayer: string, nextDeadline: string): LudoBoardState {
   const doubled = dice[0] === dice[1];
   const count = doubled ? board.consecutiveDoubles + 1 : 0;
   if (count >= 3) {
@@ -78,26 +88,36 @@ export function applyRoll(board: LudoBoardState, color: Color, dice: [number, nu
 }
 
 const SAFE_SQUARES = new Set([0, 8, 13, 21, 26, 34, 39, 47]);
-function trackSquare(color: Color, position: number): number | null {
-  return position >= 0 && position <= 51 ? (position + (color === "green" ? 26 : 0)) % 52 : null;
+function trackSquare(color: LudoColor, position: number): number | null {
+  return position >= 0 && position <= 51 ? (position + COLOR_OFFSET[color]) % 52 : null;
 }
 
 /** One +10 bonus per capturing move, including stacks; bonus landing still obeys safe-square rules. */
-export function applyCaptureBonus(board: LudoBoardState, color: Color, tokenIndex: number): LudoBoardState {
-  const red = [...board.redTokens], green = [...board.greenTokens];
-  const own = color === "red" ? red : green, other = color === "red" ? green : red;
-  const otherColor = color === "red" ? "green" : "red";
+export function applyCaptureBonus(board: LudoBoardState, color: LudoColor, tokenIndex: number): LudoBoardState {
+  const tokens = {
+    red: [...board.redTokens],
+    green: [...board.greenTokens],
+    yellow: [...(board.yellowTokens ?? [-1, -1, -1, -1])],
+    blue: [...(board.blueTokens ?? [-1, -1, -1, -1])],
+  };
+  const own = tokens[color];
+  const rivals = LUDO_RIVALS.filter((rival) => rival !== color);
   const captureAt = (position: number) => {
     const square = trackSquare(color, position);
     if (square === null || SAFE_SQUARES.has(square)) return false;
     let captured = false;
-    other.forEach((p, i) => {
-      if (trackSquare(otherColor, p) === square) { other[i] = -1; captured = true; }
+    for (const rival of rivals) tokens[rival].forEach((p, i) => {
+      if (trackSquare(rival, p) === square) { tokens[rival][i] = -1; captured = true; }
     });
     return captured;
   };
   if (!captureAt(own[tokenIndex])) return board;
   own[tokenIndex] = Math.min(57, own[tokenIndex] + 10);
   captureAt(own[tokenIndex]);
-  return { ...board, redTokens: red, greenTokens: green, captureBonusPending: true, turnMessage: "capture_bonus" };
+  return {
+    ...board, redTokens: tokens.red, greenTokens: tokens.green, yellowTokens: tokens.yellow, blueTokens: tokens.blue,
+    captureBonusPending: true, turnMessage: "capture_bonus",
+  };
 }
+
+const LUDO_RIVALS: LudoColor[] = ["red", "green", "yellow", "blue"];

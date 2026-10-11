@@ -29,9 +29,9 @@ import { deadline, nextPlayerId, splitPot, turnExpired } from "../lib/ludo-turns
 import { applyCaptureBonus, applyRoll, finishRoll, hasLegalMove, moveDestination, normalizeBoard, tokensFor } from "../lib/ludo-rules";
 import { completeMatch, matchDeadline, resolveMatchClock } from "../lib/ludo-match";
 import { boardScores, leadingColor } from "../lib/ludo-ranking";
+import { colorForUser, getRoomTier, LUDO_COLORS, ROOM_TIERS, roomPlayerIds, userForColor } from "../lib/ludo-room-tiers";
 
 const router: IRouter = Router();
-const STAKES_NAIRA = [500, 1000, 2000] as const;
 
 class GameActionError extends Error {
   constructor(
@@ -42,18 +42,11 @@ class GameActionError extends Error {
   }
 }
 
-function colorFor(room: {
-  hostUserId: string;
-  opponentUserId: string | null;
-}, userId: string): "red" | "green" | null {
-  if (room.hostUserId === userId) return "red";
-  if (room.opponentUserId === userId) return "green";
-  return null;
-}
-
-function startBoard(hostUserId: string): LudoBoardState {
+function startBoard(hostUserId: string, maxPlayers: number): LudoBoardState {
   return {
     turnUserId: hostUserId,
+    playerOrder: [hostUserId],
+    joinWindowOpen: maxPlayers > 2,
     dice: null,
     remainingDice: [],
     consecutiveDoubles: 0,
@@ -62,6 +55,8 @@ function startBoard(hostUserId: string): LudoBoardState {
     hasRolled: false,
     redTokens: [-1, -1, -1, -1],
     greenTokens: [-1, -1, -1, -1],
+    yellowTokens: [-1, -1, -1, -1],
+    blueTokens: [-1, -1, -1, -1],
     winnerUserId: null,
     turnDeadlineAt: null,
     matchDeadlineAt: null, isOvertime: false, endReason: null,

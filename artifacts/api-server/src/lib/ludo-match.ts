@@ -5,6 +5,7 @@ import {
 } from "@workspace/db";
 import { normalizeBoard } from "./ludo-rules";
 import { leadingColor } from "./ludo-ranking";
+import { colorForUser, roomPlayerIds, userForColor, LUDO_COLORS } from "./ludo-room-tiers";
 
 export const MATCH_MS = 8 * 60 * 1000;
 export const matchDeadline = (now = Date.now()) => new Date(now + MATCH_MS).toISOString();
@@ -22,7 +23,8 @@ export async function completeMatch(
   tx: Tx, room: Room, board: LudoBoardState, winnerUserId: string,
   reason: NonNullable<LudoBoardState["endReason"]>,
 ): Promise<Room> {
-  if (!room.opponentUserId || ![room.hostUserId, room.opponentUserId].includes(winnerUserId)) {
+  const players = roomPlayerIds(room);
+  if (players.length < 2 || !players.includes(winnerUserId)) {
     throw new Error("Invalid match winner");
   }
   const finished: LudoBoardState = {
@@ -33,7 +35,7 @@ export async function completeMatch(
     status: "completed", board: finished, updatedAt: new Date(),
   }).where(and(eq(roomsTable.id, room.id), eq(roomsTable.status, "active"))).returning({ id: roomsTable.id });
   if (closed.length !== 1) throw new Error("Match is already closed");
-  const { prizeKobo, commissionKobo } = splitPot(room.stakeKobo * 2);
+  const { prizeKobo, commissionKobo } = splitPot(room.stakeKobo * players.length);
   await tx.update(usersTable).set({
     balanceKobo: sql`${usersTable.balanceKobo} + ${prizeKobo}`,
   }).where(eq(usersTable.id, winnerUserId));
@@ -53,7 +55,8 @@ export async function completeMatch(
 export async function resolveMatchClock(tx: Tx, room: Room, now = Date.now()) {
   const board = normalizeBoard(room.board);
   room = { ...room, board };
-  if (room.status !== "active" || !room.opponentUserId) return { room, changed: false };
+  const players = roomPlayerIds(room);
+  if (room.status !== "active" || players.length < 2) return { room, changed: false };
   if (!board.matchDeadlineAt) {
     // Old active rooms have no trustworthy start timestamp. Persist one grace
     // window once, rather than resetting it on reads or retroactively charging.
@@ -62,9 +65,11 @@ export async function resolveMatchClock(tx: Tx, room: Room, now = Date.now()) {
     return { room, changed: true };
   }
   if (!board.isOvertime && Date.parse(board.matchDeadlineAt) > now) return { room, changed: false };
-  const leader = leadingColor(board);
+  const colors = players.map((id) => colorForUser(room, id)).filter((color): color is NonNullable<typeof color> => color !== null);
+  const leader = leadingColor(board, colors.length ? colors : [...LUDO_COLORS.slice(0, players.length)]);
   if (leader) {
-    const winner = leader === "red" ? room.hostUserId : room.opponentUserId;
+    const winner = userForColor(room, leader);
+    if (!winner) throw new Error("Timeout winner is not a room participant");
     return { room: await completeMatch(tx, room, board, winner, board.isOvertime ? "overtime" : "timeout"), changed: true };
   }
   if (!board.isOvertime) {

@@ -4,12 +4,17 @@ import { publishRoomUpdate } from "./ludo-events";
 import { logger } from "./logger";
 import { normalizeBoard } from "./ludo-rules";
 import { resolveMatchClock } from "./ludo-match";
+import { roomPlayerIds } from "./ludo-room-tiers";
 export { splitPot } from "./ludo-match";
 
 export const TURN_MS = 30_000;
 export const deadline = () => new Date(Date.now() + TURN_MS).toISOString();
-export function nextPlayerId(room: { hostUserId: string; opponentUserId: string | null }, currentId: string) {
-  return currentId === room.hostUserId ? room.opponentUserId! : room.hostUserId;
+export function nextPlayerId(room: {
+  hostUserId: string; opponentUserId: string | null; thirdUserId?: string | null; fourthUserId?: string | null;
+}, currentId: string) {
+  const players = roomPlayerIds(room);
+  const currentIndex = players.indexOf(currentId);
+  return players[(currentIndex < 0 ? 0 : currentIndex + 1) % players.length] ?? room.hostUserId;
 }
 export function turnExpired(board: LudoBoardState, now = Date.now()) {
   return board.turnDeadlineAt !== null && Date.parse(board.turnDeadlineAt) <= now;
