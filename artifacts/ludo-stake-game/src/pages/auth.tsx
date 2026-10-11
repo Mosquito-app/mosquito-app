@@ -5,6 +5,14 @@ import { getGetCurrentUserQueryKey, useLogin, useRegister } from '@workspace/api
 import type { AuthResponse } from '@workspace/api-client-react';
 import { queryClient } from '@/lib/query-client';
 import { AuthFrame, InlineError } from '@/components/common';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 
 const signedIn = (result: AuthResponse) => { queryClient.clear(); queryClient.setQueryData(getGetCurrentUserQueryKey(), result); };
 
@@ -37,6 +45,7 @@ export function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [forgotPasswordOpen, setForgotPasswordOpen] = useState(false);
   const submit = (event: FormEvent) => {
     event.preventDefault(); setError('');
     login.mutate({ data: { email: email.trim(), password } }, {
@@ -48,9 +57,29 @@ export function LoginPage() {
     <form className="auth-form" onSubmit={submit}>
       <label>Email address<input type="email" autoComplete="email" required value={email} onChange={e => setEmail(e.target.value)} placeholder="you@example.com" data-testid="input-email" /></label>
       <label>Password<input type="password" autoComplete="current-password" required value={password} onChange={e => setPassword(e.target.value)} placeholder="Your password" data-testid="input-password" /></label>
+      <div className="auth-forgot-row">
+        <button className="auth-forgot-link" type="button" onClick={() => setForgotPasswordOpen(true)} data-testid="button-forgot-password">
+          Forgot Password?
+        </button>
+      </div>
       {error && <InlineError>{error}</InlineError>}
       <button className="primary-btn full" type="submit" disabled={login.isPending} data-testid="button-login">{login.isPending ? 'Finding your seat…' : 'Sign in'} <ArrowRight size={17} /></button>
     </form>
+    <Dialog open={forgotPasswordOpen} onOpenChange={setForgotPasswordOpen}>
+      <DialogContent className="auth-reset-dialog">
+        <DialogHeader>
+          <DialogTitle className="auth-reset-title">Password recovery isn’t available yet</DialogTitle>
+          <DialogDescription className="auth-reset-copy" data-testid="status-password-reset-unavailable">
+            To protect your account, we need to verify access to its email address before changing a forgotten password. Email verification isn’t configured yet, so password recovery is currently unavailable.
+          </DialogDescription>
+        </DialogHeader>
+        <DialogFooter className="auth-reset-actions">
+          <button className="primary-btn" type="button" onClick={() => setForgotPasswordOpen(false)} data-testid="button-close-password-reset">
+            Got it
+          </button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   </AuthFrame>;
 }
 

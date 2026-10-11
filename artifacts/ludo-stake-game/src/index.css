@@ -532,6 +532,14 @@ button, a, input { -webkit-tap-highlight-color: transparent; }
 .auth-form input:focus { border-color:#c96647;box-shadow:0 0 0 3px #c966471c; }
 .auth-form input::placeholder { color:#adb1a5; }
 .auth-form .primary-btn { margin-top:4px;height:43px; }
+.auth-forgot-row { display:flex;justify-content:flex-end;margin-top:-8px; }
+.auth-forgot-link { border:0;background:transparent;color:#bd5a41;font:600 10px Outfit;cursor:pointer;padding:2px 0; }
+.auth-forgot-link:hover { text-decoration:underline; }
+.auth-forgot-link:focus-visible { outline:2px solid #bd5a41;outline-offset:3px;border-radius:2px; }
+.auth-reset-dialog { background:#f8f5eb;color:#1d392f;border-color:#e3dece; }
+.auth-reset-title { color:#1d392f;line-height:1.3; }
+.auth-reset-copy { color:#65786c;line-height:1.6; }
+.auth-reset-actions { margin-top:4px; }
 .auth-switch { margin-top:19px;padding-top:16px;border-top:1px solid #e3dece;text-align:center;color:#829087;font-size:10px;display:flex;align-items:center;justify-content:center;gap:5px; }
 .auth-switch a,.text-link { color:#bd5a41;text-decoration:none;font-weight:700;display:inline-flex;align-items:center;gap:5px; }
 .auth-switch a:hover,.text-link:hover { text-decoration:underline; }
