@@ -1,0 +1,1 @@
+{"schema": "./lib/db/src/schema/index.ts", "out": "./migrations", "dialect": "postgresql", "dbCredentials": {"url": "postgresql://postgres.ycbtmdaduwyhopmxagdb:VYM96CWutqEDMEuL@aws-0-eu-west-1.pooler.supabase.com:5432/postgres"}}
