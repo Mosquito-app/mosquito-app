@@ -16,6 +16,12 @@ import './ludo-reference.css';
  */
 type Pick = 'd0' | 'd1' | 'both';
 const DISPLAY: Record<string, string> = { red: 'red', green: 'yellow', yellow: 'green', blue: 'blue' };
+const DISPLAY_HEX: Record<string, string> = {
+  red: '#cc2626',
+  yellow: '#ebce10',
+  green: '#19894e',
+  blue: '#0a4182',
+};
 const SEAT_LABEL: Record<Color, string> = { red: 'Red', green: 'Yellow', yellow: 'Green', blue: 'Blue' };
 
 export type RoomView = Room;
@@ -183,7 +189,8 @@ export function ReferenceBoard({ room, legalTokens, onMove, dice, rolling, sel, 
     const lane = lanes.get(key); const start = STARTS[key];
     const here = tokens.filter(t => t.at[0] === r && t.at[1] === c);
     const cls = ['lr-cell', home && `lr-home lr-c-${DISPLAY[home.color]}`, trackSet.has(key) && 'lr-track', lane && `lr-lane lr-c-${DISPLAY[lane]}`, start && `lr-start lr-c-${DISPLAY[start]}`, SAFE.includes(key) && 'lr-safe'].filter(Boolean).join(' ');
-    cells.push(<div key={key} className={cls}>
+    const squareColor = home ? DISPLAY[home.color] : lane ? DISPLAY[lane] : start ? DISPLAY[start] : undefined;
+    cells.push(<div key={key} className={cls} style={squareColor ? { backgroundColor: DISPLAY_HEX[squareColor] } : undefined}>
       {PADS[key] && <span className="lr-pad" />}
       {here.map((t, n) => { const mine = t.color === room.myColor; const legal = mine && legalTokens.has(t.index); const shown = DISPLAY[t.color];
         return <button key={`${t.color}-${t.index}`} type="button" aria-label={`${SEAT_LABEL[t.color]} token ${t.index + 1}${mine ? ' (yours)' : ''}${legal ? ', can move' : ''}`} disabled={!legal} onClick={() => onMove(t.index)}
