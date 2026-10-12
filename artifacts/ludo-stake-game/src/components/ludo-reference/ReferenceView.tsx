@@ -192,7 +192,7 @@ export function ReferenceBoard({ room, legalTokens, onMove, dice, rolling, sel, 
     const home = RECTS.find(h => r >= h.r && r < h.r + 6 && c >= h.c && c < h.c + 6);
     const lane = lanes.get(key); const start = STARTS[key];
     const here = tokens.filter(t => t.at[0] === r && t.at[1] === c);
-    const cls = ['lr-cell', home && `lr-home lr-c-${DISPLAY[home.color]}`, trackSet.has(key) && 'lr-track', lane && `lr-lane lr-c-${DISPLAY[lane]}`, start && `lr-start lr-c-${DISPLAY[start]}`, SAFE.includes(key) && 'lr-safe'].filter(Boolean).join(' ');
+    const cls = ['lr-cell', home && 'lr-home', trackSet.has(key) && 'lr-track', lane && 'lr-lane', start && 'lr-start', SAFE.includes(key) && 'lr-safe'].filter(Boolean).join(' ');
     const squareColor = home ? DISPLAY[home.color] : lane ? DISPLAY[lane] : start ? DISPLAY[start] : undefined;
     cells.push(<div key={key} className={cls} style={squareColor ? { backgroundColor: DISPLAY_HEX[squareColor] } : undefined}>
       {PADS[key] && <span className="lr-pad" />}
