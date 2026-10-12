@@ -172,7 +172,7 @@ try {
   const outsider = await register("testoutside");
   const duplicateEmail = await request("/auth/register", undefined, { username: `dupe${randomUUID().replaceAll("-", "").slice(0, 12)}`, email: host.email, password: "1234" }, 409);
   assert.equal(duplicateEmail.data.error, "Email already registered");
-  const duplicateUsername = await request("/auth/register", undefined, { username: "testhost", email: "different@example.test", password: "1234" }, 409);
+  const duplicateUsername = await request("/auth/register", undefined, { username: "testhost", email: `different-${randomUUID()}@example.test`, password: "1234" }, 409);
   assert.equal(duplicateUsername.data.error, "Username already registered");
   await request("/auth/login", undefined, { email: host.email, password: "wrong" }, 401);
   await db.update(sessionsTable).set({ expiresAt: new Date(Date.now() - 1000) }).where(eq(sessionsTable.userId, host.id));

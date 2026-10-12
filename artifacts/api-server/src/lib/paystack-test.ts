@@ -5,6 +5,10 @@ export class PaystackTestError extends Error {
 export type PaystackMode = "test" | "live";
 export type PublicPaystackMode = PaystackMode | "unavailable";
 
+function isProductionRuntime() {
+  return Reflect.get(process.env, "NODE_ENV") === "production";
+}
+
 /** Live mode is only honored in production. A shared/live flag cannot make a
  * development preview charge real cards. */
 export function getPaystackMode(): PaystackMode {
@@ -12,7 +16,7 @@ export function getPaystackMode(): PaystackMode {
   if (selected !== "test" && selected !== "live") {
     throw new PaystackTestError(503, "Paystack mode is not configured correctly.");
   }
-  return selected === "live" && process.env["NODE_ENV"] === "production" ? "live" : "test";
+  return selected === "live" && isProductionRuntime() ? "live" : "test";
 }
 
 export function getPaystackModeForReference(reference: string): PaystackMode {
@@ -21,7 +25,7 @@ export function getPaystackModeForReference(reference: string): PaystackMode {
 
 export function getPaystackSecretKey(mode: PaystackMode): string {
   if (mode === "live") {
-    if (process.env["NODE_ENV"] !== "production") {
+    if (!isProductionRuntime()) {
       throw new PaystackTestError(503, "Live Paystack requests are disabled outside production.");
     }
     const key = process.env.PAYSTACK_SECRET_KEY;
