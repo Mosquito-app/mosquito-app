@@ -84,6 +84,26 @@ router.post("/auth/register", async (req, res): Promise<void> => {
     return;
   }
 
+  const [existingEmail] = await db
+    .select({ id: usersTable.id })
+    .from(usersTable)
+    .where(eq(usersTable.email, email))
+    .limit(1);
+  if (existingEmail) {
+    res.status(409).json({ error: "Email already registered" });
+    return;
+  }
+
+  const [existingUsername] = await db
+    .select({ id: usersTable.id })
+    .from(usersTable)
+    .where(eq(usersTable.username, username))
+    .limit(1);
+  if (existingUsername) {
+    res.status(409).json({ error: "Username already registered" });
+    return;
+  }
+
   const salt = randomBytes(16).toString("hex");
   const passwordHash = await hashPassword(parsed.data.password, salt);
 
