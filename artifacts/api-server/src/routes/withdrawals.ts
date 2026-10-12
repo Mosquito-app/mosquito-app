@@ -4,10 +4,10 @@ import { Router, type IRouter } from "express";
 import { CreateWithdrawalBody, CreateWithdrawalResponse } from "@workspace/api-zod";
 import { db, usersTable, walletTransactionsTable, withdrawalsTable } from "@workspace/db";
 import { getAuthenticatedUser } from "../lib/ludo-auth";
-import { PaystackTestError, paystackTestRequest } from "../lib/paystack-test";
+import { getPaystackMode, getPaystackSecretKey, paystackRequest, PaystackTestError } from "../lib/paystack-test";
 import {
   MOCK_TEST_RECIPIENT_CODE,
-  initiateTestTransfer,
+  initiateTransfer,
   reconcileWithdrawal,
   WITHDRAWAL_SERVICE_FEE_KOBO,
   withdrawalDto,
@@ -20,13 +20,13 @@ const WITHDRAWAL_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{
 router.post("/withdrawals", async (req, res): Promise<void> => {
   const user = await getAuthenticatedUser(req);
   if (!user) {
-    res.status(401).json({ error: "Sign in to request a test withdrawal." });
+    res.status(401).json({ error: "Sign in to request a wallet withdrawal." });
     return;
   }
 
   const parsed = CreateWithdrawalBody.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({ error: "Enter a valid test withdrawal amount and bank account." });
+    res.status(400).json({ error: "Enter a valid withdrawal amount and bank account." });
     return;
   }
 
@@ -35,8 +35,13 @@ router.post("/withdrawals", async (req, res): Promise<void> => {
     res.status(400).json({ error: "Withdrawal amount must be greater than ₦50." });
     return;
   }
-  if (!process.env.PAYSTACK_TEST_SECRET_KEY?.startsWith("sk_test_")) {
-    res.status(503).json({ error: "Paystack test mode is not configured." });
+  let mode: "test" | "live";
+  try {
+    mode = getPaystackMode();
+    getPaystackSecretKey(mode);
+  } catch (error) {
+    res.status(error instanceof PaystackTestError ? error.status : 503)
+      .json({ error: error instanceof Error ? error.message : "Paystack is not configured." });
     return;
   }
 

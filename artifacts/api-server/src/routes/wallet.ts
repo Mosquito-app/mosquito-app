@@ -122,22 +122,33 @@ router.get("/wallet", async (req, res): Promise<void> => {
 router.post("/deposits/initialize", async (req, res): Promise<void> => {
   const user = await getAuthenticatedUser(req);
   if (!user) {
-    res.status(401).json({ error: "Sign in to start a test deposit." });
+    res.status(401).json({ error: "Sign in to start a wallet deposit." });
     return;
   }
   const parsed = InitializeDepositBody.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({ error: "Deposit between ₦500 and ₦500,000 in test mode." });
+    res.status(400).json({ error: "Deposit between ₦500 and ₦500,000." });
     return;
   }
-  const testKey = getPaystackTestKey();
-  if (!testKey) {
-    res.status(503).json({ error: "Paystack test mode is not configured." });
+  let mode: "test" | "live";
+  try {
+    mode = getPaystackMode();
+    getPaystackSecretKey(mode);
+  } catch (error) {
+    res.status(error instanceof PaystackTestError ? error.status : 503)
+      .json({ error: error instanceof Error ? error.message : "Paystack is not configured." });
+    return;
+  }
+  const callbackUrl = getCheckoutCallbackUrl(mode);
+  if (mode === "live" && !callbackUrl) {
+    res.status(503).json({ error: "Live Paystack callback URL is not configured for this production domain." });
     return;
   }
 
   const amountKobo = parsed.data.amountNaira * 100;
-  const reference = `ludo_${randomBytes(18).toString("hex")}`;
+  const reference = mode === "live"
+    ? `pay_live_${randomBytes(18).toString("hex")}`
+    : `ludo_${randomBytes(18).toString("hex")}`;
   await db.insert(depositIntentsTable).values({
     userId: user.id,
     reference,
@@ -146,25 +157,16 @@ router.post("/deposits/initialize", async (req, res): Promise<void> => {
   });
 
   try {
-    const response = await fetch(`${PAYSTACK_BASE_URL}/transaction/initialize`, {
-      method: "POST",
-      headers: {
-        authorization: `Bearer ${testKey}`,
-        "content-type": "application/json",
-      },
-      body: JSON.stringify({
-        email: user.email,
-        amount: amountKobo,
-        currency: "NGN",
-        reference,
-        callback_url: getCheckoutCallbackUrl(),
-      }),
-      signal: AbortSignal.timeout(15_000),
+    const response = await paystackRequest(mode, "/transaction/initialize", "POST", {
+      email: user.email,
+      amount: amountKobo,
+      currency: "NGN",
+      reference,
+      callback_url: callbackUrl,
     });
-    const payload = await readPaystackJson(response);
-    const data = getDataObject(payload);
-    const authorizationUrl =
-      typeof data?.authorization_url === "string" ? data.authorization_url : "";
+    const authorizationUrl = typeof response.data?.authorization_url === "string"
+      ? response.data.authorization_url
+      : "";
     let safeCheckoutUrl = false;
     try {
       safeCheckoutUrl = new URL(authorizationUrl).origin === "https://checkout.paystack.com";
@@ -172,13 +174,13 @@ router.post("/deposits/initialize", async (req, res): Promise<void> => {
       safeCheckoutUrl = false;
     }
 
-    if (!response.ok || payload?.status !== true || !safeCheckoutUrl) {
+    if (!response.ok || response.payload.status !== true || !safeCheckoutUrl) {
       await db
         .update(depositIntentsTable)
         .set({ status: "failed" })
         .where(eq(depositIntentsTable.reference, reference));
-      req.log.warn({ statusCode: response.status }, "Paystack test checkout initialization failed");
-      res.status(502).json({ error: "Paystack could not start the test checkout." });
+      req.log.warn({ statusCode: response.statusCode }, `Paystack ${mode} checkout initialization failed`);
+      res.status(502).json({ error: `Paystack could not start the ${mode} checkout.` });
       return;
     }
 
@@ -187,6 +189,7 @@ router.post("/deposits/initialize", async (req, res): Promise<void> => {
         authorizationUrl,
         reference,
         amountNaira: parsed.data.amountNaira,
+        paymentMode: mode,
       }),
     );
   } catch (error) {
@@ -194,15 +197,15 @@ router.post("/deposits/initialize", async (req, res): Promise<void> => {
       .update(depositIntentsTable)
       .set({ status: "failed" })
       .where(eq(depositIntentsTable.reference, reference));
-    req.log.error({ err: error }, "Paystack test checkout request failed");
-    res.status(502).json({ error: "Paystack test checkout is temporarily unavailable." });
+    req.log.error({ err: error }, `Paystack ${mode} checkout request failed`);
+    res.status(502).json({ error: `Paystack ${mode} checkout is temporarily unavailable.` });
   }
 });
 
 router.post("/deposits/verify", async (req, res): Promise<void> => {
   const user = await getAuthenticatedUser(req);
   if (!user) {
-    res.status(401).json({ error: "Sign in to verify a test deposit." });
+    res.status(401).json({ error: "Sign in to verify your wallet deposit." });
     return;
   }
   const parsed = VerifyDepositBody.safeParse(req.body);
@@ -221,9 +224,10 @@ router.post("/deposits/verify", async (req, res): Promise<void> => {
     )
     .limit(1);
   if (!intent) {
-    res.status(404).json({ error: "Test deposit reference not found." });
+    res.status(404).json({ error: "Deposit reference not found." });
     return;
   }
+  const mode = getPaystackModeForReference(intent.reference);
 
   if (intent.status === "success") {
     const [currentUser] = await db
@@ -236,36 +240,32 @@ router.post("/deposits/verify", async (req, res): Promise<void> => {
         status: "success",
         amountNaira: Math.floor(intent.amountKobo / 100),
         balanceNaira: Math.floor((currentUser?.balanceKobo ?? 0) / 100),
+        paymentMode: mode,
       }),
     );
     return;
   }
 
-  const testKey = getPaystackTestKey();
-  if (!testKey) {
-    res.status(503).json({ error: "Paystack test mode is not configured." });
+  try {
+    getPaystackSecretKey(mode);
+  } catch (error) {
+    res.status(error instanceof PaystackTestError ? error.status : 503)
+      .json({ error: error instanceof Error ? error.message : "Paystack is not configured." });
     return;
   }
 
   try {
-    const response = await fetch(
-      `${PAYSTACK_BASE_URL}/transaction/verify/${encodeURIComponent(intent.reference)}`,
-      {
-        headers: { authorization: `Bearer ${testKey}` },
-        signal: AbortSignal.timeout(15_000),
-      },
-    );
-    const payload = await readPaystackJson(response);
-    const data = getDataObject(payload);
-    if (!response.ok || payload?.status !== true || !data) {
-      req.log.warn({ statusCode: response.status }, "Paystack test verification request failed");
-      res.status(502).json({ error: "Paystack could not verify the test deposit yet." });
+    const response = await paystackRequest(mode, `/transaction/verify/${encodeURIComponent(intent.reference)}`);
+    const data = response.data;
+    if (!response.ok || response.payload.status !== true || !data) {
+      req.log.warn({ statusCode: response.statusCode }, `Paystack ${mode} verification request failed`);
+      res.status(502).json({ error: `Paystack could not verify the ${mode} deposit yet.` });
       return;
     }
 
     const isSuccess =
       data.status === "success" &&
-      data.domain === "test" &&
+      data.domain === mode &&
       data.currency === "NGN" &&
       data.amount === intent.amountKobo &&
       data.reference === intent.reference;
@@ -286,6 +286,7 @@ router.post("/deposits/verify", async (req, res): Promise<void> => {
           status: "failed",
           amountNaira: Math.floor(intent.amountKobo / 100),
           balanceNaira: Math.floor((currentUser?.balanceKobo ?? 0) / 100),
+        paymentMode: mode,
         }),
       );
       return;
@@ -297,6 +298,7 @@ router.post("/deposits/verify", async (req, res): Promise<void> => {
           status: "pending",
           amountNaira: Math.floor(intent.amountKobo / 100),
           balanceNaira: Math.floor(user.balanceKobo / 100),
+          paymentMode: mode,
         }),
       );
       return;
@@ -332,7 +334,7 @@ router.post("/deposits/verify", async (req, res): Promise<void> => {
           userId: user.id,
           type: "deposit",
           amountKobo: lockedIntent.amountKobo,
-          description: "Paystack test-mode deposit",
+          description: `Paystack ${mode}-mode deposit`,
           depositReference: lockedIntent.reference,
         });
         await tx
@@ -355,11 +357,12 @@ router.post("/deposits/verify", async (req, res): Promise<void> => {
         status: newBalanceKobo === null ? "failed" : "success",
         amountNaira: Math.floor(intent.amountKobo / 100),
         balanceNaira: Math.floor((currentUser?.balanceKobo ?? 0) / 100),
+        paymentMode: mode,
       }),
     );
   } catch (error) {
-    req.log.error({ err: error }, "Paystack test verification request failed");
-    res.status(502).json({ error: "Paystack test verification is temporarily unavailable." });
+    req.log.error({ err: error }, `Paystack ${mode} verification request failed`);
+    res.status(502).json({ error: `Paystack ${mode} verification is temporarily unavailable.` });
   }
 });
 

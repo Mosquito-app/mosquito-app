@@ -1,6 +1,6 @@
 import { and, eq, lt, sql } from "drizzle-orm";
 import { db, platformWalletTable, usersTable, walletTransactionsTable, withdrawalsTable } from "@workspace/db";
-import { paystackTestRequest } from "./paystack-test";
+import { getPaystackModeForReference, paystackRequest } from "./paystack-test";
 import { logger } from "./logger";
 
 export const WITHDRAWAL_SERVICE_FEE_KOBO = 5_000;
@@ -24,7 +24,7 @@ export function withdrawalDto(row: WithdrawalRow) {
 }
 
 function matchesTransfer(row: WithdrawalRow, data: Record<string, unknown> | null) {
-  return data?.domain === "test" && data.reference === row.reference &&
+  return data?.domain === getPaystackModeForReference(row.reference) && data.reference === row.reference &&
     data.amount === row.amountKobo - WITHDRAWAL_SERVICE_FEE_KOBO && data.currency === "NGN";
 }
 
@@ -63,15 +63,19 @@ export async function completeSimulatedTestTransfer(row: WithdrawalRow) {
   );
 }
 
-export async function initiateTestTransfer(row: WithdrawalRow) {
+export async function initiateTransfer(row: WithdrawalRow) {
+  const mode = getPaystackModeForReference(row.reference);
+  if (mode === "live" && row.recipientCode === MOCK_TEST_RECIPIENT_CODE) {
+    throw new Error("A simulated recipient cannot be used for a live bank withdrawal.");
+  }
   if (row.recipientCode === MOCK_TEST_RECIPIENT_CODE) {
     await completeSimulatedTestTransfer(row);
     return;
   }
 
-  const result = await paystackTestRequest("/transfer", "POST", {
+  const result = await paystackRequest(mode, "/transfer", "POST", {
     source: "balance", amount: row.amountKobo - WITHDRAWAL_SERVICE_FEE_KOBO, currency: "NGN", recipient: row.recipientCode,
-    reference: row.reference, reason: "LudoRoom sandbox withdrawal — no real funds",
+    reference: row.reference, reason: `Mosquito Wallet ${mode} withdrawal`,
   });
   if (result.ok && matchesTransfer(row, result.data)) {
     const code = typeof result.data?.transfer_code === "string" ? result.data.transfer_code : undefined;
@@ -81,7 +85,7 @@ export async function initiateTestTransfer(row: WithdrawalRow) {
   }
   // Never refund an ambiguous request: a timeout or server error may occur after acceptance.
   if (result.statusCode >= 400 && result.statusCode < 500) {
-    const verification = await paystackTestRequest(`/transfer/verify/${encodeURIComponent(row.reference)}`);
+    const verification = await paystackRequest(mode, `/transfer/verify/${encodeURIComponent(row.reference)}`);
     if (verification.statusCode === 404) await finalize(row, "failed");
     else if (verification.ok && matchesTransfer(row, verification.data)) {
       if (verification.data?.status === "success") await finalize(row, "success");
@@ -91,18 +95,20 @@ export async function initiateTestTransfer(row: WithdrawalRow) {
 }
 export async function reconcileWithdrawal(row: WithdrawalRow) {
   if (row.status !== "pending") return;
+  const mode = getPaystackModeForReference(row.reference);
   if (row.recipientCode === MOCK_TEST_RECIPIENT_CODE) {
+    if (mode === "live") throw new Error("A live withdrawal cannot use a simulated recipient.");
     await completeSimulatedTestTransfer(row);
     return;
   }
 
-  const result = await paystackTestRequest(`/transfer/verify/${encodeURIComponent(row.reference)}`);
+  const result = await paystackRequest(mode, `/transfer/verify/${encodeURIComponent(row.reference)}`);
   if (result.ok && matchesTransfer(row, result.data)) {
     if (result.data?.status === "success") await finalize(row, "success");
     else if (["failed", "reversed"].includes(String(result.data?.status))) await finalize(row, "failed");
   } else if (result.statusCode === 404) {
     // Retry ONLY the original reference; Paystack deduplicates this reference.
-    await initiateTestTransfer(row);
+      await initiateTransfer(row);
   }
 }
 export function startWithdrawalReconciliation() {
@@ -115,7 +121,7 @@ export function startWithdrawalReconciliation() {
         eq(withdrawalsTable.status, "pending"), lt(withdrawalsTable.createdAt, new Date(Date.now() - 20_000)),
       )).limit(20);
       for (const row of rows) {
-        try { await reconcileWithdrawal(row); } catch { logger.warn("Test withdrawal reconciliation delayed"); }
+        try { await reconcileWithdrawal(row); } catch { logger.warn("Withdrawal reconciliation delayed"); }
       }
     })().catch(err => logger.error({ err }, "Withdrawal reconciliation failed")).finally(() => { running = false; });
   }, 15_000);
