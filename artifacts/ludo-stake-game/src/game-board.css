@@ -79,3 +79,25 @@
 .lb-die { background:linear-gradient(#fff6dc,#ecd9a8); border:2px solid #3b2210; box-shadow:0 3px 0 #8a5a14,0 6px 10px #0006; }
 .lb-notice { background:#f2b632; border-color:#3b2210; }
 @media (prefers-reduced-motion:reduce) { .lb-token,.lb-token.ready { animation:none; transition:none; } }
+
+/* Keep the Ludo board as a wooden game surface while bringing companion UI into light mode. */
+.lb-legend { color:#475569; }
+.lb-legend .hint { color:#166534; }
+.lb-dice-panel { background:#fff; border:1px solid #e2e8f0; color:#0f172a; box-shadow:0 1px 2px rgb(15 23 42 / .06); }
+.lb-opt { background:#fff; color:#0f172a; border:1px solid #cbd5e1; }
+.lb-opt small { color:#475569; }
+.lb-opt.active { background:#f0fdf4; border-color:#16a34a; box-shadow:0 0 0 2px #16a34a18; }
+.lb-notice { background:#fef3c7; color:#713f12; border:1px solid #fcd34d; }
+.lb-notice.bad { background:#fef2f2; color:#991b1b; border-color:#fecaca; }
+.lb-doubles { color:#475569; }
+.lb-doubles b { border-color:#94a3b8; background:#f1f5f9; }
+.lb-doubles b.on { background:#16a34a; border-color:#16a34a; }
+.lb-help { color:#475569; }
+.lb-help b,.lb-turn { color:#0f172a; }
+.lb-turn.wait { color:#475569; }
+.lb-match-clock { border-color:#e2e8f0; background:#fff; color:#0f172a; box-shadow:0 1px 2px rgb(15 23 42 / .06); }
+.lb-match-clock p { color:#475569; }
+.lb-match-scores { border-color:#e2e8f0; color:#334155; }
+.lb-match-clock.urgent { border-color:#fca5a5; }
+.lb-match-clock.overtime { border-color:#fcd34d; }
+.lb-overtime-banner { background:#fef3c7; color:#713f12; }
