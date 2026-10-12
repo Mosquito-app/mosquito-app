@@ -78,7 +78,7 @@ const address = server.address() as { port: number };
 const base = `http://127.0.0.1:${address.port}`;
 const origin = base;
 let checks = 0;
-type Seat = { cookie: string; id: string; email: string };
+type Seat = { cookie: string; id: string; email: string; username?: string };
 async function request(path: string, seat?: Seat, body?: unknown, expected: number | number[] = 200) {
   const response = await nativeFetch(`${base}/api${path}`, {
     method: body === undefined ? "GET" : "POST",
@@ -92,9 +92,10 @@ async function request(path: string, seat?: Seat, body?: unknown, expected: numb
   return { data, response };
 }
 async function register(name: string): Promise<Seat> {
-  const email = `${name}@example.test`;
-  const { data, response } = await request("/auth/register", undefined, { username: name, email, password: "sandbox-password-123" }, 200);
-  return { id: data.user.id, email, cookie: response.headers.get("set-cookie")!.split(";")[0] };
+  const username = `${name.slice(0, 15)}_${randomUUID().replaceAll("-", "").slice(0, 8)}`;
+  const email = `${username}@example.test`;
+  const { data, response } = await request("/auth/register", undefined, { username, email, password: "sandbox-password-123" }, 200);
+  return { id: data.user.id, email, username, cookie: response.headers.get("set-cookie")!.split(";")[0] };
 }
 async function credit(seat: Seat, amount = 10000) {
   const initialized = await request("/deposits/initialize", seat, { amountNaira: amount }, 201);
@@ -172,7 +173,7 @@ try {
   const outsider = await register("testoutside");
   const duplicateEmail = await request("/auth/register", undefined, { username: `dupe${randomUUID().replaceAll("-", "").slice(0, 12)}`, email: host.email, password: "1234" }, 409);
   assert.equal(duplicateEmail.data.error, "Email already registered");
-  const duplicateUsername = await request("/auth/register", undefined, { username: "testhost", email: `different-${randomUUID()}@example.test`, password: "1234" }, 409);
+  const duplicateUsername = await request("/auth/register", undefined, { username: host.username, email: `different-${randomUUID()}@example.test`, password: "1234" }, 409);
   assert.equal(duplicateUsername.data.error, "Username already registered");
   await request("/auth/login", undefined, { email: host.email, password: "wrong" }, 401);
   await db.update(sessionsTable).set({ expiresAt: new Date(Date.now() - 1000) }).where(eq(sessionsTable.userId, host.id));
