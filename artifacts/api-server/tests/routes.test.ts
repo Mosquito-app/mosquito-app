@@ -170,7 +170,7 @@ try {
   const host = await register("testhost");
   const green = await register("testgreen");
   const outsider = await register("testoutside");
-  const duplicateEmail = await request("/auth/register", undefined, { username: "differentname", email: host.email, password: "1234" }, 409);
+  const duplicateEmail = await request("/auth/register", undefined, { username: `dupe${randomUUID().replaceAll("-", "").slice(0, 12)}`, email: host.email, password: "1234" }, 409);
   assert.equal(duplicateEmail.data.error, "Email already registered");
   const duplicateUsername = await request("/auth/register", undefined, { username: "testhost", email: "different@example.test", password: "1234" }, 409);
   assert.equal(duplicateUsername.data.error, "Username already registered");
@@ -232,7 +232,7 @@ try {
   const liveEnvKeys = ["NODE_ENV", "PAYSTACK_MODE", "PAYSTACK_SECRET_KEY", "PAYSTACK_PUBLIC_KEY", "PAYSTACK_LIVE_CALLBACK_URL", "REPLIT_DOMAINS"] as const;
   const previousLiveEnv = Object.fromEntries(liveEnvKeys.map(key => [key, process.env[key]]));
   try {
-    process.env.NODE_ENV = "production";
+    process.env["NODE_ENV"] = "production";
     process.env.PAYSTACK_MODE = "live";
     process.env.PAYSTACK_SECRET_KEY = "sk_live_fixture_only";
     process.env.PAYSTACK_PUBLIC_KEY = "pk_live_fixture_only";

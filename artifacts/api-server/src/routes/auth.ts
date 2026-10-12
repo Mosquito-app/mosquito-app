@@ -110,13 +110,19 @@ router.post("/auth/register", async (req, res): Promise<void> => {
         ? cause.code
         : undefined;
     if (code === "23505") {
+      const constraint =
+        typeof cause === "object" && cause !== null && "constraint" in cause
+          ? String(cause.constraint)
+          : "";
       const [existingEmail] = await db
         .select({ id: usersTable.id })
         .from(usersTable)
         .where(eq(usersTable.email, email))
         .limit(1);
       res.status(409).json({
-        error: existingEmail ? "Email already registered" : "Username already registered",
+        error: /email/i.test(constraint) || existingEmail
+          ? "Email already registered"
+          : "Username already registered",
       });
       return;
     }
