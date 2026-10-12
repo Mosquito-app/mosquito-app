@@ -3,6 +3,6 @@
 - [Paystack test recipients](paystack-test-recipients.md) — Sample payment accounts are not guaranteed to resolve as transfer recipients, even with a valid test key.
 - [Browser QA boundaries](browser-payment-qa.md) — Native-browser fallback, payment evidence limits, and software-WebGL teardown; never treat synthetic stakes as deposits.
 - [Two-dice rules](two-dice-rules.md) — Double-6 earns up to three rolls; captures send rivals to base and the capturing pawn home.
-- [Ludo screenshot layout](ludo-reference-layout.md) — Keep the Uncle Joe board layout with vivid red, green, yellow and blue homes, black grid lines and clear white dice.
+- [Ludo screenshot layout](ludo-reference-layout.md) — Match the supplied Uncle Joe board's specific primary colors, black grid lines and clear white dice.
 - [Ludo room picker style](ludo-room-picker-style.md) — Follow the warm peach, gold-bordered room cards while retaining Mosquito App branding and server-owned room data.
 - [Match timeout rules](match-timeout-rules.md) — At 8 minutes rank finished tokens, then progress; exact ties enter sudden death until the first tie-breaking movement.

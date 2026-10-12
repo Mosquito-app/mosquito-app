@@ -200,9 +200,9 @@ export function ReferenceBoard({ room, legalTokens, onMove, dice, rolling, sel, 
       {CORNERS.map(k => <div key={k.color} className={`lr-inset lr-i-${k.color}`} aria-hidden="true" style={{ left: `${(k.C + 1) * 100 / 15}%`, top: `${(k.R + 1) * 100 / 15}%` }}><Landmark kind={ART[k.color]} /></div>)}
       {cells}
       <svg className="lr-star" viewBox="0 0 3 3" aria-hidden="true">
-        <polygon points="0,0 0,3 1.5,1.5" fill="#1f9a55" /><polygon points="0,0 3,0 1.5,1.5" fill="#f6c915" />
-        <polygon points="3,0 3,3 1.5,1.5" fill="#2559c8" /><polygon points="0,3 3,3 1.5,1.5" fill="#c8202e" />
-        <path d="M0 0L3 3M3 0L0 3M0 0H3V3H0Z" stroke="#2b1608" strokeWidth=".04" fill="none" />
+        <polygon points="0,0 0,3 1.5,1.5" fill="#19894e" /><polygon points="0,0 3,0 1.5,1.5" fill="#ebce10" />
+        <polygon points="3,0 3,3 1.5,1.5" fill="#0a4182" /><polygon points="0,3 3,3 1.5,1.5" fill="#cc2626" />
+        <path d="M0 0L3 3M3 0L0 3M0 0H3V3H0Z" stroke="#171411" strokeWidth=".04" fill="none" />
       </svg>
       <div className="lr-center-dice">{dieBtn(0)}{dieBtn(1)}</div>
     </div>
