@@ -1,7 +1,7 @@
 import { randomInt } from "node:crypto";
 import { and, eq, sql } from "drizzle-orm";
 import { db, roomsTable, type LudoBoardState } from "@workspace/db";
-import { applyCaptureBonus, applyRoll, finishRoll, hasLegalMove, moveDestination, normalizeBoard, tokensFor } from "./ludo-rules";
+import { applyCaptureHome, applyRoll, finishRoll, hasLegalMove, moveDestination, normalizeBoard, tokensFor } from "./ludo-rules";
 import { colorForUser, LUDO_COLORS, roomPlayerIds } from "./ludo-room-tiers";
 import { completeMatch, resolveMatchClock } from "./ludo-match";
 import { deadline, nextPlayerId, turnExpired } from "./ludo-turns";
@@ -47,10 +47,11 @@ export function chooseAiMove(board: LudoBoardState, color: Color): AiMove | null
 
       const movedTokens = [...ownTokens];
       movedTokens[tokenIndex] = destination;
-      const afterMove = applyCaptureBonus({
+      const afterMove = applyCaptureHome({
         ...board,
         [TOKEN_KEY[color]]: movedTokens,
         remainingDice: board.remainingDice.filter(index => !diceIndices.includes(index)),
+        lastMove: null,
       }, color, tokenIndex);
       const piecesCaptured = beforePieces - activePieces(afterMove, color);
       const ownAfter = tokensFor(afterMove, color);
@@ -136,8 +137,10 @@ async function playAiTurn(roomId: string): Promise<boolean> {
       ...board,
       [TOKEN_KEY[color]]: ownTokens,
       remainingDice: board.remainingDice.filter(index => !move.diceIndices.includes(index)),
+      lastMove: null,
+      captureBonusPending: false,
     };
-    board = applyCaptureBonus(board, color, move.tokenIndex);
+    board = applyCaptureHome(board, color, move.tokenIndex);
 
     const participants = roomPlayerIds(room).filter(id => !board.forfeitedUserIds?.includes(id));
     const participantColors = participants

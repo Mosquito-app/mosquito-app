@@ -124,6 +124,12 @@ export function ReferenceBoard({ room, legalTokens, onMove, dice, rolling, sel, 
         const from = immediate[color][index] ?? -1;
         const to = target[color][index] ?? -1;
         if (to > from) {
+          const capturedHome = room.board.lastMove?.kind === 'capture_home' &&
+            room.board.lastMove.color === color && room.board.lastMove.tokenIndex === index && to === 57;
+          if (capturedHome) {
+            immediate[color][index] = to;
+            continue;
+          }
           const start = from < 0 ? 0 : from;
           immediate[color][index] = start;
           const steps = Array.from({ length: Math.max(0, to - start) }, (_, step) => start + step + 1);
@@ -295,10 +301,10 @@ export function ReferenceView(p: ViewProps) {
     {dlg === 'rules' && <Modal title="Rules" onClose={() => setDlg(null)} testid="dialog-rules"><ol className="lr-rules">
       <li>Two dice are rolled by the server each turn. Pick die 1, die 2 or both as a sum, then tap a glowing token.</li>
        <li>A token can leave base only by using a rolled 6. If both dice are selected, the other die advances it from its starting tile.</li>
-       <li>Split the dice between two tokens by choosing one die at a time. After all dice are used, a roll without a 6 passes the turn.</li>
-       <li>Landing on a rival token sends it back to base and advances your token +10 steps, stopping at finish. A capture alone does not grant a roll.</li>
+       <li>Split the dice between two tokens by choosing one die at a time. After all dice are used, the turn passes unless the roll was a double 6.</li>
+        <li>Only double 6 grants a bonus roll. It can happen up to three consecutive times; after the third, the turn passes and all moves remain.</li>
+        <li>Landing on a rival token on an unprotected square sends it back to base and immediately counts your capturing token as home. Captures give no extra roll or movement.</li>
       <li>Finishing needs an exact count to 57.</li>
-       <li>Rolling at least one 6 grants one bonus roll after the current dice are used. Doubles without a 6 never grant a bonus.</li>
       <li>Each turn has a 30 second clock. The match clock is shared; most tokens home wins, then total steps. An exact tie goes to overtime.</li></ol></Modal>}
     {dlg === 'info' && <Modal title="Match info" onClose={() => setDlg(null)} testid="dialog-match-info"><dl className="lr-info">
       <div><dt>Room</dt><dd>{room.id.slice(0, 8).toUpperCase()}</dd></div>

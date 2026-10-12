@@ -21,9 +21,10 @@ export function normalizeBoard(board: LudoBoardState): LudoBoardState {
     dice: paired ? board.dice : null,
     hasRolled: paired && board.hasRolled,
     remainingDice: paired && board.hasRolled ? board.remainingDice ?? [0, 1] : [],
-    consecutiveDoubles: board.consecutiveDoubles ?? 0,
+    consecutiveDoubles: Math.max(0, Math.min(3, board.consecutiveDoubles ?? 0)),
     turnMessage: board.turnMessage ?? null,
-    captureBonusPending: board.captureBonusPending ?? false,
+    lastMove: board.lastMove ?? null,
+    captureBonusPending: false,
     matchDeadlineAt: board.matchDeadlineAt ?? null,
     isOvertime: board.isOvertime ?? false,
     endReason: board.endReason ?? null,
@@ -55,23 +56,28 @@ export function hasLegalMove(board: LudoBoardState, color: LudoColor) {
 }
 
 export function finishRoll(board: LudoBoardState, nextPlayer: string, nextDeadline: string, noMoves = false): LudoBoardState {
-  const rolledSix = board.dice?.includes(6) ?? false;
-  const capture = !!board.captureBonusPending;
+  const doubleSix = board.dice?.[0] === 6 && board.dice?.[1] === 6;
+  const bonusRoll = doubleSix && board.consecutiveDoubles < 3;
+  const reachedDoubleSixLimit = doubleSix && board.consecutiveDoubles >= 3;
   return {
     ...board, hasRolled: false, remainingDice: [],
-    turnUserId: rolledSix ? board.turnUserId : nextPlayer,
+    turnUserId: bonusRoll ? board.turnUserId : nextPlayer,
     captureBonusPending: false,
-    consecutiveDoubles: 0,
-    turnMessage: rolledSix ? "six_bonus" : capture ? "capture_plus_ten" : noMoves ? "no_moves" : null,
+    consecutiveDoubles: bonusRoll ? board.consecutiveDoubles : 0,
+    turnMessage: bonusRoll ? "double_six_bonus" : reachedDoubleSixLimit ? "double_six_limit" :
+      board.lastMove?.kind === "capture_home" ? "capture_home" : noMoves ? "no_moves" : null,
     turnDeadlineAt: nextDeadline,
   };
 }
 
 /** Production callers supply crypto-generated dice; no client-supplied roll is used. */
 export function applyRoll(board: LudoBoardState, color: LudoColor, dice: [number, number], nextPlayer: string, nextDeadline: string): LudoBoardState {
+  const isDoubleSix = dice[0] === 6 && dice[1] === 6;
   const rolled: LudoBoardState = {
-    ...board, dice, remainingDice: [0, 1], hasRolled: true, consecutiveDoubles: 0,
+    ...board, dice, remainingDice: [0, 1], hasRolled: true,
+    consecutiveDoubles: isDoubleSix ? Math.min(3, board.consecutiveDoubles + 1) : 0,
     captureBonusPending: false,
+    lastMove: null,
     turnMessage: null, turnDeadlineAt: nextDeadline,
   };
   return hasLegalMove(rolled, color) ? rolled : finishRoll(rolled, nextPlayer, nextDeadline, true);
@@ -82,8 +88,8 @@ function trackSquare(color: LudoColor, position: number): number | null {
   return position >= 0 && position <= 51 ? (position + COLOR_OFFSET[color]) % 52 : null;
 }
 
-/** One +10 bonus per capturing move, including stacks; bonus landing still obeys safe-square rules. */
-export function applyCaptureBonus(board: LudoBoardState, color: LudoColor, tokenIndex: number): LudoBoardState {
+/** Captures on unsafe track squares send rivals to base and immediately count the capturing pawn as home. */
+export function applyCaptureHome(board: LudoBoardState, color: LudoColor, tokenIndex: number): LudoBoardState {
   const tokens = {
     red: [...board.redTokens],
     green: [...board.greenTokens],
@@ -101,12 +107,13 @@ export function applyCaptureBonus(board: LudoBoardState, color: LudoColor, token
     });
     return captured;
   };
-  if (!captureAt(own[tokenIndex])) return board;
-  own[tokenIndex] = Math.min(57, own[tokenIndex] + 10);
-  captureAt(own[tokenIndex]);
+  if (own[tokenIndex] === undefined || !captureAt(own[tokenIndex])) return board;
+  own[tokenIndex] = 57;
   return {
     ...board, redTokens: tokens.red, greenTokens: tokens.green, yellowTokens: tokens.yellow, blueTokens: tokens.blue,
-    captureBonusPending: true, turnMessage: "capture_plus_ten",
+    captureBonusPending: false,
+    lastMove: { kind: "capture_home", color, tokenIndex },
+    turnMessage: "capture_home",
   };
 }
 

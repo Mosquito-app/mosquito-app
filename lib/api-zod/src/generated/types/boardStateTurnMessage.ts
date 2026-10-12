@@ -18,6 +18,9 @@ export const BoardStateTurnMessage = {
   capture_bonus: 'capture_bonus',
   six_bonus: 'six_bonus',
   capture_plus_ten: 'capture_plus_ten',
+  double_six_bonus: 'double_six_bonus',
+  double_six_limit: 'double_six_limit',
+  capture_home: 'capture_home',
   no_moves: 'no_moves',
   timeout: 'timeout',
 } as const;

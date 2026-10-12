@@ -1019,14 +1019,28 @@ components:
         consecutiveDoubles:
           type: integer
           minimum: 0
-          maximum: 2
-          description: Deprecated compatibility field; updated gameplay keeps this at 0.
+          maximum: 3
+          description: Number of consecutive double-six rolls in the current turn, capped at three.
         turnMessage:
           type: ["string", "null"]
-          enum: [third_double, double_bonus, capture_bonus, six_bonus, capture_plus_ten, no_moves, timeout, null]
+          enum: [third_double, double_bonus, capture_bonus, six_bonus, capture_plus_ten, double_six_bonus, double_six_limit, capture_home, no_moves, timeout, null]
         captureBonusPending:
           type: boolean
-          description: A capture applied +10 movement during the current roll; it does not itself grant an extra turn.
+          description: Legacy compatibility field; current capture rules never apply a movement bonus.
+        lastMove:
+          type: ["object", "null"]
+          required: [kind, color, tokenIndex]
+          properties:
+            kind:
+              type: string
+              enum: [capture_home]
+            color:
+              type: string
+              enum: [red, green, yellow, blue]
+            tokenIndex:
+              type: integer
+              minimum: 0
+              maximum: 3
         hasRolled:
           type: boolean
         redTokens:

@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { BoardStateEndReason } from './boardStateEndReason';
+import type { BoardStateLastMove } from './boardStateLastMove';
 import type { BoardStateRemainingDiceItem } from './boardStateRemainingDiceItem';
 import type { BoardStateTurnMessage } from './boardStateTurnMessage';
 
@@ -32,15 +33,17 @@ export interface BoardState {
   /** @maxItems 2 */
   remainingDice: BoardStateRemainingDiceItem[];
   /**
-     * Deprecated compatibility field; updated gameplay keeps this at 0.
+     * Number of consecutive double-six rolls in the current turn, capped at three.
      * @minimum 0
-     * @maximum 2
+     * @maximum 3
      */
   consecutiveDoubles: number;
   /** @nullable */
   turnMessage: BoardStateTurnMessage;
-  /** A capture applied +10 movement during the current roll; it does not itself grant an extra turn. */
+  /** Legacy compatibility field; current capture rules never apply a movement bonus. */
   captureBonusPending?: boolean;
+  /** @nullable */
+  lastMove?: BoardStateLastMove;
   hasRolled: boolean;
   redTokens: number[];
   greenTokens: number[];

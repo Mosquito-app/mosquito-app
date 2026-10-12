@@ -5,27 +5,27 @@ description: Non-obvious home-entry and upgrade decisions for the requested Uncl
 
 A pawn may leave base only by using a six from the current two-die roll. Any pair containing a six is valid; the six is consumed to enter on the starting square, and selecting both dice advances the pawn by the other die's value. Pairs without a six cannot release a pawn.
 
-**Why:** The user's latest rule specifies that any six releases a pawn, while no non-six roll can. This supersedes the older 6–6 / 6–1 restriction.
+**Why:** The user confirmed any rolled six may release a pawn, while no non-six roll can. This supersedes the older 6–6 / 6–1 restriction.
 
 **How to apply:** Keep single-die entry, combined entry, client token highlighting and server validation consistent.
 
-After the current dice are fully used, a roll containing at least one six grants exactly one bonus roll. Non-six doubles do not grant a bonus or trigger a third-double forfeit. A capture by itself does not grant an extra roll.
+Only an exact 6-6 earns a bonus roll after both dice are used. At most three consecutive 6-6 rolls are allowed in one turn; after the third, pass the turn without undoing any moves. All other rolls, including 6 plus a non-6 and non-6 doubles, pass after their legal dice are used.
 
-**Why:** The user's latest instruction says an extra roll is granted only when a six is rolled, overriding earlier doubles and capture bonus-turn rules.
+**Why:** The user explicitly selected double-6-only bonuses capped at three consecutive rolls and rejected third-double forfeiture of completed moves.
 
-**How to apply:** Determine the bonus from the server-generated dice pair, not the move or capture outcome; pass the turn after non-six dice are consumed.
+**How to apply:** Count consecutive server-generated 6-6 pairs, grant repeat rolls only before the third, and never roll back token movements.
 
-An unsafe-square capture returns opposing caps to base and advances the capturing cap another ten spaces, stopping at finish. Capture movement does not itself grant a bonus roll; the six-only rule above still applies.
+An unsafe-square capture returns opposing caps to base and immediately marks the capturing cap as home. Do not add +10 movement or a capture-specific bonus roll. If this makes all four caps home, finish and settle the match immediately.
 
-**Why:** The user explicitly chose physical ten-space advancement, capped at finish, rather than timeout-ranking points; the later turn rule removes capture-only bonus rolls.
+**Why:** The user explicitly corrected the old +10 rule: the capturing pawn itself counts as home, while captured pawns return to base.
 
-**How to apply:** Apply the extra ten spaces on the server and keep the cap on the track or finish lane; never interpret a capture as turn entitlement.
+**How to apply:** Resolve captures server-side on unprotected track squares; keep opponent resets, home counts, timeout ranking, victory detection and escrow settlement consistent.
 
-Token progress should be shown one square at a time rather than jumping directly to the final square.
+Ordinary token movement should animate one square at a time. A capture-to-home is an immediate finish state, not a full-lap animation.
 
-**Why:** The user explicitly asked for clean tile-by-tile movement.
+**Why:** The user requires the captured rival to reset and the capturing pawn to count home immediately.
 
-**How to apply:** Animate authoritative server position updates along the forward track path, while preventing additional input from interrupting the movement.
+**How to apply:** Animate normal server-authoritative movement along the track, but place capture-finished pawns directly in the home area.
 
 Visible dice faces must be real selections with a clear selected state, not inert controls that look selectable.
 

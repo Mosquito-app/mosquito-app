@@ -774,7 +774,10 @@ export const joinRoomResponseBoardDiceMax = 2;
 export const joinRoomResponseBoardRemainingDiceMax = 2;
 
 export const joinRoomResponseBoardConsecutiveDoublesMin = 0;
-export const joinRoomResponseBoardConsecutiveDoublesMax = 2;
+export const joinRoomResponseBoardConsecutiveDoublesMax = 3;
+
+export const joinRoomResponseBoardLastMoveTokenIndexMin = 0;
+export const joinRoomResponseBoardLastMoveTokenIndexMax = 3;
 
 
 
@@ -830,9 +833,14 @@ export const JoinRoomResponse = zod.object({
   "turnDeadlineAt": zod.coerce.date().nullable(),
   "dice": zod.array(zod.number().int().min(1).max(joinRoomResponseBoardDiceItemMax)).min(joinRoomResponseBoardDiceMin).max(joinRoomResponseBoardDiceMax).nullable(),
   "remainingDice": zod.array(zod.union([zod.literal(0),zod.literal(1)])).max(joinRoomResponseBoardRemainingDiceMax),
-  "consecutiveDoubles": zod.number().int().min(joinRoomResponseBoardConsecutiveDoublesMin).max(joinRoomResponseBoardConsecutiveDoublesMax).describe('Deprecated compatibility field; updated gameplay keeps this at 0.'),
-  "turnMessage": zod.union([zod.literal('third_double'),zod.literal('double_bonus'),zod.literal('capture_bonus'),zod.literal('six_bonus'),zod.literal('capture_plus_ten'),zod.literal('no_moves'),zod.literal('timeout'),zod.literal(null)]).nullable(),
-  "captureBonusPending": zod.boolean().optional().describe('A capture applied +10 movement during the current roll; it does not itself grant an extra turn.'),
+  "consecutiveDoubles": zod.number().int().min(joinRoomResponseBoardConsecutiveDoublesMin).max(joinRoomResponseBoardConsecutiveDoublesMax).describe('Number of consecutive double-six rolls in the current turn, capped at three.'),
+  "turnMessage": zod.union([zod.literal('third_double'),zod.literal('double_bonus'),zod.literal('capture_bonus'),zod.literal('six_bonus'),zod.literal('capture_plus_ten'),zod.literal('double_six_bonus'),zod.literal('double_six_limit'),zod.literal('capture_home'),zod.literal('no_moves'),zod.literal('timeout'),zod.literal(null)]).nullable(),
+  "captureBonusPending": zod.boolean().optional().describe('Legacy compatibility field; current capture rules never apply a movement bonus.'),
+  "lastMove": zod.object({
+  "kind": zod.enum(['capture_home']),
+  "color": zod.enum(['red', 'green', 'yellow', 'blue']),
+  "tokenIndex": zod.number().int().min(joinRoomResponseBoardLastMoveTokenIndexMin).max(joinRoomResponseBoardLastMoveTokenIndexMax)
+}).nullish(),
   "hasRolled": zod.boolean(),
   "redTokens": zod.array(zod.number().int()),
   "greenTokens": zod.array(zod.number().int()),
@@ -883,7 +891,10 @@ export const playAiRoomResponseBoardDiceMax = 2;
 export const playAiRoomResponseBoardRemainingDiceMax = 2;
 
 export const playAiRoomResponseBoardConsecutiveDoublesMin = 0;
-export const playAiRoomResponseBoardConsecutiveDoublesMax = 2;
+export const playAiRoomResponseBoardConsecutiveDoublesMax = 3;
+
+export const playAiRoomResponseBoardLastMoveTokenIndexMin = 0;
+export const playAiRoomResponseBoardLastMoveTokenIndexMax = 3;
 
 
 
@@ -939,9 +950,14 @@ export const PlayAiRoomResponse = zod.object({
   "turnDeadlineAt": zod.coerce.date().nullable(),
   "dice": zod.array(zod.number().int().min(1).max(playAiRoomResponseBoardDiceItemMax)).min(playAiRoomResponseBoardDiceMin).max(playAiRoomResponseBoardDiceMax).nullable(),
   "remainingDice": zod.array(zod.union([zod.literal(0),zod.literal(1)])).max(playAiRoomResponseBoardRemainingDiceMax),
-  "consecutiveDoubles": zod.number().int().min(playAiRoomResponseBoardConsecutiveDoublesMin).max(playAiRoomResponseBoardConsecutiveDoublesMax).describe('Deprecated compatibility field; updated gameplay keeps this at 0.'),
-  "turnMessage": zod.union([zod.literal('third_double'),zod.literal('double_bonus'),zod.literal('capture_bonus'),zod.literal('six_bonus'),zod.literal('capture_plus_ten'),zod.literal('no_moves'),zod.literal('timeout'),zod.literal(null)]).nullable(),
-  "captureBonusPending": zod.boolean().optional().describe('A capture applied +10 movement during the current roll; it does not itself grant an extra turn.'),
+  "consecutiveDoubles": zod.number().int().min(playAiRoomResponseBoardConsecutiveDoublesMin).max(playAiRoomResponseBoardConsecutiveDoublesMax).describe('Number of consecutive double-six rolls in the current turn, capped at three.'),
+  "turnMessage": zod.union([zod.literal('third_double'),zod.literal('double_bonus'),zod.literal('capture_bonus'),zod.literal('six_bonus'),zod.literal('capture_plus_ten'),zod.literal('double_six_bonus'),zod.literal('double_six_limit'),zod.literal('capture_home'),zod.literal('no_moves'),zod.literal('timeout'),zod.literal(null)]).nullable(),
+  "captureBonusPending": zod.boolean().optional().describe('Legacy compatibility field; current capture rules never apply a movement bonus.'),
+  "lastMove": zod.object({
+  "kind": zod.enum(['capture_home']),
+  "color": zod.enum(['red', 'green', 'yellow', 'blue']),
+  "tokenIndex": zod.number().int().min(playAiRoomResponseBoardLastMoveTokenIndexMin).max(playAiRoomResponseBoardLastMoveTokenIndexMax)
+}).nullish(),
   "hasRolled": zod.boolean(),
   "redTokens": zod.array(zod.number().int()),
   "greenTokens": zod.array(zod.number().int()),
@@ -996,7 +1012,10 @@ export const getRoomResponseBoardDiceMax = 2;
 export const getRoomResponseBoardRemainingDiceMax = 2;
 
 export const getRoomResponseBoardConsecutiveDoublesMin = 0;
-export const getRoomResponseBoardConsecutiveDoublesMax = 2;
+export const getRoomResponseBoardConsecutiveDoublesMax = 3;
+
+export const getRoomResponseBoardLastMoveTokenIndexMin = 0;
+export const getRoomResponseBoardLastMoveTokenIndexMax = 3;
 
 
 
@@ -1052,9 +1071,14 @@ export const GetRoomResponse = zod.object({
   "turnDeadlineAt": zod.coerce.date().nullable(),
   "dice": zod.array(zod.number().int().min(1).max(getRoomResponseBoardDiceItemMax)).min(getRoomResponseBoardDiceMin).max(getRoomResponseBoardDiceMax).nullable(),
   "remainingDice": zod.array(zod.union([zod.literal(0),zod.literal(1)])).max(getRoomResponseBoardRemainingDiceMax),
-  "consecutiveDoubles": zod.number().int().min(getRoomResponseBoardConsecutiveDoublesMin).max(getRoomResponseBoardConsecutiveDoublesMax).describe('Deprecated compatibility field; updated gameplay keeps this at 0.'),
-  "turnMessage": zod.union([zod.literal('third_double'),zod.literal('double_bonus'),zod.literal('capture_bonus'),zod.literal('six_bonus'),zod.literal('capture_plus_ten'),zod.literal('no_moves'),zod.literal('timeout'),zod.literal(null)]).nullable(),
-  "captureBonusPending": zod.boolean().optional().describe('A capture applied +10 movement during the current roll; it does not itself grant an extra turn.'),
+  "consecutiveDoubles": zod.number().int().min(getRoomResponseBoardConsecutiveDoublesMin).max(getRoomResponseBoardConsecutiveDoublesMax).describe('Number of consecutive double-six rolls in the current turn, capped at three.'),
+  "turnMessage": zod.union([zod.literal('third_double'),zod.literal('double_bonus'),zod.literal('capture_bonus'),zod.literal('six_bonus'),zod.literal('capture_plus_ten'),zod.literal('double_six_bonus'),zod.literal('double_six_limit'),zod.literal('capture_home'),zod.literal('no_moves'),zod.literal('timeout'),zod.literal(null)]).nullable(),
+  "captureBonusPending": zod.boolean().optional().describe('Legacy compatibility field; current capture rules never apply a movement bonus.'),
+  "lastMove": zod.object({
+  "kind": zod.enum(['capture_home']),
+  "color": zod.enum(['red', 'green', 'yellow', 'blue']),
+  "tokenIndex": zod.number().int().min(getRoomResponseBoardLastMoveTokenIndexMin).max(getRoomResponseBoardLastMoveTokenIndexMax)
+}).nullish(),
   "hasRolled": zod.boolean(),
   "redTokens": zod.array(zod.number().int()),
   "greenTokens": zod.array(zod.number().int()),
@@ -1109,7 +1133,10 @@ export const rollDiceResponseBoardDiceMax = 2;
 export const rollDiceResponseBoardRemainingDiceMax = 2;
 
 export const rollDiceResponseBoardConsecutiveDoublesMin = 0;
-export const rollDiceResponseBoardConsecutiveDoublesMax = 2;
+export const rollDiceResponseBoardConsecutiveDoublesMax = 3;
+
+export const rollDiceResponseBoardLastMoveTokenIndexMin = 0;
+export const rollDiceResponseBoardLastMoveTokenIndexMax = 3;
 
 
 
@@ -1165,9 +1192,14 @@ export const RollDiceResponse = zod.object({
   "turnDeadlineAt": zod.coerce.date().nullable(),
   "dice": zod.array(zod.number().int().min(1).max(rollDiceResponseBoardDiceItemMax)).min(rollDiceResponseBoardDiceMin).max(rollDiceResponseBoardDiceMax).nullable(),
   "remainingDice": zod.array(zod.union([zod.literal(0),zod.literal(1)])).max(rollDiceResponseBoardRemainingDiceMax),
-  "consecutiveDoubles": zod.number().int().min(rollDiceResponseBoardConsecutiveDoublesMin).max(rollDiceResponseBoardConsecutiveDoublesMax).describe('Deprecated compatibility field; updated gameplay keeps this at 0.'),
-  "turnMessage": zod.union([zod.literal('third_double'),zod.literal('double_bonus'),zod.literal('capture_bonus'),zod.literal('six_bonus'),zod.literal('capture_plus_ten'),zod.literal('no_moves'),zod.literal('timeout'),zod.literal(null)]).nullable(),
-  "captureBonusPending": zod.boolean().optional().describe('A capture applied +10 movement during the current roll; it does not itself grant an extra turn.'),
+  "consecutiveDoubles": zod.number().int().min(rollDiceResponseBoardConsecutiveDoublesMin).max(rollDiceResponseBoardConsecutiveDoublesMax).describe('Number of consecutive double-six rolls in the current turn, capped at three.'),
+  "turnMessage": zod.union([zod.literal('third_double'),zod.literal('double_bonus'),zod.literal('capture_bonus'),zod.literal('six_bonus'),zod.literal('capture_plus_ten'),zod.literal('double_six_bonus'),zod.literal('double_six_limit'),zod.literal('capture_home'),zod.literal('no_moves'),zod.literal('timeout'),zod.literal(null)]).nullable(),
+  "captureBonusPending": zod.boolean().optional().describe('Legacy compatibility field; current capture rules never apply a movement bonus.'),
+  "lastMove": zod.object({
+  "kind": zod.enum(['capture_home']),
+  "color": zod.enum(['red', 'green', 'yellow', 'blue']),
+  "tokenIndex": zod.number().int().min(rollDiceResponseBoardLastMoveTokenIndexMin).max(rollDiceResponseBoardLastMoveTokenIndexMax)
+}).nullish(),
   "hasRolled": zod.boolean(),
   "redTokens": zod.array(zod.number().int()),
   "greenTokens": zod.array(zod.number().int()),
@@ -1234,7 +1266,10 @@ export const moveTokenResponseBoardDiceMax = 2;
 export const moveTokenResponseBoardRemainingDiceMax = 2;
 
 export const moveTokenResponseBoardConsecutiveDoublesMin = 0;
-export const moveTokenResponseBoardConsecutiveDoublesMax = 2;
+export const moveTokenResponseBoardConsecutiveDoublesMax = 3;
+
+export const moveTokenResponseBoardLastMoveTokenIndexMin = 0;
+export const moveTokenResponseBoardLastMoveTokenIndexMax = 3;
 
 
 
@@ -1290,9 +1325,14 @@ export const MoveTokenResponse = zod.object({
   "turnDeadlineAt": zod.coerce.date().nullable(),
   "dice": zod.array(zod.number().int().min(1).max(moveTokenResponseBoardDiceItemMax)).min(moveTokenResponseBoardDiceMin).max(moveTokenResponseBoardDiceMax).nullable(),
   "remainingDice": zod.array(zod.union([zod.literal(0),zod.literal(1)])).max(moveTokenResponseBoardRemainingDiceMax),
-  "consecutiveDoubles": zod.number().int().min(moveTokenResponseBoardConsecutiveDoublesMin).max(moveTokenResponseBoardConsecutiveDoublesMax).describe('Deprecated compatibility field; updated gameplay keeps this at 0.'),
-  "turnMessage": zod.union([zod.literal('third_double'),zod.literal('double_bonus'),zod.literal('capture_bonus'),zod.literal('six_bonus'),zod.literal('capture_plus_ten'),zod.literal('no_moves'),zod.literal('timeout'),zod.literal(null)]).nullable(),
-  "captureBonusPending": zod.boolean().optional().describe('A capture applied +10 movement during the current roll; it does not itself grant an extra turn.'),
+  "consecutiveDoubles": zod.number().int().min(moveTokenResponseBoardConsecutiveDoublesMin).max(moveTokenResponseBoardConsecutiveDoublesMax).describe('Number of consecutive double-six rolls in the current turn, capped at three.'),
+  "turnMessage": zod.union([zod.literal('third_double'),zod.literal('double_bonus'),zod.literal('capture_bonus'),zod.literal('six_bonus'),zod.literal('capture_plus_ten'),zod.literal('double_six_bonus'),zod.literal('double_six_limit'),zod.literal('capture_home'),zod.literal('no_moves'),zod.literal('timeout'),zod.literal(null)]).nullable(),
+  "captureBonusPending": zod.boolean().optional().describe('Legacy compatibility field; current capture rules never apply a movement bonus.'),
+  "lastMove": zod.object({
+  "kind": zod.enum(['capture_home']),
+  "color": zod.enum(['red', 'green', 'yellow', 'blue']),
+  "tokenIndex": zod.number().int().min(moveTokenResponseBoardLastMoveTokenIndexMin).max(moveTokenResponseBoardLastMoveTokenIndexMax)
+}).nullish(),
   "hasRolled": zod.boolean(),
   "redTokens": zod.array(zod.number().int()),
   "greenTokens": zod.array(zod.number().int()),
@@ -1347,7 +1387,10 @@ export const cancelRoomResponseBoardDiceMax = 2;
 export const cancelRoomResponseBoardRemainingDiceMax = 2;
 
 export const cancelRoomResponseBoardConsecutiveDoublesMin = 0;
-export const cancelRoomResponseBoardConsecutiveDoublesMax = 2;
+export const cancelRoomResponseBoardConsecutiveDoublesMax = 3;
+
+export const cancelRoomResponseBoardLastMoveTokenIndexMin = 0;
+export const cancelRoomResponseBoardLastMoveTokenIndexMax = 3;
 
 
 
@@ -1403,9 +1446,14 @@ export const CancelRoomResponse = zod.object({
   "turnDeadlineAt": zod.coerce.date().nullable(),
   "dice": zod.array(zod.number().int().min(1).max(cancelRoomResponseBoardDiceItemMax)).min(cancelRoomResponseBoardDiceMin).max(cancelRoomResponseBoardDiceMax).nullable(),
   "remainingDice": zod.array(zod.union([zod.literal(0),zod.literal(1)])).max(cancelRoomResponseBoardRemainingDiceMax),
-  "consecutiveDoubles": zod.number().int().min(cancelRoomResponseBoardConsecutiveDoublesMin).max(cancelRoomResponseBoardConsecutiveDoublesMax).describe('Deprecated compatibility field; updated gameplay keeps this at 0.'),
-  "turnMessage": zod.union([zod.literal('third_double'),zod.literal('double_bonus'),zod.literal('capture_bonus'),zod.literal('six_bonus'),zod.literal('capture_plus_ten'),zod.literal('no_moves'),zod.literal('timeout'),zod.literal(null)]).nullable(),
-  "captureBonusPending": zod.boolean().optional().describe('A capture applied +10 movement during the current roll; it does not itself grant an extra turn.'),
+  "consecutiveDoubles": zod.number().int().min(cancelRoomResponseBoardConsecutiveDoublesMin).max(cancelRoomResponseBoardConsecutiveDoublesMax).describe('Number of consecutive double-six rolls in the current turn, capped at three.'),
+  "turnMessage": zod.union([zod.literal('third_double'),zod.literal('double_bonus'),zod.literal('capture_bonus'),zod.literal('six_bonus'),zod.literal('capture_plus_ten'),zod.literal('double_six_bonus'),zod.literal('double_six_limit'),zod.literal('capture_home'),zod.literal('no_moves'),zod.literal('timeout'),zod.literal(null)]).nullable(),
+  "captureBonusPending": zod.boolean().optional().describe('Legacy compatibility field; current capture rules never apply a movement bonus.'),
+  "lastMove": zod.object({
+  "kind": zod.enum(['capture_home']),
+  "color": zod.enum(['red', 'green', 'yellow', 'blue']),
+  "tokenIndex": zod.number().int().min(cancelRoomResponseBoardLastMoveTokenIndexMin).max(cancelRoomResponseBoardLastMoveTokenIndexMax)
+}).nullish(),
   "hasRolled": zod.boolean(),
   "redTokens": zod.array(zod.number().int()),
   "greenTokens": zod.array(zod.number().int()),
@@ -1460,7 +1508,10 @@ export const addAiOpponentResponseBoardDiceMax = 2;
 export const addAiOpponentResponseBoardRemainingDiceMax = 2;
 
 export const addAiOpponentResponseBoardConsecutiveDoublesMin = 0;
-export const addAiOpponentResponseBoardConsecutiveDoublesMax = 2;
+export const addAiOpponentResponseBoardConsecutiveDoublesMax = 3;
+
+export const addAiOpponentResponseBoardLastMoveTokenIndexMin = 0;
+export const addAiOpponentResponseBoardLastMoveTokenIndexMax = 3;
 
 
 
@@ -1516,9 +1567,14 @@ export const AddAiOpponentResponse = zod.object({
   "turnDeadlineAt": zod.coerce.date().nullable(),
   "dice": zod.array(zod.number().int().min(1).max(addAiOpponentResponseBoardDiceItemMax)).min(addAiOpponentResponseBoardDiceMin).max(addAiOpponentResponseBoardDiceMax).nullable(),
   "remainingDice": zod.array(zod.union([zod.literal(0),zod.literal(1)])).max(addAiOpponentResponseBoardRemainingDiceMax),
-  "consecutiveDoubles": zod.number().int().min(addAiOpponentResponseBoardConsecutiveDoublesMin).max(addAiOpponentResponseBoardConsecutiveDoublesMax).describe('Deprecated compatibility field; updated gameplay keeps this at 0.'),
-  "turnMessage": zod.union([zod.literal('third_double'),zod.literal('double_bonus'),zod.literal('capture_bonus'),zod.literal('six_bonus'),zod.literal('capture_plus_ten'),zod.literal('no_moves'),zod.literal('timeout'),zod.literal(null)]).nullable(),
-  "captureBonusPending": zod.boolean().optional().describe('A capture applied +10 movement during the current roll; it does not itself grant an extra turn.'),
+  "consecutiveDoubles": zod.number().int().min(addAiOpponentResponseBoardConsecutiveDoublesMin).max(addAiOpponentResponseBoardConsecutiveDoublesMax).describe('Number of consecutive double-six rolls in the current turn, capped at three.'),
+  "turnMessage": zod.union([zod.literal('third_double'),zod.literal('double_bonus'),zod.literal('capture_bonus'),zod.literal('six_bonus'),zod.literal('capture_plus_ten'),zod.literal('double_six_bonus'),zod.literal('double_six_limit'),zod.literal('capture_home'),zod.literal('no_moves'),zod.literal('timeout'),zod.literal(null)]).nullable(),
+  "captureBonusPending": zod.boolean().optional().describe('Legacy compatibility field; current capture rules never apply a movement bonus.'),
+  "lastMove": zod.object({
+  "kind": zod.enum(['capture_home']),
+  "color": zod.enum(['red', 'green', 'yellow', 'blue']),
+  "tokenIndex": zod.number().int().min(addAiOpponentResponseBoardLastMoveTokenIndexMin).max(addAiOpponentResponseBoardLastMoveTokenIndexMax)
+}).nullish(),
   "hasRolled": zod.boolean(),
   "redTokens": zod.array(zod.number().int()),
   "greenTokens": zod.array(zod.number().int()),

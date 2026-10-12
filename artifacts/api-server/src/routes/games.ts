@@ -26,7 +26,7 @@ import {
 import { getAuthenticatedUser } from "../lib/ludo-auth";
 import { publishRoomUpdate } from "../lib/ludo-events";
 import { deadline, nextPlayerId, splitPot, turnExpired } from "../lib/ludo-turns";
-import { applyCaptureBonus, applyRoll, finishRoll, hasLegalMove, moveDestination, normalizeBoard, tokensFor } from "../lib/ludo-rules";
+import { applyCaptureHome, applyRoll, finishRoll, hasLegalMove, moveDestination, normalizeBoard, tokensFor } from "../lib/ludo-rules";
 import { completeMatch, matchDeadline, resolveMatchClock } from "../lib/ludo-match";
 import { boardScores, leadingColor } from "../lib/ludo-ranking";
 import { colorForUser, getRoomTier, LUDO_COLORS, ROOM_TIERS, roomPlayerIds, userForColor } from "../lib/ludo-room-tiers";
@@ -51,6 +51,7 @@ function startBoard(hostUserId: string, maxPlayers: number): LudoBoardState {
     remainingDice: [],
     consecutiveDoubles: 0,
     turnMessage: null,
+    lastMove: null,
     captureBonusPending: false,
     hasRolled: false,
     redTokens: [-1, -1, -1, -1],
@@ -625,9 +626,12 @@ router.post("/rooms/:roomId/move", async (req, res): Promise<void> => {
         yellowTokens: color === "yellow" ? ownTokens : room.board.yellowTokens,
         blueTokens: color === "blue" ? ownTokens : room.board.blueTokens,
         remainingDice: room.board.remainingDice.filter(index => !indices.includes(index)),
+        lastMove: null,
+        captureBonusPending: false,
+        turnMessage: null,
       };
 
-      board = applyCaptureBonus(board, color, selected);
+      board = applyCaptureHome(board, color, selected);
       const won = tokensFor(board, color).every((tokenPosition) => tokenPosition >= 57);
       const participantColors = roomPlayerIds(room)
         .filter(playerId => !board.forfeitedUserIds?.includes(playerId))

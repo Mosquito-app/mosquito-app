@@ -31,8 +31,11 @@ export type LudoBoardState = {
   joinWindowOpen?: boolean;
   dice: number[] | null;
   remainingDice: number[];
+  /** Consecutive 6-6 rolls in the current turn, capped at three. */
   consecutiveDoubles: number;
-  turnMessage: "third_double" | "double_bonus" | "capture_bonus" | "six_bonus" | "capture_plus_ten" | "no_moves" | "timeout" | null;
+  turnMessage: "third_double" | "double_bonus" | "capture_bonus" | "six_bonus" | "capture_plus_ten" | "double_six_bonus" | "double_six_limit" | "capture_home" | "no_moves" | "timeout" | null;
+  lastMove?: { kind: "capture_home"; color: "red" | "green" | "yellow" | "blue"; tokenIndex: number } | null;
+  /** Legacy field; current capture rules never grant a movement bonus. */
   captureBonusPending?: boolean;
   hasRolled: boolean;
   redTokens: number[];

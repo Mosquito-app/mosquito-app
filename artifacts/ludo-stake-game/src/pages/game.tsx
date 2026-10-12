@@ -86,12 +86,12 @@ export default function GamePage() {
   const anyLegal = (['d0', 'd1', 'both'] as Pick[]).some(p => valid(p) && legalFor(p).size > 0);
   const dieAvail = (i: number) => remaining.includes(i as 0 | 1);
   const msg = room.board.turnMessage;
-  const notice = msg === 'six_bonus' ? 'You rolled a 6. One bonus roll is available after these dice are used.' : msg === 'capture_plus_ten' || msg === 'capture_bonus' ? 'Capture +10 applied. A capture alone does not grant an extra roll.' : msg === 'double_bonus' ? 'Legacy turn state: doubles without a 6 no longer earn bonus rolls.' : msg === 'third_double' ? 'Legacy double-forfeit state cleared by the updated rules.' : msg === 'no_moves' ? 'No legal move for that roll. Turn passed.' : msg === 'timeout' ? 'The turn clock ran out. Turn passed.' : '';
+  const notice = msg === 'double_six_bonus' ? 'Double 6! Take another roll after using these dice.' : msg === 'double_six_limit' ? 'Third consecutive double 6: turn passed. Your moves remain.' : msg === 'no_moves' ? 'No legal move for that roll. Turn passed.' : msg === 'timeout' ? 'The turn clock ran out. Turn passed.' : '';
   const onMove = (index: number) => { if (!sel) return; setActionError(''); move.mutate({ roomId, data: { tokenIndex: index, diceIndices: indicesFor(sel) } }, { onSuccess: patch, onError: fail }); };
   const connLabel = conn === 'live' ? 'Live' : conn === 'connecting' ? 'Connecting' : 'Reconnecting, polling 10s';
   const canPick = { d0: canMove && valid('d0'), d1: canMove && valid('d1'), both: canMove && valid('both') };
   const turnText = didForfeit ? 'You forfeited this match. Your stake will not be refunded.' : isDone ? (room.board.winnerUserId === user.id ? 'You took the table.' : 'Match complete.') : isWaiting ? 'Waiting for a second player.' : isMyTurn ? (isAnimating ? 'Moving token one space at a time…' : room.board.hasRolled ? (anyLegal ? 'Pick a die in the centre, then tap a glowing token.' : 'No legal move. Waiting on the server.') : 'Your turn. Roll both dice.') : `Waiting on ${opponent || 'opponent'} to play.`;
-  const captureText = room.board.captureBonusPending ? `Capture +10 applied. ${room.board.dice?.includes(6) ? 'Your 6 also earns one bonus roll after the dice are used.' : 'Only a 6 earns a bonus roll.'}` : '';
+  const captureText = room.board.lastMove?.kind === 'capture_home' ? 'Capture! The rival pawn returned to base, and your capturing pawn immediately counts as home. No capture bonus is awarded.' : '';
   const winnerName = room.players.find(player => player.userId === room.board.winnerUserId)?.username ?? '—';
   const resultText = room.status === 'completed' ? `Winner: ${winnerName}` : '';
   const walletState = wallet.isLoading ? 'loading' : wallet.isError || !wallet.data ? 'error' : 'ok';

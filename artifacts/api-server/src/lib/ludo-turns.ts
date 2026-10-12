@@ -42,6 +42,7 @@ export async function expireTurns(now = Date.now()) {
         dice: null, hasRolled: false,
         remainingDice: [], consecutiveDoubles: 0, turnMessage: "timeout",
         captureBonusPending: false,
+        lastMove: null,
         turnDeadlineAt: new Date(now + TURN_MS).toISOString(),
       };
       await tx.update(roomsTable).set({ board, updatedAt: new Date() }).where(eq(roomsTable.id, room.id));
