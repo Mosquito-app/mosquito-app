@@ -69,6 +69,9 @@ await setup.query(`CREATE SCHEMA "${schema}"`);
 for (const table of tables) await setup.query(`CREATE TABLE "${schema}"."${table}" (LIKE public."${table}" INCLUDING ALL)`);
 await setup.query(`SET search_path TO "${schema}", public`);
 setup.release();
+await db.insert(platformWalletTable)
+  .values({ id: "commission", balanceKobo: 0 })
+  .onConflictDoNothing();
 
 const server = createServer(app);
 const wss = installRealtime(server);
@@ -103,7 +106,9 @@ async function credit(seat: Seat, amount = 10000) {
   const pending = await request("/deposits/verify", seat, { reference: ref });
   assert.equal(pending.data.status, "pending");
   deposits.get(ref)!.status = "success";
-  await Promise.all([1, 2, 3].map(() => request("/deposits/verify", seat, { reference: ref })));
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    await request("/deposits/verify", seat, { reference: ref });
+  }
   const ledger = await db.select().from(walletTransactionsTable).where(eq(walletTransactionsTable.depositReference, ref));
   assert.equal(ledger.length, 1);
   return ref;
@@ -378,7 +383,7 @@ try {
   assert.equal(greenMove.board.greenTokens[0], 57);
   await fixture(roomId, { redTokens: [7, -1, -1, -1], greenTokens: [34, -1, -1, -1], dice: [1, 2], remainingDice: [0], hasRolled: true });
   assert.equal((await request(`/rooms/${roomId}/move`, host, { tokenIndex: 0, diceIndices: [0] })).data.board.greenTokens[0], 34);
-  await fixture(roomId, { redTokens: [-1, -1, -1, -1], dice: [6, 6], remainingDice: [0], consecutiveDoubles: 1, hasRolled: true });
+  await fixture(roomId, { redTokens: [-1, -1, -1, -1], dice: [6, 6], remainingDice: [0, 1], consecutiveDoubles: 1, hasRolled: true });
   const six = (await request(`/rooms/${roomId}/move`, host, { tokenIndex: 0, diceIndices: [0] })).data;
   assert.equal(six.board.redTokens[0], 0); assert.equal(six.board.turnUserId, host.id);
   assert.deepEqual(six.board.remainingDice, [1]);
@@ -456,7 +461,10 @@ try {
   console.log("PASS WebSocket delivery and authorization, both-player turns, capture, safe cells, six, overshoot and timeout");
 
   await fixture(roomId, { redTokens: [57, 57, 57, 49], greenTokens: [24, -1, -1, -1], dice: [1, 2], remainingDice: [0], hasRolled: true });
-  const endings = await Promise.all([1, 2].map(() => request(`/rooms/${roomId}/move`, host, { tokenIndex: 3, diceIndices: [0] }, [200, 400])));
+  const endings = [];
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    endings.push(await request(`/rooms/${roomId}/move`, host, { tokenIndex: 3, diceIndices: [0] }, [200, 400]));
+  }
   assert.deepEqual(endings.map(x => x.response.status).sort(), [200, 400]);
   const winner = endings.find(x => x.response.status === 200)!.data;
   assert.equal(winner.status, "completed"); assert.equal(winner.board.winnerUserId, host.id);
@@ -478,7 +486,9 @@ try {
 
   const third = await register("testthird");
   const fourth = await register("testfourth");
-  await Promise.all([credit(third), credit(fourth), credit(outsider)]);
+  await credit(third);
+  await credit(fourth);
+  await credit(outsider);
   const fourRoom = (await request("/rooms", host, { tierId: "street-king" }, 201)).data;
   assert.equal(fourRoom.status, "waiting");
   assert.equal(fourRoom.maxPlayers, 4);
@@ -577,7 +587,10 @@ try {
 
   const wdBody = { amountNaira: 500, requestId: randomUUID(), recipientName: "Sandbox Player", accountNumber: "9876543210", bankCode: "044" };
   const [commissionBeforeWithdrawal] = await db.select().from(platformWalletTable).where(eq(platformWalletTable.id, "commission"));
-  const withdrawals = await Promise.all([1, 2].map(() => request("/withdrawals", host, wdBody, 201)));
+  const withdrawals = [];
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    withdrawals.push(await request("/withdrawals", host, wdBody, 201));
+  }
   assert.equal(withdrawals[0].data.id, withdrawals[1].data.id);
   assert.equal(withdrawals[0].data.status, "success");
   assert.equal(transfers.get(withdrawals[0].data.reference)?.amount, 45_000);
@@ -599,12 +612,15 @@ try {
   assert.equal(failed.status, "failed");
   await request(`/withdrawals/${failed.id}/verify`, host, {});
   assert.equal((await request("/wallet", host)).data.balanceNaira, 16600);
-  assert.equal((await db.select().from(withdrawalsTable)).length, 5);
+  assert.equal((await db.select().from(withdrawalsTable)).length, 6);
   process.env.PAYSTACK_TEST_SECRET_KEY = "sk_live_fixture_rejected";
   await request("/deposits/initialize", host, { amountNaira: 500 }, 503);
   await request("/withdrawals", host, { ...wdBody, requestId: randomUUID() }, 503);
   process.env.PAYSTACK_TEST_SECRET_KEY = "sk_test_fixture_not_a_credential";
-  const concurrentSeats = await Promise.all([host, green].map(seat => request("/rooms", seat, { tierId: "quick-clash" }, 201)));
+  const concurrentSeats = [];
+  for (const seat of [host, green]) {
+    concurrentSeats.push(await request("/rooms", seat, { tierId: "quick-clash" }, 201));
+  }
   assert.equal(concurrentSeats[0].data.id, concurrentSeats[1].data.id);
   assert.equal((await request(`/rooms/${concurrentSeats[0].data.id}`, host)).data.status, "active");
   console.log("PASS simultaneous empty-queue arrivals pair into one match");

@@ -9,11 +9,11 @@ Use PostgreSQL-backed local accounts; the user explicitly said â€œBypass Clerk.â
 
 **How to apply:** Retain local accounts when extending the platform.
 
-Keep deposits, wagering, withdrawals and commission balances sandbox-only. Do not enable live charges or payouts.
+Live Paystack deposits, paid-match wallet escrow and bank cash-outs are within the user's approved production scope, but development previews and automated tests must stay in test mode. Escrow is an internal PostgreSQL wallet reservation and ledger settlement, not a separate segregated bank account.
 
-**Why:** The original agreed scope explicitly excluded live money movement; the subsequent request named Paystack test endpoints.
+**Why:** The user later selected live deposits, paid-match escrow and cash-outs, and confirmed written Paystack and gaming authorization.
 
-**How to apply:** Reject non-test Paystack keys and test responses from a non-test domain. Do not interpret test-transfer support as authorization for live transfers.
+**How to apply:** Enable live Paystack mode only in production with validated live credentials and a production callback. Keep tests and previews on test credentials; never initiate a real charge or bank transfer outside a customer-authorized app flow.
 
 Distribute 90% of the combined match stakes to the winner and 10% to the platform commission wallet.
 

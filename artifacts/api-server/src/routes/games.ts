@@ -626,7 +626,7 @@ router.post("/rooms/:roomId/move", async (req, res): Promise<void> => {
         yellowTokens: color === "yellow" ? ownTokens : room.board.yellowTokens,
         blueTokens: color === "blue" ? ownTokens : room.board.blueTokens,
         remainingDice: room.board.remainingDice.filter(index => !indices.includes(index)),
-        lastMove: null,
+        lastMove: room.board.lastMove?.kind === "capture_home" ? room.board.lastMove : null,
         captureBonusPending: false,
         turnMessage: null,
       };
@@ -645,8 +645,10 @@ router.post("/rooms/:roomId/move", async (req, res): Promise<void> => {
         return;
       }
 
+      const capturedThisMove = board.lastMove?.kind === "capture_home";
       if (!hasLegalMove(board, color)) {
         board = finishRoll(board, nextPlayerId(room, user.id), deadline(), board.remainingDice.length > 0);
+        if (capturedThisMove) board = { ...board, turnMessage: "capture_home" };
       }
       await tx
         .update(roomsTable)

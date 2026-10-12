@@ -29,3 +29,9 @@ externalPort = 8080
 [[ports]]
 localPort = 23275
 externalPort = 80
+
+[userenv]
+
+[userenv.production]
+PAYSTACK_LIVE_CALLBACK_URL = "https://ludo-stake-game-1.replit.app/"
+PAYSTACK_MODE = "live"
