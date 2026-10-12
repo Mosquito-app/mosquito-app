@@ -20,41 +20,41 @@ import {
 } from "@workspace/db";
 import { getAuthenticatedUser } from "../lib/ludo-auth";
 import { withdrawalDto } from "../lib/ludo-withdrawals";
+import {
+  getPaystackMode,
+  getPaystackModeForReference,
+  getPaystackSecretKey,
+  getPublicPaystackMode,
+  paystackRequest,
+  PaystackTestError,
+} from "../lib/paystack-test";
 
 const router: IRouter = Router();
-const PAYSTACK_BASE_URL = "https://api.paystack.co";
 
-function getPaystackTestKey(): string | null {
-  const key = process.env.PAYSTACK_TEST_SECRET_KEY;
-  return key?.startsWith("sk_test_") ? key : null;
-}
-
-function getCheckoutCallbackUrl(): string | undefined {
-  const rawDomain =
-    process.env.REPLIT_DEV_DOMAIN ??
-    process.env.REPLIT_DOMAINS?.split(",")[0]?.trim();
-  if (!rawDomain || !/^[a-z0-9.-]+(?::\d+)?$/i.test(rawDomain)) {
-    return undefined;
+function getCheckoutCallbackUrl(mode: "test" | "live"): string | undefined {
+  if (mode === "live") {
+    const configuredUrl = process.env.PAYSTACK_LIVE_CALLBACK_URL;
+    if (!configuredUrl) return undefined;
+    try {
+      const callback = new URL(configuredUrl);
+      const allowedHosts = (process.env.REPLIT_DOMAINS ?? "").split(",").map((domain) =>
+        domain.trim().replace(/^https?:\/\//, "").split("/")[0].toLowerCase(),
+      ).filter(Boolean);
+      if (callback.protocol !== "https:" || callback.username || callback.password ||
+          callback.search || callback.hash || !allowedHosts.includes(callback.host.toLowerCase())) {
+        return undefined;
+      }
+      return callback.toString();
+    } catch {
+      return undefined;
+    }
   }
+
+  const rawDomain = process.env.NODE_ENV === "production"
+    ? process.env.REPLIT_DOMAINS?.split(",")[0]?.trim()
+    : process.env.REPLIT_DEV_DOMAIN ?? process.env.REPLIT_DOMAINS?.split(",")[0]?.trim();
+  if (!rawDomain || !/^[a-z0-9.-]+(?::\d+)?$/i.test(rawDomain)) return undefined;
   return `https://${rawDomain}/`;
-}
-
-async function readPaystackJson(response: Response): Promise<Record<string, unknown> | null> {
-  try {
-    const body: unknown = await response.json();
-    return body && typeof body === "object"
-      ? (body as Record<string, unknown>)
-      : null;
-  } catch {
-    return null;
-  }
-}
-
-function getDataObject(payload: Record<string, unknown> | null) {
-  const data = payload?.data;
-  return data && typeof data === "object"
-    ? (data as Record<string, unknown>)
-    : null;
 }
 
 router.get("/wallet", async (req, res): Promise<void> => {
@@ -101,6 +101,7 @@ router.get("/wallet", async (req, res): Promise<void> => {
   );
   const withdrawalHeldKobo = withdrawalRows.filter(row => row.status === "pending").reduce((sum, row) => sum + row.amountKobo, 0);
   const response = {
+    paymentMode: getPublicPaystackMode(),
     balanceNaira: Math.floor(balanceKobo / 100),
     totalBalanceNaira: (balanceKobo + escrowedKobo + withdrawalHeldKobo) / 100,
     escrowedNaira: Math.floor(escrowedKobo / 100),
