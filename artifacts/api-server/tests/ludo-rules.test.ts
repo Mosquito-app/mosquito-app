@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import type { LudoBoardState } from "@workspace/db";
-import { applyCaptureHome, applyRoll, finishRoll, hasLegalMove, moveDestination, normalizeBoard } from "../src/lib/ludo-rules";
+import { applyCaptureHome, applyRoll, finishRoll, hasLegalMove, moveDestination, normalizeBoard, tokensFor } from "../src/lib/ludo-rules";
 
 const initial = (): LudoBoardState => ({
   turnUserId: "red", dice: null, remainingDice: [], hasRolled: false, consecutiveDoubles: 0,
@@ -120,4 +120,52 @@ for (const safe of [0, 8, 13, 21, 26, 34, 39, 47]) {
 const finishCap = applyCaptureHome({ ...initial(), redTokens: [50, 57, 57, 57], greenTokens: [24, -1, -1, -1] }, "red", 0);
 check(finishCap.redTokens, [57, 57, 57, 57]); check(finishCap.greenTokens[0], -1);
 
-console.log(`PASS ${checks} deterministic two-dice rule checks, including all 36 rolls, three-double-six cap, and capture-to-home.`);
+// Capture protection is symmetric across every logical color, including colors
+// whose displayed home is rotated/swapped in the match UI.
+const colors = ["red", "green", "yellow", "blue"] as const;
+const offsets = { red: 0, green: 26, yellow: 13, blue: 39 } as const;
+const tokenField = { red: "redTokens", green: "greenTokens", yellow: "yellowTokens", blue: "blueTokens" } as const;
+const safeSquares = [0, 8, 13, 21, 26, 34, 39, 47];
+const localPosition = (color: typeof colors[number], square: number) => (square - offsets[color] + 52) % 52;
+for (const attacker of colors) for (const defender of colors) {
+  if (attacker === defender) continue;
+  for (const square of safeSquares) {
+    const attackerPosition = localPosition(attacker, square);
+    const defenderPosition = localPosition(defender, square);
+    const safeBoard = {
+      ...initial(),
+      [tokenField[attacker]]: [attackerPosition, -1, -1, -1],
+      [tokenField[defender]]: [defenderPosition, -1, -1, -1],
+    } as LudoBoardState;
+    const unchanged = applyCaptureHome(safeBoard, attacker, 0);
+    check(tokensFor(unchanged, attacker)[0], attackerPosition);
+    check(tokensFor(unchanged, defender)[0], defenderPosition);
+  }
+
+  const square = 1; // an unprotected shared-track square
+  const attackerPosition = localPosition(attacker, square);
+  const defenderPosition = localPosition(defender, square);
+  const exposedBoard = {
+    ...initial(),
+    [tokenField[attacker]]: [attackerPosition, -1, -1, -1],
+    [tokenField[defender]]: [defenderPosition, -1, -1, -1],
+  } as LudoBoardState;
+  const captured = applyCaptureHome(exposedBoard, attacker, 0);
+  check(tokensFor(captured, attacker)[0], 57);
+  check(tokensFor(captured, defender)[0], -1);
+}
+
+// Tokens in base, a private home lane, or the finished home cannot be captured.
+for (const attacker of colors) for (const defender of colors) {
+  if (attacker === defender) continue;
+  for (const protectedPosition of [-1, 52, 53, 54, 55, 56, 57]) {
+    const board = {
+      ...initial(),
+      [tokenField[attacker]]: [1, -1, -1, -1],
+      [tokenField[defender]]: [protectedPosition, -1, -1, -1],
+    } as LudoBoardState;
+    check(applyCaptureHome(board, attacker, 0), board);
+  }
+}
+
+console.log(`PASS ${checks} deterministic two-dice rule checks, including all 36 rolls, double-six cap, and symmetric protected-square captures.`);

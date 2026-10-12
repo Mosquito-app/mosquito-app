@@ -99,12 +99,20 @@ export function applyRoll(board: LudoBoardState, color: LudoColor, dice: [number
   return hasLegalMove(rolled, color) ? rolled : finishRoll(rolled, nextPlayer, nextDeadline, true);
 }
 
-const SAFE_SQUARES = new Set([0, 8, 13, 21, 26, 34, 39, 47]);
+// Each color's start tile is a safe square; the other four are the star tiles.
+// Keep these in the shared track's canonical coordinate system, not display colors.
+const STAR_SAFE_SQUARES = [8, 21, 34, 47] as const;
+const SAFE_SQUARES = new Set([...Object.values(COLOR_OFFSET), ...STAR_SAFE_SQUARES]);
 function trackSquare(color: LudoColor, position: number): number | null {
   return position >= 0 && position <= 51 ? (position + COLOR_OFFSET[color]) % 52 : null;
 }
 
-/** Captures on unsafe track squares send rivals to base and immediately count the capturing pawn as home. */
+/** Base, home-lane, finished, start, and star positions are protected for every seat color. */
+function isProtectedSquare(square: number | null): boolean {
+  return square === null || SAFE_SQUARES.has(square);
+}
+
+/** Captures on unsafe shared-track squares send rivals to base and count the capturing pawn as home. */
 export function applyCaptureHome(board: LudoBoardState, color: LudoColor, tokenIndex: number): LudoBoardState {
   const tokens = {
     red: [...board.redTokens],
@@ -116,7 +124,7 @@ export function applyCaptureHome(board: LudoBoardState, color: LudoColor, tokenI
   const rivals = LUDO_RIVALS.filter((rival) => rival !== color);
   const captureAt = (position: number) => {
     const square = trackSquare(color, position);
-    if (square === null || SAFE_SQUARES.has(square)) return false;
+    if (isProtectedSquare(square)) return false;
     let captured = false;
     for (const rival of rivals) tokens[rival].forEach((p, i) => {
       if (trackSquare(rival, p) === square) { tokens[rival][i] = -1; captured = true; }

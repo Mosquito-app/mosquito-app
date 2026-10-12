@@ -115,7 +115,7 @@
 @media (prefers-reduced-motion:reduce) { .lr-page *, .lr-page *::before, .lr-page *::after { animation:none !important; transition:none !important; } }
 
 /* Light match-room chrome; the board itself keeps its timber frame and classic quadrants. */
-.lr-page { --ink:#0f172a; color:#0f172a; background:#f8fafc; }
+.lr-page { --ink:#0f172a; color-scheme:light only; color:#0f172a; background:#fff; }
 .lr-page::before { display:none; }
 .lr-header { background:#fff; border-bottom:1px solid #e2e8f0; color:#0f172a; box-shadow:0 1px 2px rgb(15 23 42 / .06); }
 .lr-brand small { color:#15803d; }

@@ -79,7 +79,7 @@
   --elevate-1: rgba(0, 0, 0, 0.03);
   --elevate-2: rgba(0, 0, 0, 0.08);
 
-  --background: 210 40% 98%;
+  --background: 0 0% 100%;
   --foreground: 222 47% 11%;
   --border: 214 32% 91%;
   --card: 0 0% 100%;
@@ -295,7 +295,7 @@
   .font-mono { font-family: var(--app-font-mono); }
 }
 
-:root { color-scheme: light; }
+:root { color-scheme: light only; }
 body { min-width: 320px; background: hsl(var(--background)); }
 button, a, input { -webkit-tap-highlight-color: transparent; }
 ::selection { background: hsl(46 93% 58% / .6); }
@@ -1033,7 +1033,7 @@ button, a, input { -webkit-tap-highlight-color: transparent; }
 
 /* Mosquito light-table theme: bright surfaces, slate type, confident green actions. */
 :root {
-  --background: 210 40% 98%;
+  --background: 0 0% 100%;
   --foreground: 222 47% 11%;
   --border: 214 32% 91%;
   --card: 0 0% 100%;
@@ -1053,9 +1053,9 @@ button, a, input { -webkit-tap-highlight-color: transparent; }
   --input: 214 32% 85%;
   --ring: 142 71% 36%;
 }
-body { background:#f8fafc; color:#0f172a; }
-.app-shell { background:#f8fafc; color:#0f172a; }
-.main-stage { background:#f8fafc; }
+body { background:#fff; color:#0f172a; }
+.app-shell { background:#fff; color:#0f172a; }
+.main-stage { background:#fff; }
 .side-rail { background:#fff; color:#0f172a; border-right:1px solid #e2e8f0; }
 .brand-mark { background:#dcfce7; color:#166534; box-shadow:none; }
 .brand-word { color:#0f172a; }
@@ -1148,8 +1148,8 @@ body { background:#f8fafc; color:#0f172a; }
 .page-footer { border-color:#e2e8f0; color:#64748b; }
 .inline-error { color:#991b1b; background:#fef2f2; border-color:#fecaca; }
 .loading-label { color:#475569; }
-.auth-page { background:#f8fafc; color:#0f172a; }
-.auth-page::before { background:radial-gradient(ellipse at 16% 28%,#fff 0%,#f8fafc 72%); }
+.auth-page { background:#fff; color:#0f172a; }
+.auth-page::before { background:radial-gradient(ellipse at 16% 28%,#fff 0%,#fff 72%); }
 .noise::after { display:none; }
 .auth-head { border-color:#e2e8f0; }
 .auth-head .brand-word { color:#0f172a; }
@@ -1237,7 +1237,7 @@ body { background:#f8fafc; color:#0f172a; }
 .dashboard-activity { border-color:#e2e8f0; }
 
 /* Room picker surfaces are intentionally quiet; game pieces retain their vivid color. */
-.room-picker-shell,.room-picker-shell .main-stage,.ludo-room-browser { background:#f8fafc; color:#0f172a; }
+.room-picker-shell,.room-picker-shell .main-stage,.ludo-room-browser { background:#fff; color:#0f172a; }
 .ludo-room-browser { background-image:none; }
 .ludo-room-header { background:#fff; border-bottom:1px solid #e2e8f0; box-shadow:0 1px 2px rgb(15 23 42 / .05); }
 .ludo-room-user-avatar { border-color:#bbf7d0; background:#dcfce7; color:#166534; box-shadow:none; }

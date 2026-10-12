@@ -15,11 +15,11 @@ Only an exact 6-6 earns a bonus roll after both dice are used. At most three con
 
 **How to apply:** Count consecutive server-generated 6-6 pairs, grant repeat rolls only before the third, and never roll back token movements.
 
-An unsafe-square capture returns opposing caps to base and immediately marks the capturing cap as home. Do not add +10 movement or a capture-specific bonus roll. If this makes all four caps home, finish and settle the match immediately.
+Capture only on an unprotected shared-track square. Every color's starting square and the star squares are protected; caps in base, private home lanes, and finished home are never capturable. On an eligible capture, return the rival cap to base and immediately mark the capturing cap as home. Do not add +10 movement or a capture-specific bonus roll. If this makes all four caps home, finish and settle the match immediately. Protection must use canonical engine coordinates, not the UI's rotated or recolored seats.
 
-**Why:** The user explicitly corrected the old +10 rule: the capturing pawn itself counts as home, while captured pawns return to base.
+**Why:** The user explicitly corrected the old +10 rule and reported asymmetric capture behavior: the capturing pawn counts as home, the captured pawn returns to base, and a cap in its own house must not be captured. Display colors are presentation-only.
 
-**How to apply:** Resolve captures server-side on unprotected track squares; keep opponent resets, home counts, timeout ranking, victory detection and escrow settlement consistent.
+**How to apply:** Resolve captures server-side on unprotected shared-track squares in canonical coordinates; keep opponent resets, home counts, timeout ranking, victory detection and escrow settlement consistent across every color pairing.
 
 Ordinary token movement should animate one square at a time. A capture-to-home is an immediate finish state, not a full-lap animation.
 
