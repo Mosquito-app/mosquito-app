@@ -17,16 +17,19 @@ process.env.PAYSTACK_TEST_SECRET_KEY = "sk_test_fixture_not_a_credential";
 const nativeFetch = globalThis.fetch;
 const deposits = new Map<string, { amount: number; status: string; domain: string }>();
 const transfers = new Map<string, Record<string, unknown>>();
+const providerAuthorizationHeaders: string[] = [];
 let transferStatus = "success";
 let recipientAccepted = true;
 let recipientNetworkUnavailable = false;
 globalThis.fetch = async (input, init) => {
   const url = new URL(String(input));
   if (url.origin !== "https://api.paystack.co") return nativeFetch(input, init);
+  providerAuthorizationHeaders.push(new Headers(init?.headers).get("authorization") ?? "");
   const body = init?.body ? JSON.parse(String(init.body)) : {};
   const reply = (data: unknown, status = 200, message = "") => new Response(JSON.stringify({ status: status < 400, data, message }), { status, headers: { "content-type": "application/json" } });
   if (url.pathname === "/transaction/initialize") {
-    deposits.set(body.reference, { amount: body.amount, status: "pending", domain: "test" });
+    const domain = String(body.reference).startsWith("pay_live_") ? "live" : "test";
+    deposits.set(body.reference, { amount: body.amount, status: "pending", domain });
     return reply({ authorization_url: `https://checkout.paystack.com/${body.reference}` });
   }
   if (url.pathname.startsWith("/transaction/verify/")) {
@@ -38,12 +41,14 @@ globalThis.fetch = async (input, init) => {
     throw new Error("Simulated Paystack test API timeout");
   }
   if (url.pathname === "/transferrecipient") return recipientAccepted
-    ? reply({ domain: "test", recipient_code: "RCP_test_fixture" })
+    ? reply({ domain: new Headers(init?.headers).get("authorization")?.includes("sk_live_") ? "live" : "test", recipient_code: new Headers(init?.headers).get("authorization")?.includes("sk_live_") ? "RCP_live_fixture" : "RCP_test_fixture" })
     : reply(null, 400, "Cannot resolve account");
   if (url.pathname === "/transfer") {
     const data = transfers.get(body.reference) ?? {
-      domain: "test", reference: body.reference, currency: "NGN",
-      amount: body.amount, status: transferStatus, transfer_code: "TRF_test_fixture",
+      domain: String(body.reference).startsWith("wd_live_") ? "live" : "test",
+      reference: body.reference, currency: "NGN",
+      amount: body.amount, status: transferStatus,
+      transfer_code: String(body.reference).startsWith("wd_live_") ? "TRF_live_fixture" : "TRF_test_fixture",
     };
     transfers.set(body.reference, data);
     return reply(data);
@@ -223,6 +228,54 @@ try {
   deposits.get(bad.data.reference)!.domain = "live";
   assert.equal((await request("/deposits/verify", host, { reference: bad.data.reference })).data.status, "failed");
   assert.equal((await request("/wallet", host)).data.balanceNaira, 10000);
+
+  const liveEnvKeys = ["NODE_ENV", "PAYSTACK_MODE", "PAYSTACK_SECRET_KEY", "PAYSTACK_PUBLIC_KEY", "PAYSTACK_LIVE_CALLBACK_URL", "REPLIT_DOMAINS"] as const;
+  const previousLiveEnv = Object.fromEntries(liveEnvKeys.map(key => [key, process.env[key]]));
+  try {
+    process.env.NODE_ENV = "production";
+    process.env.PAYSTACK_MODE = "live";
+    process.env.PAYSTACK_SECRET_KEY = "sk_live_fixture_only";
+    process.env.PAYSTACK_PUBLIC_KEY = "pk_live_fixture_only";
+    process.env.PAYSTACK_LIVE_CALLBACK_URL = "https://mosquito.test.replit.app/";
+    process.env.REPLIT_DOMAINS = "mosquito.test.replit.app";
+    const liveInit = await request("/deposits/initialize", host, { amountNaira: 500 }, 201);
+    assert.equal(liveInit.data.paymentMode, "live");
+    assert.equal(liveInit.data.reference.startsWith("pay_live_"), true);
+    assert.equal(providerAuthorizationHeaders.at(-1), "Bearer sk_live_fixture_only");
+    deposits.get(liveInit.data.reference)!.status = "success";
+    const liveDeposit = await request("/deposits/verify", host, { reference: liveInit.data.reference });
+    assert.equal(liveDeposit.data.status, "success");
+    assert.equal(liveDeposit.data.paymentMode, "live");
+    assert.equal(liveDeposit.data.balanceNaira, 10500);
+    assert.equal((await request("/deposits/verify", host, { reference: liveInit.data.reference })).data.balanceNaira, 10500);
+
+    const [commissionBeforeLiveCashout] = await db.select().from(platformWalletTable).where(eq(platformWalletTable.id, "commission"));
+    const liveWithdrawal = await request("/withdrawals", host, {
+      amountNaira: 500, requestId: randomUUID(), recipientName: "Live Fixture", accountNumber: "1111111111", bankCode: "044",
+    }, 201);
+    assert.equal(liveWithdrawal.data.reference.startsWith("wd_live_"), true);
+    assert.equal(liveWithdrawal.data.status, "success");
+    assert.equal(liveWithdrawal.data.simulated, false);
+    assert.equal(transfers.get(liveWithdrawal.data.reference)?.domain, "live");
+    assert.equal(providerAuthorizationHeaders.some(header => header === "Bearer sk_live_fixture_only"), true);
+    const [commissionAfterLiveCashout] = await db.select().from(platformWalletTable).where(eq(platformWalletTable.id, "commission"));
+    assert.equal(commissionAfterLiveCashout.balanceKobo, commissionBeforeLiveCashout.balanceKobo + 5_000);
+    recipientAccepted = false;
+    const balanceBeforeRejectedLiveRecipient = (await request("/wallet", host)).data.balanceNaira;
+    await request("/withdrawals", host, {
+      amountNaira: 500, requestId: randomUUID(), recipientName: "Unresolved Fixture", accountNumber: "2222222222", bankCode: "044",
+    }, 502);
+    assert.equal((await request("/wallet", host)).data.balanceNaira, balanceBeforeRejectedLiveRecipient);
+    recipientAccepted = true;
+    console.log("PASS live-mode deposit verification, idempotent credit, real-transfer path, commission and no simulation on recipient failure (provider mocked)");
+  } finally {
+    for (const key of liveEnvKeys) {
+      const value = previousLiveEnv[key];
+      if (value === undefined) delete process.env[key];
+      else process.env[key] = value;
+    }
+  }
+
   const configuredTestKey = process.env.PAYSTACK_TEST_SECRET_KEY;
   delete process.env.PAYSTACK_TEST_SECRET_KEY;
   await request("/withdrawals", host, {

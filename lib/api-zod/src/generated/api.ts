@@ -551,9 +551,10 @@ export const GetCurrentUserResponse = zod.object({
 
 
 /**
- * @summary Get sandbox balance, held stakes, and recent activity
+ * @summary Get wallet balance, payment mode, held stakes, and recent activity
  */
 export const GetWalletResponse = zod.object({
+  "paymentMode": zod.enum(['test', 'live', 'unavailable']),
   "balanceNaira": zod.number().int(),
   "totalBalanceNaira": zod.number().int(),
   "escrowedNaira": zod.number().int(),
@@ -577,7 +578,7 @@ export const GetWalletResponse = zod.object({
 
 
 /**
- * @summary Start a Paystack test-mode deposit
+ * @summary Start a Paystack test or live deposit
  */
 export const initializeDepositBodyAmountNairaMin = 500;
 export const initializeDepositBodyAmountNairaMax = 500000;
@@ -591,12 +592,13 @@ export const InitializeDepositBody = zod.object({
 export const InitializeDepositResponse = zod.object({
   "authorizationUrl": zod.string().url(),
   "reference": zod.string(),
-  "amountNaira": zod.number().int()
+  "amountNaira": zod.number().int(),
+  "paymentMode": zod.enum(['test', 'live'])
 })
 
 
 /**
- * @summary Verify a Paystack test deposit and credit it once
+ * @summary Verify a Paystack deposit and credit it once
  */
 export const verifyDepositBodyReferenceMin = 8;
 export const verifyDepositBodyReferenceMax = 120;
@@ -610,12 +612,13 @@ export const VerifyDepositBody = zod.object({
 export const VerifyDepositResponse = zod.object({
   "status": zod.enum(['success', 'pending', 'failed']),
   "amountNaira": zod.number().int(),
-  "balanceNaira": zod.number().int()
+  "balanceNaira": zod.number().int(),
+  "paymentMode": zod.enum(['test', 'live'])
 })
 
 
 /**
- * @summary Reserve sandbox funds and use a Paystack test or local simulated transfer
+ * @summary Reserve wallet funds and request a Paystack bank transfer
  */
 export const createWithdrawalBodyAmountNairaMin = 500;
 export const createWithdrawalBodyAmountNairaMax = 500000;

@@ -1022,7 +1022,7 @@ export const getGetWalletUrl = () => {
 }
 
 /**
- * @summary Get sandbox balance, held stakes, and recent activity
+ * @summary Get wallet balance, payment mode, held stakes, and recent activity
  */
 export const getWallet = async ( options?: Parameters<typeof customFetch>[1]): Promise<WalletResponse> => {
 
@@ -1069,7 +1069,7 @@ export type GetWalletQueryError = ErrorType<void>
 
 
 /**
- * @summary Get sandbox balance, held stakes, and recent activity
+ * @summary Get wallet balance, payment mode, held stakes, and recent activity
  */
 
 export function useGetWallet<TData = Awaited<ReturnType<typeof getWallet>>, TError = ErrorType<void>>(
@@ -1099,7 +1099,7 @@ export const getInitializeDepositUrl = () => {
 }
 
 /**
- * @summary Start a Paystack test-mode deposit
+ * @summary Start a Paystack test or live deposit
  */
 export const initializeDeposit = async (depositInput: DepositInput, options?: Parameters<typeof customFetch>[1]): Promise<DepositInitialization> => {
 
@@ -1165,7 +1165,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type InitializeDepositMutationVariables = {data: BodyType<DepositInput>}
 
     /**
- * @summary Start a Paystack test-mode deposit
+ * @summary Start a Paystack test or live deposit
  */
 export const useInitializeDeposit = <TError = ErrorType<void>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof initializeDeposit>>, TError,InitializeDepositMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
@@ -1187,7 +1187,7 @@ export const getVerifyDepositUrl = () => {
 }
 
 /**
- * @summary Verify a Paystack test deposit and credit it once
+ * @summary Verify a Paystack deposit and credit it once
  */
 export const verifyDeposit = async (depositVerificationInput: DepositVerificationInput, options?: Parameters<typeof customFetch>[1]): Promise<DepositVerification> => {
 
@@ -1253,7 +1253,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type VerifyDepositMutationVariables = {data: BodyType<DepositVerificationInput>}
 
     /**
- * @summary Verify a Paystack test deposit and credit it once
+ * @summary Verify a Paystack deposit and credit it once
  */
 export const useVerifyDeposit = <TError = ErrorType<void>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof verifyDeposit>>, TError,VerifyDepositMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
@@ -1275,7 +1275,7 @@ export const getCreateWithdrawalUrl = () => {
 }
 
 /**
- * @summary Reserve sandbox funds and use a Paystack test or local simulated transfer
+ * @summary Reserve wallet funds and request a Paystack bank transfer
  */
 export const createWithdrawal = async (withdrawalInput: WithdrawalInput, options?: Parameters<typeof customFetch>[1]): Promise<Withdrawal> => {
 
@@ -1341,7 +1341,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type CreateWithdrawalMutationVariables = {data: BodyType<WithdrawalInput>}
 
     /**
- * @summary Reserve sandbox funds and use a Paystack test or local simulated transfer
+ * @summary Reserve wallet funds and request a Paystack bank transfer
  */
 export const useCreateWithdrawal = <TError = ErrorType<void>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createWithdrawal>>, TError,CreateWithdrawalMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}

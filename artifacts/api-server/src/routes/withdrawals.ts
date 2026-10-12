@@ -67,7 +67,7 @@ router.post("/withdrawals", async (req, res): Promise<void> => {
 
   let recipientCode: string;
   try {
-    const recipient = await paystackTestRequest("/transferrecipient", "POST", {
+    const recipient = await paystackRequest(mode, "/transferrecipient", "POST", {
       type: "nuban",
       name: input.recipientName.trim(),
       account_number: input.accountNumber,
@@ -78,8 +78,12 @@ router.post("/withdrawals", async (req, res): Promise<void> => {
     if (!recipient.ok || typeof code !== "string" || !code.trim()) {
       req.log.warn(
         { statusCode: recipient.statusCode, reason: recipient.failureReason },
-        "Paystack test recipient unavailable; using local simulated withdrawal",
+        `Paystack ${mode} recipient unavailable`,
       );
+      if (mode === "live") {
+        res.status(502).json({ error: "Paystack could not verify this bank recipient. No funds were withdrawn." });
+        return;
+      }
       recipientCode = MOCK_TEST_RECIPIENT_CODE;
     } else {
       recipientCode = code;
@@ -91,12 +95,18 @@ router.post("/withdrawals", async (req, res): Promise<void> => {
     }
     req.log.warn(
       { errorType: error instanceof Error ? error.name : "unknown" },
-      "Paystack test recipient request failed; using local simulated withdrawal",
+      `Paystack ${mode} recipient request failed`,
     );
+    if (mode === "live") {
+      res.status(502).json({ error: "Paystack could not verify this bank recipient. No funds were withdrawn." });
+      return;
+    }
     recipientCode = MOCK_TEST_RECIPIENT_CODE;
   }
 
-  const reference = `wd_${randomBytes(18).toString("hex")}`;
+  const reference = mode === "live"
+    ? `wd_live_${randomBytes(18).toString("hex")}`
+    : `wd_${randomBytes(18).toString("hex")}`;
   const reservation = await db.transaction(async tx => {
     const [lockedUser] = await tx.select({ id: usersTable.id, balanceKobo: usersTable.balanceKobo })
       .from(usersTable).where(eq(usersTable.id, user.id)).for("update").limit(1);
@@ -123,13 +133,13 @@ router.post("/withdrawals", async (req, res): Promise<void> => {
       userId: user.id,
       type: "withdrawal_lock",
       amountKobo,
-      description: `Sandbox withdrawal requested — ${reference.slice(-8)}`,
+      description: `${mode === "live" ? "Live" : "Sandbox"} withdrawal requested — ${reference.slice(-8)}`,
     });
     return { kind: "created" as const, row: withdrawal };
   });
 
   if (reservation.kind === "missing_user") {
-    res.status(401).json({ error: "Sign in to request a test withdrawal." });
+    res.status(401).json({ error: "Sign in to request a wallet withdrawal." });
     return;
   }
   if (reservation.kind === "insufficient") {
@@ -140,14 +150,14 @@ router.post("/withdrawals", async (req, res): Promise<void> => {
   let withdrawal = reservation.row;
   if (withdrawal.status === "pending") {
     try {
-      if (reservation.kind === "created") await initiateTestTransfer(withdrawal);
+      if (reservation.kind === "created") await initiateTransfer(withdrawal);
       else await reconcileWithdrawal(withdrawal);
       const [updated] = await db.select().from(withdrawalsTable).where(eq(withdrawalsTable.id, withdrawal.id)).limit(1);
       if (updated) withdrawal = updated;
     } catch {
       // A timed-out provider request may already have been accepted; reconciliation checks
       // the same reference rather than refunding or creating a second withdrawal.
-      req.log.warn({ withdrawalId: withdrawal.id }, "Test withdrawal will be reconciled");
+      req.log.warn({ withdrawalId: withdrawal.id }, "Withdrawal will be reconciled");
     }
   }
 
@@ -157,13 +167,13 @@ router.post("/withdrawals", async (req, res): Promise<void> => {
 router.post("/withdrawals/:withdrawalId/verify", async (req, res): Promise<void> => {
   const user = await getAuthenticatedUser(req);
   if (!user) {
-    res.status(401).json({ error: "Sign in to verify a test withdrawal." });
+    res.status(401).json({ error: "Sign in to verify a wallet withdrawal." });
     return;
   }
 
   const withdrawalId = req.params.withdrawalId;
   if (typeof withdrawalId !== "string" || !WITHDRAWAL_ID.test(withdrawalId)) {
-    res.status(404).json({ error: "Test withdrawal not found." });
+    res.status(404).json({ error: "Withdrawal not found." });
     return;
   }
 
@@ -172,7 +182,7 @@ router.post("/withdrawals/:withdrawalId/verify", async (req, res): Promise<void>
     eq(withdrawalsTable.userId, user.id),
   )).limit(1);
   if (!withdrawal) {
-    res.status(404).json({ error: "Test withdrawal not found." });
+    res.status(404).json({ error: "Withdrawal not found." });
     return;
   }
 
@@ -180,7 +190,7 @@ router.post("/withdrawals/:withdrawalId/verify", async (req, res): Promise<void>
     try {
       await reconcileWithdrawal(withdrawal);
     } catch {
-      req.log.warn({ withdrawalId }, "Test withdrawal verification will retry");
+      req.log.warn({ withdrawalId }, "Withdrawal verification will retry");
     }
   }
 

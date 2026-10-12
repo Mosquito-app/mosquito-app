@@ -20,11 +20,13 @@ export function DepositReturn() {
     mutateRef.current({ data: { reference } }, {
       onSuccess: result => {
         void queryClient.invalidateQueries({ queryKey: getGetWalletQueryKey() });
-        if (result.status === 'pending') { setRetryable(true); setMessage('Test deposit is still pending. Check again in a moment.'); return; }
+        if (result.status === 'pending') { setRetryable(true); setMessage(`${result.paymentMode === 'live' ? 'Live' : 'Test'} deposit is still pending. Check again in a moment.`); return; }
         try { sessionStorage.removeItem(KEY); } catch { /* ignore */ }
-        setMessage(result.status === 'success' ? `Test deposit receipt — confirmed: ${money(result.amountNaira)} added to your sandbox balance.` : `Test deposit ${result.status}. Your balance has not been changed.`);
+        setMessage(result.status === 'success'
+          ? `${result.paymentMode === 'live' ? 'Live' : 'Test'} deposit confirmed: ${money(result.amountNaira)} added to your Mosquito Wallet.`
+          : `${result.paymentMode === 'live' ? 'Live' : 'Test'} deposit ${result.status}. Your balance has not been changed.`);
       },
-      onError: () => { setRetryable(true); setMessage('We could not verify that test deposit yet. Your balance has not been changed.'); },
+      onError: () => { setRetryable(true); setMessage('We could not verify that deposit yet. Your balance has not been changed.'); },
     });
   }, []);
   useEffect(() => {
@@ -34,5 +36,5 @@ export function DepositReturn() {
     run();
   }, [run]);
   if (!verify.isPending && !message) return null;
-  return <div className="verify-note" data-testid="status-deposit"><strong>Mosquito Wallet · </strong>{verify.isPending ? 'Verifying test checkout securely…' : message}{retryable && !verify.isPending && <> <button className="quiet-btn" onClick={run} data-testid="button-retry-deposit">Retry verification</button></>}{!retryable && !verify.isPending && <button className="quiet-btn" onClick={() => setMessage('')} data-testid="button-dismiss-deposit">Dismiss</button>}</div>;
+  return <div className="verify-note" data-testid="status-deposit"><strong>Mosquito Wallet · </strong>{verify.isPending ? 'Verifying Paystack checkout securely…' : message}{retryable && !verify.isPending && <> <button className="quiet-btn" onClick={run} data-testid="button-retry-deposit">Retry verification</button></>}{!retryable && !verify.isPending && <button className="quiet-btn" onClick={() => setMessage('')} data-testid="button-dismiss-deposit">Dismiss</button>}</div>;
 }

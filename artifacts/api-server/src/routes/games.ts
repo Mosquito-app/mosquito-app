@@ -280,7 +280,7 @@ router.post("/rooms", async (req, res): Promise<void> => {
       )).limit(1);
       if (existingRoom) { joinedRoomId = existingRoom.id; return; }
       if (!lockedUser || lockedUser.balanceKobo < stakeKobo) {
-        throw new GameActionError(400, "Your available sandbox balance is too low for this stake.");
+        throw new GameActionError(400, "Your available wallet balance is too low for this stake.");
       }
 
       const eligibleRooms = await tx

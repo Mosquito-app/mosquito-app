@@ -234,7 +234,7 @@ paths:
     get:
       operationId: getWallet
       tags: [wallet]
-      summary: Get sandbox balance, held stakes, and recent activity
+      summary: Get wallet balance, payment mode, held stakes, and recent activity
       responses:
         "200":
           description: Wallet overview
@@ -248,7 +248,7 @@ paths:
     post:
       operationId: initializeDeposit
       tags: [wallet]
-      summary: Start a Paystack test-mode deposit
+      summary: Start a Paystack test or live deposit
       requestBody:
         required: true
         content:
@@ -257,7 +257,7 @@ paths:
               $ref: "#/components/schemas/DepositInput"
       responses:
         "201":
-          description: Hosted test checkout initialized
+          description: Hosted Paystack checkout initialized
           content:
             application/json:
               schema:
@@ -272,7 +272,7 @@ paths:
     post:
       operationId: verifyDeposit
       tags: [wallet]
-      summary: Verify a Paystack test deposit and credit it once
+      summary: Verify a Paystack deposit and credit it once
       requestBody:
         required: true
         content:
@@ -294,7 +294,7 @@ paths:
     post:
       operationId: createWithdrawal
       tags: [wallet]
-      summary: Reserve sandbox funds and use a Paystack test or local simulated transfer
+      summary: Reserve wallet funds and request a Paystack bank transfer
       requestBody:
         required: true
         content:
@@ -772,8 +772,11 @@ components:
           format: date-time
     WalletResponse:
       type: object
-      required: [balanceNaira, totalBalanceNaira, escrowedNaira, withdrawalHeldNaira, transactions, withdrawals]
+      required: [paymentMode, balanceNaira, totalBalanceNaira, escrowedNaira, withdrawalHeldNaira, transactions, withdrawals]
       properties:
+        paymentMode:
+          type: string
+          enum: [test, live, unavailable]
         balanceNaira:
           type: integer
         totalBalanceNaira:
@@ -800,7 +803,7 @@ components:
           maximum: 500000
     DepositInitialization:
       type: object
-      required: [authorizationUrl, reference, amountNaira]
+      required: [authorizationUrl, reference, amountNaira, paymentMode]
       properties:
         authorizationUrl:
           type: string
@@ -809,6 +812,9 @@ components:
           type: string
         amountNaira:
           type: integer
+        paymentMode:
+          type: string
+          enum: [test, live]
     DepositVerificationInput:
       type: object
       required: [reference]
@@ -819,7 +825,7 @@ components:
           maxLength: 120
     DepositVerification:
       type: object
-      required: [status, amountNaira, balanceNaira]
+      required: [status, amountNaira, balanceNaira, paymentMode]
       properties:
         status:
           type: string
@@ -828,6 +834,9 @@ components:
           type: integer
         balanceNaira:
           type: integer
+        paymentMode:
+          type: string
+          enum: [test, live]
     WithdrawalInput:
       type: object
       required: [amountNaira, requestId, recipientName, accountNumber, bankCode]

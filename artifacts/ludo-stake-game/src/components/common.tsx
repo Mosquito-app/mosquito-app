@@ -20,7 +20,7 @@ export function Shell({ children, user, onLogout, roomPicker = false }: { childr
       <Link href="/" className="rail-link active" data-testid="link-lobby"><Gamepad2 size={18} /> <span>Lobby</span><i /></Link>
       <div className="rail-spacer" />
       <div className="rail-foot">
-        <div className="sandbox-mini"><span className="pulse-dot" /> SANDBOX MODE</div>
+        <div className="sandbox-mini"><span className="pulse-dot" /> MOSQUITO WALLET</div>
         <div className="rail-user">
           <div className="avatar">{user?.username?.slice(0, 1).toUpperCase() || 'M'}</div>
           <div className="rail-user-meta"><strong>{user?.username || 'Guest player'}</strong><small>Local account</small></div>
@@ -33,7 +33,7 @@ export function Shell({ children, user, onLogout, roomPicker = false }: { childr
       <header className="topbar">
         <div className="mobile-brand"><Brand /></div>
         <div className="crumb"><span>Mosquito App</span><span className="crumb-slash">/</span><b>LOBBY</b></div>
-        <div className="topbar-right"><span className="sandbox-pill"><ShieldCheck size={14} /> TEST PLAY ONLY</span><span className="topbar-time">LAGOS · WAT</span></div>
+        <div className="topbar-right"><span className="topbar-time">LAGOS · WAT</span></div>
       </header>
       {children}
     </main>
@@ -49,7 +49,7 @@ export function LoadingBlock({ label = 'Loading your table' }: { label?: string 
 
 export function AuthFrame({ children, heading, copy, mode }: { children: ReactNode; heading: string; copy: string; mode: 'login' | 'register' }) {
   return <div className="auth-page noise">
-    <header className="auth-head"><Brand /><span className="sandbox-pill"><ShieldCheck size={14} /> SANDBOX ONLY</span></header>
+    <header className="auth-head"><Brand /></header>
     <div className="auth-layout">
       <section className="auth-aside">
         <div className="auth-eyebrow"><span className="eyebrow-dash" /> THE GAME IS ON</div>
@@ -66,9 +66,9 @@ export function AuthFrame({ children, heading, copy, mode }: { children: ReactNo
         <h2>{heading}</h2><p className="auth-card-copy">{copy}</p>
         {children}
         <div className="auth-switch">{mode === 'login' ? <>New to the table? <Link href="/register" data-testid="link-register">Create an account <ArrowRight size={14} /></Link></> : <>Already have a seat? <Link href="/login" data-testid="link-login">Sign in <ArrowRight size={14} /></Link></>}</div>
-        <div className="auth-note"><ShieldCheck size={15} /> Local account. Sandbox balance. No live money.</div>
+        <div className="auth-note"><ShieldCheck size={15} /> Local player account.</div>
       </section>
     </div>
-    <footer className="auth-footer"><span>MOSQUITO APP · A GAME OF GOOD JUDGMENT</span><span>PAYSTACK TEST MODE ONLY</span></footer>
+    <footer className="auth-footer"><span>MOSQUITO APP · A GAME OF GOOD JUDGMENT</span></footer>
   </div>;
 }

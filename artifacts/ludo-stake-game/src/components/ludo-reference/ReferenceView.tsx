@@ -325,6 +325,6 @@ export function ReferenceView(p: ViewProps) {
       <div><dt>Pot</dt><dd data-testid="text-pot">{naira(room.potNaira)}</dd></div>
       <div><dt>Winner prize (90%)</dt><dd data-testid="text-prize">{naira(room.prizeNaira)}</dd></div>
       <div><dt>Commission (10%)</dt><dd data-testid="text-commission">{naira(room.commissionNaira)}</dd></div></dl>
-      <p className="lr-fine">Test balances only. No real money moves.</p></Modal>}
+      <p className="lr-fine">Moves and match results are validated by the server.</p></Modal>}
   </div>;
 }

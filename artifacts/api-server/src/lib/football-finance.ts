@@ -9,7 +9,7 @@ export async function lockFootballStake(tx: FinanceTx, room: FootballRow, userId
   const debited = await tx.update(usersTable).set({
     balanceKobo: sql`${usersTable.balanceKobo} - ${room.stakeKobo}`,
   }).where(and(eq(usersTable.id, userId), sql`${usersTable.balanceKobo} >= ${room.stakeKobo}`)).returning({ id: usersTable.id });
-  if (!debited.length) throw new Error("Not enough test funds in Mosquito Wallet.");
+  if (!debited.length) throw new Error("Not enough Mosquito Wallet balance.");
   const [entry] = await tx.insert(walletTransactionsTable).values({
     userId, type: "stake_lock", amountKobo: -room.stakeKobo,
     description: `Mosquito Wallet · Football escrow — ${room.id.slice(0, 8)}`,

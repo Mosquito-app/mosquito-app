@@ -26,7 +26,7 @@ export async function fundUnityMatch(input: UnityMatchInput, key: string) {
       .where(inArray(usersTable.id, [input.player1Id, input.player2Id])).orderBy(asc(usersTable.id)).for("update");
     if (players.length !== 2) throw new UnityError(404, "Both Mosquito player accounts must exist.");
     const stakeKobo = input.stakeAmount * 100;
-    if (players.some(p => p.balanceKobo < stakeKobo)) throw new UnityError(409, "Both players need sufficient Mosquito Wallet test funds.");
+    if (players.some(p => p.balanceKobo < stakeKobo)) throw new UnityError(409, "Both players need sufficient Mosquito Wallet balance.");
     const [match] = await tx.insert(unityMatchesTable).values({
       id: randomUUID(), tokenId: randomUUID(), idempotencyKey: key, player1Id: input.player1Id,
       player2Id: input.player2Id, stakeKobo, gameType: input.gameType, status: "ACTIVE",

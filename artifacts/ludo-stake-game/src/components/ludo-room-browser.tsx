@@ -189,7 +189,7 @@ export function LudoRoomBrowser({
           </div>
         )}
 
-        <p className="ludo-room-note"><ShieldCheck size={14} /> Sandbox wallet only · stakes are reserved when you join</p>
+        <p className="ludo-room-note"><ShieldCheck size={14} /> Wallet funds are reserved when you join</p>
       </main>
     </div>
   );

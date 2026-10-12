@@ -43,11 +43,18 @@ function WalletActivity({ data, isLoading, isError, onRefresh }: {
   onRefresh: () => void;
 }) {
   const w = data;
+  const paymentMode = w?.paymentMode ?? 'unavailable';
+  const paymentHeading = paymentMode === 'live' ? 'Live payments enabled' : paymentMode === 'test' ? 'Test payments' : 'Payments unavailable';
+  const paymentCopy = paymentMode === 'live'
+    ? 'Deposits and bank withdrawals use real money. Match stakes are reserved from your wallet and settled after the match.'
+    : paymentMode === 'test'
+      ? 'Deposits and withdrawals use Paystack test mode. No real bank money moves.'
+      : 'Payment actions are disabled until Paystack is configured correctly.';
   return <section className="activity-section">
     <div className="section-head"><div><div className="section-overline">MOSQUITO WALLET LEDGER</div><h2>Recent activity.</h2></div><button className="refresh-button" onClick={onRefresh} aria-label="Refresh Mosquito Wallet" data-testid="button-refresh-wallet"><RefreshCw size={15} /></button></div>
     {w?.withdrawals?.length ? <div className="wd-list">{w.withdrawals.slice(0, 4).map(x => <div className="wd-row" key={x.id} data-testid={`row-withdrawal-${x.id}`}><span><b>{money(x.amountNaira)}</b><small>{dateLabel(x.createdAt)} · {x.reference}</small></span><StatusPill status={x.status} />{x.status === 'pending' && <VerifyButton id={x.id} />}</div>)}</div> : null}
-    {isLoading ? <LoadingBlock label="Loading activity" /> : isError ? <div className="empty-activity"><InlineError>Wallet activity unavailable. <button onClick={onRefresh}>Retry</button></InlineError></div> : w?.transactions?.length ? <div className="transaction-list">{w.transactions.slice(0, 8).map(tx => <TransactionRow key={tx.id} transaction={tx} />)}</div> : <div className="empty-activity"><Sparkles size={18} /><b>A clean slate.</b><span>Your sandbox activity will show here.</span></div>}
-    <div className="pay-note"><div className="pay-note-mark">₦</div><div><b>Test balances, always.</b><span>Deposits and withdrawals run through Paystack test mode. No real bank money.</span></div></div>
+    {isLoading ? <LoadingBlock label="Loading activity" /> : isError ? <div className="empty-activity"><InlineError>Wallet activity unavailable. <button onClick={onRefresh}>Retry</button></InlineError></div> : w?.transactions?.length ? <div className="transaction-list">{w.transactions.slice(0, 8).map(tx => <TransactionRow key={tx.id} transaction={tx} />)}</div> : <div className="empty-activity"><Sparkles size={18} /><b>A clean slate.</b><span>Your wallet activity will show here.</span></div>}
+    <div className="pay-note"><div className="pay-note-mark">₦</div><div><b>{paymentHeading}</b><span>{paymentCopy}</span></div></div>
   </section>;
 }
 
@@ -79,6 +86,7 @@ export default function LobbyPage() {
   const finding = mode === 'football' ? joinFootball.isPending : join.isPending || playAi.isPending || addAiOpponent.isPending;
   const roomsLoading = mode === 'football' ? footballLobby.isLoading : lobby.isLoading;
   const w = wallet.data;
+  const paymentMode = w?.paymentMode ?? 'unavailable';
   const selectedTier = confirming ? lobby.data?.tiers.find(tier => tier.id === confirming.tierId) : undefined;
   const entered = (room: Room) => {
     queryClient.setQueryData(getGetRoomQueryKey(room.id), room);
@@ -101,7 +109,7 @@ export default function LobbyPage() {
     if (!hasWebGL2()) { setRoomError(WEBGL_MSG); return; }
     joinFootball.mutate({ data: { stakeNaira: value, ...(roomId ? { roomId } : {}), club } }, {
       onSuccess: enteredFootball,
-      onError: () => setRoomError('Could not join football. Both players need enough available test funds; the room may already be taken.'),
+      onError: () => setRoomError('Could not join football. Both players need enough available wallet balance; the room may already be taken.'),
     });
   };
   const confirmLudoJoin = () => {
@@ -109,7 +117,7 @@ export default function LobbyPage() {
     setRoomError('');
     join.mutate({ data: { tierId: confirming.tierId, ...(confirming.roomId ? { roomId: confirming.roomId } : {}) } }, {
       onSuccess: room => { setConfirming(null); entered(room); },
-      onError: () => setRoomError('Could not reserve that sandbox stake. Check your available balance, or the room may have filled.'),
+      onError: () => setRoomError('Could not reserve that wallet stake. Check your available balance, or the room may have filled.'),
     });
   };
   const startAiPractice = () => {
@@ -163,7 +171,7 @@ export default function LobbyPage() {
     event.preventDefault(); setDepositError('');
     const amount = Number(depositAmount);
     if (!Number.isFinite(amount) || amount < 500 || amount > 500000) return setDepositError('Choose an amount between ₦500 and ₦500,000.');
-    initialize.mutate({ data: { amountNaira: amount } }, { onSuccess: result => { rememberDeposit(result.reference); window.location.assign(result.authorizationUrl); }, onError: () => setDepositError('Could not start a Paystack test checkout. Please try again.') });
+    initialize.mutate({ data: { amountNaira: amount } }, { onSuccess: result => { rememberDeposit(result.reference); window.location.assign(result.authorizationUrl); }, onError: error => setDepositError(error instanceof Error ? error.message : 'Could not start the Paystack checkout.') });
   };
   if (current.isLoading) return <Shell><div className="page-content"><LoadingBlock label="Checking your session" /></div></Shell>;
   if (!user) return <AuthFrame mode="login" heading="The table is open." copy="Sign in or create a local player account to see the lobby."><div className="guest-cta"><Link className="primary-btn full" href="/login" data-testid="link-signin">Sign in to play <ArrowRight size={17} /></Link><Link className="text-link" href="/register" data-testid="link-create-account">Create a player account</Link></div></AuthFrame>;
@@ -200,7 +208,7 @@ export default function LobbyPage() {
         <div className="welcome-line"><div><div className="section-overline"><span className="live-dot" /> MOSQUITO APP · {conn === 'live' ? 'LIVE' : conn === 'connecting' ? 'CONNECTING' : 'RECONNECTING'}</div><h1>Good evening, <em>{user.username}</em><span className="period">.</span></h1></div></div>
         {lobby.isError && <div className="error-banner"><InlineError>Lobby updates paused. <button onClick={() => void lobby.refetch()} data-testid="button-retry-lobby">Retry</button></InlineError></div>}
         <section className="balance-panel wallet-clean">
-          <div className="balance-top"><div><div className="panel-kicker">MOSQUITO WALLET · SANDBOX</div><div className="balance-label">Total balance</div></div><span className="wallet-stamp"><Wallet size={17} /></span></div>
+          <div className="balance-top"><div><div className="panel-kicker">MOSQUITO WALLET · {paymentMode === 'live' ? 'LIVE PAYMENTS' : paymentMode === 'test' ? 'TEST MODE' : 'UNAVAILABLE'}</div><div className="balance-label">Total balance</div></div><span className="wallet-stamp"><Wallet size={17} /></span></div>
           {wallet.isLoading ? <div className="balance-value skeleton-line wide" /> : wallet.isError ? <div className="balance-value">— <button className="quiet-btn" onClick={() => void wallet.refetch()} data-testid="button-retry-wallet">Retry</button></div> : <div className="balance-value" data-testid="text-wallet-total">{money(w?.totalBalanceNaira ?? user.balanceNaira)}</div>}
           <div className="wallet-split">
             <div><span>AVAILABLE</span><strong data-testid="text-wallet-balance">{money(w?.balanceNaira ?? 0)}</strong></div>
@@ -208,14 +216,15 @@ export default function LobbyPage() {
             <div><span>WITHDRAWAL HELD</span><strong data-testid="text-withdrawal-held">{money(w?.withdrawalHeldNaira ?? 0)}</strong></div>
           </div>
           <div className="wallet-actions">
-            <button className="primary-btn" onClick={() => setDepositOpen(v => !v)} aria-expanded={depositOpen} data-testid="button-deposit-open"><ArrowDownLeft size={16} /> Deposit</button>
-            <button className="dark-btn wallet-wd" onClick={() => setWithdrawOpen(true)} data-testid="button-withdraw-open"><ArrowUpRight size={16} /> Withdraw</button>
-            <span className="sandbox-caption"><ShieldCheck size={14} /> Test balance only. Not real bank money.</span>
+            <button className="primary-btn" onClick={() => setDepositOpen(v => !v)} disabled={paymentMode === 'unavailable'} aria-expanded={depositOpen} data-testid="button-deposit-open"><ArrowDownLeft size={16} /> Deposit</button>
+            <button className="dark-btn wallet-wd" onClick={() => setWithdrawOpen(true)} disabled={paymentMode === 'unavailable'} data-testid="button-withdraw-open"><ArrowUpRight size={16} /> Withdraw</button>
+            <span className="sandbox-caption"><ShieldCheck size={14} /> {paymentMode === 'live' ? 'Real wallet balance · live payments' : paymentMode === 'test' ? 'Test wallet balance · no real bank money' : 'Payments currently unavailable'}</span>
           </div>
           {depositOpen && <form className="deposit-form wallet-deposit" onSubmit={deposit}>
-            <div className="wallet-deposit-heading">Mosquito Wallet · Test deposit</div>
-            <label className="amount-field"><span>₦</span><input aria-label="Test deposit amount in naira" type="number" min="500" max="500000" step="100" value={depositAmount} onChange={e => setDepositAmount(e.target.value)} data-testid="input-deposit-amount" /></label>
-            <button type="submit" className="dark-btn" disabled={initialize.isPending} data-testid="button-deposit">{initialize.isPending ? 'Opening checkout…' : 'Continue to Paystack test'} <ArrowRight size={16} /></button>
+            <div className="wallet-deposit-heading">Mosquito Wallet · {paymentMode === 'live' ? 'Live deposit' : 'Test deposit'}</div>
+            <label className="amount-field"><span>₦</span><input aria-label="Deposit amount in naira" type="number" min="500" max="500000" step="100" value={depositAmount} onChange={e => setDepositAmount(e.target.value)} data-testid="input-deposit-amount" /></label>
+            {paymentMode === 'live' && <p className="modal-note">This checkout will charge your selected payment method in Nigerian naira.</p>}
+            <button type="submit" className="dark-btn" disabled={initialize.isPending || paymentMode === 'unavailable'} data-testid="button-deposit">{initialize.isPending ? 'Opening checkout…' : paymentMode === 'live' ? 'Continue to live Paystack' : 'Continue to Paystack test'} <ArrowRight size={16} /></button>
             {depositError && <InlineError>{depositError}</InlineError>}
           </form>}
         </section>
@@ -253,7 +262,7 @@ export default function LobbyPage() {
                   <span className="stake-radio"><i /></span><span className="stake-price">{money(value)}</span><span className="stake-foot">Stake each · Pot {money(value * 2)} · Prize {money(value * 1.8)}</span><ArrowRight className="stake-arrow" size={17} /></button>)}</div>
                 <div className="fb-club-row"><small>YOUR CLUB (PRIMARY KIT COLOURS)</small><ClubPicker value={club} onChange={v => { setClub(v); saveClub(v); }} testPrefix="football" /></div>
                 {roomError && <InlineError>{roomError}</InlineError>}
-                <div className="stake-explain"><ShieldCheck size={15} /><span>Waiting is free. Both stakes enter escrow together at kickoff. Test funds only.</span></div>
+                <div className="stake-explain"><ShieldCheck size={15} /><span>Waiting is free. Both stakes are reserved from the wallet at kickoff and settled when the match ends.</span></div>
                 {footballLobby.isError && <InlineError>Football lobby unavailable. <button onClick={() => void footballLobby.refetch()}>Retry</button></InlineError>}
                 <div className="open-rooms">
                   <div className="open-head"><div><div className="section-overline">WAITING FOOTBALL ROOMS</div><h3>Join someone in.</h3></div><span className="room-count">{footballLobby.data?.rooms.length ?? 0} OPEN</span></div>
@@ -268,7 +277,7 @@ export default function LobbyPage() {
         )}
       </div>
     )}
-    {withdrawOpen && <WithdrawDialog available={w?.balanceNaira ?? 0} onClose={() => setWithdrawOpen(false)} />}
+    {withdrawOpen && <WithdrawDialog available={w?.balanceNaira ?? 0} paymentMode={paymentMode} onClose={() => setWithdrawOpen(false)} />}
     {confirming && selectedTier && <div className="join-confirm-backdrop" onMouseDown={event => { if (event.target === event.currentTarget) setConfirming(null); }}>
       <section className="join-confirm-card" role="dialog" aria-modal="true" aria-labelledby="join-confirm-title" data-testid="dialog-entry-confirmation">
         <button type="button" className="join-confirm-close" aria-label="Close entry confirmation" onClick={() => setConfirming(null)}>×</button>
@@ -283,7 +292,7 @@ export default function LobbyPage() {
           <div><dt>Available balance</dt><dd>{wallet.isLoading ? 'Loading…' : money(w?.balanceNaira ?? 0)}</dd></div>
         </dl>
         {selectedTier.stakeNaira > (w?.balanceNaira ?? 0) && <div className="join-confirm-shortfall" role="alert">
-          Your available balance is below this entry fee. Add test funds before joining.
+          Your available balance is below this entry fee. Add funds before joining.
         </div>}
         {roomError && <InlineError>{roomError}</InlineError>}
         <div className="join-confirm-actions">
@@ -294,7 +303,7 @@ export default function LobbyPage() {
             </button>}
           <button type="button" className="quiet-btn" onClick={() => setConfirming(null)}>Not now</button>
         </div>
-        <small className="join-confirm-note">Sandbox balance only. The 90% / 10% settlement is applied when the match ends.</small>
+        <small className="join-confirm-note">Your stake is reserved from the wallet; 90% / 10% settlement is applied when the match ends.</small>
       </section>
     </div>}
   </Shell>;

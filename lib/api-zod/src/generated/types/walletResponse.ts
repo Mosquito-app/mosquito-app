@@ -5,10 +5,12 @@
  * Ludo Stake Game API. All wagering and balances are sandbox-only.
  * OpenAPI spec version: 0.1.0
  */
+import type { WalletResponsePaymentMode } from './walletResponsePaymentMode';
 import type { WalletTransaction } from './walletTransaction';
 import type { Withdrawal } from './withdrawal';
 
 export interface WalletResponse {
+  paymentMode: WalletResponsePaymentMode;
   balanceNaira: number;
   totalBalanceNaira: number;
   escrowedNaira: number;

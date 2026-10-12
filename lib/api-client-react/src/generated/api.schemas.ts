@@ -388,6 +388,15 @@ export interface WalletTransaction {
   createdAt: string;
 }
 
+export type WalletResponsePaymentMode = typeof WalletResponsePaymentMode[keyof typeof WalletResponsePaymentMode];
+
+
+export const WalletResponsePaymentMode = {
+  test: 'test',
+  live: 'live',
+  unavailable: 'unavailable',
+} as const;
+
 export type WithdrawalStatus = typeof WithdrawalStatus[keyof typeof WithdrawalStatus];
 
 
@@ -408,6 +417,7 @@ export interface Withdrawal {
 }
 
 export interface WalletResponse {
+  paymentMode: WalletResponsePaymentMode;
   balanceNaira: number;
   totalBalanceNaira: number;
   escrowedNaira: number;
@@ -424,10 +434,19 @@ export interface DepositInput {
   amountNaira: number;
 }
 
+export type DepositInitializationPaymentMode = typeof DepositInitializationPaymentMode[keyof typeof DepositInitializationPaymentMode];
+
+
+export const DepositInitializationPaymentMode = {
+  test: 'test',
+  live: 'live',
+} as const;
+
 export interface DepositInitialization {
   authorizationUrl: string;
   reference: string;
   amountNaira: number;
+  paymentMode: DepositInitializationPaymentMode;
 }
 
 export interface DepositVerificationInput {
@@ -447,10 +466,19 @@ export const DepositVerificationStatus = {
   failed: 'failed',
 } as const;
 
+export type DepositVerificationPaymentMode = typeof DepositVerificationPaymentMode[keyof typeof DepositVerificationPaymentMode];
+
+
+export const DepositVerificationPaymentMode = {
+  test: 'test',
+  live: 'live',
+} as const;
+
 export interface DepositVerification {
   status: DepositVerificationStatus;
   amountNaira: number;
   balanceNaira: number;
+  paymentMode: DepositVerificationPaymentMode;
 }
 
 export interface WithdrawalInput {
