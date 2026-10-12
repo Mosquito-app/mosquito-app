@@ -12,7 +12,7 @@ export function getPaystackMode(): PaystackMode {
   if (selected !== "test" && selected !== "live") {
     throw new PaystackTestError(503, "Paystack mode is not configured correctly.");
   }
-  return selected === "live" && process.env.NODE_ENV === "production" ? "live" : "test";
+  return selected === "live" && process.env["NODE_ENV"] === "production" ? "live" : "test";
 }
 
 export function getPaystackModeForReference(reference: string): PaystackMode {
@@ -21,7 +21,7 @@ export function getPaystackModeForReference(reference: string): PaystackMode {
 
 export function getPaystackSecretKey(mode: PaystackMode): string {
   if (mode === "live") {
-    if (process.env.NODE_ENV !== "production") {
+    if (process.env["NODE_ENV"] !== "production") {
       throw new PaystackTestError(503, "Live Paystack requests are disabled outside production.");
     }
     const key = process.env.PAYSTACK_SECRET_KEY;

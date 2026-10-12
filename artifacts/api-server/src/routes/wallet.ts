@@ -50,7 +50,7 @@ function getCheckoutCallbackUrl(mode: "test" | "live"): string | undefined {
     }
   }
 
-  const rawDomain = process.env.NODE_ENV === "production"
+  const rawDomain = process.env["NODE_ENV"] === "production"
     ? process.env.REPLIT_DOMAINS?.split(",")[0]?.trim()
     : process.env.REPLIT_DEV_DOMAIN ?? process.env.REPLIT_DOMAINS?.split(",")[0]?.trim();
   if (!rawDomain || !/^[a-z0-9.-]+(?::\d+)?$/i.test(rawDomain)) return undefined;
