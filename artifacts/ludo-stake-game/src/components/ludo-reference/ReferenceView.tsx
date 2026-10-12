@@ -52,7 +52,11 @@ const PADS: Record<string, string> = {};
 
 const PIPS: Record<number, number[]> = { 1: [4], 2: [2, 6], 3: [2, 4, 6], 4: [0, 2, 6, 8], 5: [0, 2, 4, 6, 8], 6: [0, 2, 3, 5, 6, 8] };
 function Die({ value, rolling }: { value: number | null; rolling?: boolean }) {
-  return <span className={`lr-die ${value ? '' : 'empty'} ${rolling ? 'tumble' : ''}`} aria-hidden="true">
+  return <span
+    className={`lr-die ${value ? '' : 'empty'} ${rolling ? 'tumble' : ''}`}
+    style={{ backgroundColor: '#fff', borderColor: '#111' }}
+    aria-hidden="true"
+  >
     {Array.from({ length: 9 }, (_, i) => <i key={i} className={value && PIPS[value].includes(i) ? 'pip' : ''} />)}
   </span>;
 }
