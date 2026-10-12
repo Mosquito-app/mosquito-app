@@ -820,6 +820,114 @@ export const JoinRoomResponse = zod.object({
 
 
 /**
+ * @summary Start a free two-player Ludo practice match against the server AI
+ */
+export const playAiRoomResponseScoresRedTokensHomeMin = 0;
+export const playAiRoomResponseScoresRedTokensHomeMax = 4;
+
+export const playAiRoomResponseScoresRedTotalProgressMin = 0;
+export const playAiRoomResponseScoresRedTotalProgressMax = 232;
+
+export const playAiRoomResponseScoresGreenTokensHomeMin = 0;
+export const playAiRoomResponseScoresGreenTokensHomeMax = 4;
+
+export const playAiRoomResponseScoresGreenTotalProgressMin = 0;
+export const playAiRoomResponseScoresGreenTotalProgressMax = 232;
+
+export const playAiRoomResponseScoresYellowTokensHomeMin = 0;
+export const playAiRoomResponseScoresYellowTokensHomeMax = 4;
+
+export const playAiRoomResponseScoresYellowTotalProgressMin = 0;
+export const playAiRoomResponseScoresYellowTotalProgressMax = 232;
+
+export const playAiRoomResponseScoresBlueTokensHomeMin = 0;
+export const playAiRoomResponseScoresBlueTokensHomeMax = 4;
+
+export const playAiRoomResponseScoresBlueTotalProgressMin = 0;
+export const playAiRoomResponseScoresBlueTotalProgressMax = 232;
+
+export const playAiRoomResponseStakeNairaMin = 0;
+
+export const playAiRoomResponsePlayerCountMax = 4;
+
+export const playAiRoomResponseBoardDiceItemMax = 6;
+
+export const playAiRoomResponseBoardDiceMin = 2;
+export const playAiRoomResponseBoardDiceMax = 2;
+
+export const playAiRoomResponseBoardRemainingDiceMax = 2;
+
+export const playAiRoomResponseBoardConsecutiveDoublesMin = 0;
+export const playAiRoomResponseBoardConsecutiveDoublesMax = 2;
+
+
+
+export const PlayAiRoomResponse = zod.object({
+  "serverTimeAt": zod.coerce.date(),
+  "scores": zod.object({
+  "red": zod.object({
+  "tokensHome": zod.number().int().min(playAiRoomResponseScoresRedTokensHomeMin).max(playAiRoomResponseScoresRedTokensHomeMax),
+  "totalProgress": zod.number().int().min(playAiRoomResponseScoresRedTotalProgressMin).max(playAiRoomResponseScoresRedTotalProgressMax)
+}),
+  "green": zod.object({
+  "tokensHome": zod.number().int().min(playAiRoomResponseScoresGreenTokensHomeMin).max(playAiRoomResponseScoresGreenTokensHomeMax),
+  "totalProgress": zod.number().int().min(playAiRoomResponseScoresGreenTotalProgressMin).max(playAiRoomResponseScoresGreenTotalProgressMax)
+}),
+  "yellow": zod.object({
+  "tokensHome": zod.number().int().min(playAiRoomResponseScoresYellowTokensHomeMin).max(playAiRoomResponseScoresYellowTokensHomeMax),
+  "totalProgress": zod.number().int().min(playAiRoomResponseScoresYellowTotalProgressMin).max(playAiRoomResponseScoresYellowTotalProgressMax)
+}),
+  "blue": zod.object({
+  "tokensHome": zod.number().int().min(playAiRoomResponseScoresBlueTokensHomeMin).max(playAiRoomResponseScoresBlueTokensHomeMax),
+  "totalProgress": zod.number().int().min(playAiRoomResponseScoresBlueTotalProgressMin).max(playAiRoomResponseScoresBlueTotalProgressMax)
+})
+}),
+  "id": zod.string(),
+  "tierId": zod.union([zod.literal('oga-chairman'),zod.literal('big-doings'),zod.literal('senior-man'),zod.literal('sharp-guy'),zod.literal('quick-clash'),zod.literal('street-king'),zod.literal('board-master'),zod.literal('area-hustler'),zod.literal('practice-ground'),zod.literal(null)]).nullable(),
+  "tierName": zod.string(),
+  "stakeNaira": zod.number().int().min(playAiRoomResponseStakeNairaMin),
+  "potNaira": zod.number().int(),
+  "prizeNaira": zod.number().int(),
+  "commissionNaira": zod.number().int(),
+  "maxPotNaira": zod.number().int(),
+  "maxPlayers": zod.union([zod.literal(2),zod.literal(4)]),
+  "playerCount": zod.number().int().min(1).max(playAiRoomResponsePlayerCountMax),
+  "players": zod.array(zod.object({
+  "userId": zod.string().uuid(),
+  "username": zod.string(),
+  "color": zod.enum(['red', 'green', 'yellow', 'blue'])
+})),
+  "status": zod.enum(['waiting', 'active', 'completed', 'cancelled']),
+  "hostUserId": zod.string(),
+  "hostUsername": zod.string(),
+  "opponentUserId": zod.string().nullable(),
+  "opponentUsername": zod.string().nullable(),
+  "myColor": zod.enum(['red', 'green', 'yellow', 'blue']),
+  "board": zod.object({
+  "matchDeadlineAt": zod.coerce.date().nullable(),
+  "isOvertime": zod.boolean(),
+  "endReason": zod.union([zod.literal('all_home'),zod.literal('timeout'),zod.literal('overtime'),zod.literal(null)]).nullable(),
+  "turnUserId": zod.string(),
+  "playerOrder": zod.array(zod.string().uuid()),
+  "joinWindowOpen": zod.boolean(),
+  "turnDeadlineAt": zod.coerce.date().nullable(),
+  "dice": zod.array(zod.number().int().min(1).max(playAiRoomResponseBoardDiceItemMax)).min(playAiRoomResponseBoardDiceMin).max(playAiRoomResponseBoardDiceMax).nullable(),
+  "remainingDice": zod.array(zod.union([zod.literal(0),zod.literal(1)])).max(playAiRoomResponseBoardRemainingDiceMax),
+  "consecutiveDoubles": zod.number().int().min(playAiRoomResponseBoardConsecutiveDoublesMin).max(playAiRoomResponseBoardConsecutiveDoublesMax).describe('Deprecated compatibility field; updated gameplay keeps this at 0.'),
+  "turnMessage": zod.union([zod.literal('third_double'),zod.literal('double_bonus'),zod.literal('capture_bonus'),zod.literal('six_bonus'),zod.literal('capture_plus_ten'),zod.literal('no_moves'),zod.literal('timeout'),zod.literal(null)]).nullable(),
+  "captureBonusPending": zod.boolean().optional().describe('A capture applied +10 movement during the current roll; it does not itself grant an extra turn.'),
+  "hasRolled": zod.boolean(),
+  "redTokens": zod.array(zod.number().int()),
+  "greenTokens": zod.array(zod.number().int()),
+  "yellowTokens": zod.array(zod.number().int()),
+  "blueTokens": zod.array(zod.number().int()),
+  "winnerUserId": zod.string().nullable()
+}),
+  "createdAt": zod.coerce.date()
+})
+
+
+/**
  * @summary Get match details and current board state
  */
 export const GetRoomParams = zod.object({

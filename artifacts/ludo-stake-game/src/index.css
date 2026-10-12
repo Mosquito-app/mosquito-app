@@ -1003,6 +1003,15 @@ button, a, input { -webkit-tap-highlight-color: transparent; }
 .ludo-room-empty button { border:0;background:none;color:#177b47;font-weight:800;cursor:pointer; }
 .ludo-room-note { margin:16px 5px 0;display:flex;align-items:center;justify-content:center;gap:6px;color:#806b4b;text-align:center;font-size:9px; }
 .ludo-room-note svg { flex:0 0 auto;color:#24804d; }
+.ludo-ai-practice { display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 0 15px;padding:13px 14px;border:1px solid #c9ab43;border-radius:16px;background:#fff5e9;box-shadow:0 2px 0 #d9bd6b; }
+.ludo-ai-copy { display:flex;align-items:center;gap:10px;min-width:0; }
+.ludo-ai-icon { display:grid;place-items:center;flex:0 0 36px;width:36px;height:36px;border-radius:12px;background:#1f7447;color:#fff7d5; }
+.ludo-ai-copy>span:last-child { display:flex;flex-direction:column;gap:3px; }
+.ludo-ai-copy strong { color:#39280e;font-size:13px;font-weight:900; }
+.ludo-ai-copy small { color:#806b4b;font-size:10px; }
+.ludo-ai-button { flex:0 0 auto;min-height:40px;padding:0 15px;border:1px solid #167b3c;border-radius:11px;background:linear-gradient(180deg,#39c54b,#139239);box-shadow:0 2px 0 #0f6e2b;color:#fff;font-size:12px;font-weight:900;cursor:pointer; }
+.ludo-ai-button:hover:not(:disabled) { filter:brightness(1.05); }
+.ludo-ai-button:disabled { opacity:.55;cursor:not-allowed; }
 
 @media (max-width:560px) {
   .dashboard-activity { margin-top:22px; }

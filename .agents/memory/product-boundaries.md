@@ -26,3 +26,9 @@ Use “Mosquito App” for the application name (“Mosquito” is an acceptable
 **Why:** The user explicitly requested a full rebrand to these names while preserving the existing game and escrow rules.
 
 **How to apply:** Use these names for future customer-facing headers, wallet dialogs, receipt labels, metadata and logo assets.
+
+AI opponents belong in explicit, no-stake practice matches; never insert a bot into a paid multiplayer room.
+
+**Why:** A bot should help players test gameplay without impersonating a funded opponent or changing paid-room escrow expectations.
+
+**How to apply:** Keep AI practice opt-in and free, and keep paid-room matchmaking human-only.

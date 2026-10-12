@@ -3,6 +3,7 @@ import { logger } from "./lib/logger";
 import { createServer } from "node:http";
 import { installRealtime } from "./lib/ludo-realtime";
 import { startTurnTimer } from "./lib/ludo-turns";
+import { startAiEngine } from "./lib/ludo-ai";
 import { startWithdrawalReconciliation } from "./lib/ludo-withdrawals";
 import { startFootballEngine } from "./lib/football-manager";
 
@@ -23,6 +24,8 @@ if (Number.isNaN(port) || port <= 0) {
 const server = createServer(app);
 installRealtime(server);
 startTurnTimer();
+const stopLudoAi = startAiEngine();
+server.on("close", stopLudoAi);
 startWithdrawalReconciliation();
 const stopFootball = startFootballEngine();
 server.on("close", stopFootball);

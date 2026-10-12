@@ -1593,6 +1593,80 @@ export const useJoinRoom = <TError = ErrorType<void>,
       return useMutation(getJoinRoomMutationOptions(options));
     }
 
+export const getPlayAiRoomUrl = () => {
+
+
+
+
+  return `/api/rooms/practice-ai`
+}
+
+/**
+ * @summary Start a free two-player Ludo practice match against the server AI
+ */
+export const playAiRoom = async ( options?: Parameters<typeof customFetch>[1]): Promise<Room> => {
+
+  return customFetch<Room>(getPlayAiRoomUrl(),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getPlayAiRoomMutationKey = () => ['playAiRoom'] as const;
+
+export const getPlayAiRoomMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof playAiRoom>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof playAiRoom>>, TError,void, TContext> => {
+
+const mutationKey = getPlayAiRoomMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof playAiRoom>>, void> = () => {
+
+
+          return  playAiRoom(requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type PlayAiRoomMutationResult = NonNullable<Awaited<ReturnType<typeof playAiRoom>>>
+
+    export type PlayAiRoomMutationError = ErrorType<void>
+
+
+    /**
+ * @summary Start a free two-player Ludo practice match against the server AI
+ */
+export const usePlayAiRoom = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof playAiRoom>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof playAiRoom>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getPlayAiRoomMutationOptions(options));
+    }
+
 export const getGetRoomUrl = (roomId: string,) => {
 
 

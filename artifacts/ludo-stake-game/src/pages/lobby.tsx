@@ -4,7 +4,7 @@ import { ArrowDownLeft, ArrowRight, ArrowUpRight, Coins, Gamepad2, Play, Refresh
 import {
   getGetLobbyQueryKey, getGetRoomQueryKey, getGetWalletQueryKey, useGetCurrentUser, useGetLobby,
   useGetWallet, useInitializeDeposit, useJoinRoom, useLogout, getGetCurrentUserQueryKey,
-  useGetFootballLobby, useJoinFootballRoom, getGetFootballLobbyQueryKey, getGetFootballRoomQueryKey,
+  useGetFootballLobby, useJoinFootballRoom, getGetFootballLobbyQueryKey, getGetFootballRoomQueryKey, usePlayAiRoom,
 } from '@workspace/api-client-react';
 import type { Room, FootballRoom, WalletTransaction, WalletResponse, JoinRoomInputTierId } from '@workspace/api-client-react';
 import { queryClient } from '@/lib/query-client';
@@ -61,7 +61,7 @@ export default function LobbyPage() {
   const footballLobby = useGetFootballLobby({ query: { queryKey: getGetFootballLobbyQueryKey(), enabled: !!user, refetchInterval: 3000 } });
   const joinFootball = useJoinFootballRoom();
   const [mode, setMode] = useState<'home' | 'ludo' | 'football'>('home');
-  const join = useJoinRoom(); const logout = useLogout(); const initialize = useInitializeDeposit();
+  const join = useJoinRoom(); const playAi = usePlayAiRoom(); const logout = useLogout(); const initialize = useInitializeDeposit();
   const [club, setClub] = useState<FootballClubId>(loadClub);
   const [confirming, setConfirming] = useState<{ tierId: JoinRoomInputTierId; roomId?: string } | null>(null);
   const [depositOpen, setDepositOpen] = useState(false);
@@ -72,7 +72,7 @@ export default function LobbyPage() {
   const myRoomId = lobby.data?.myRoomId ?? null;
   const footballRoom = footballLobby.data?.myRoom;
   const currentRoomId = mode === 'football' ? footballRoom?.id ?? null : mode === 'ludo' ? myRoomId : myRoomId ?? footballRoom?.id ?? null;
-  const finding = mode === 'football' ? joinFootball.isPending : join.isPending;
+  const finding = mode === 'football' ? joinFootball.isPending : join.isPending || playAi.isPending;
   const roomsLoading = mode === 'football' ? footballLobby.isLoading : lobby.isLoading;
   const w = wallet.data;
   const selectedTier = confirming ? lobby.data?.tiers.find(tier => tier.id === confirming.tierId) : undefined;
@@ -108,6 +108,13 @@ export default function LobbyPage() {
       onError: () => setRoomError('Could not reserve that sandbox stake. Check your available balance, or the room may have filled.'),
     });
   };
+  const startAiPractice = () => {
+    setRoomError('');
+    playAi.mutate(undefined, {
+      onSuccess: entered,
+      onError: () => setRoomError('Could not start free AI practice. Please refresh the lobby and try again.'),
+    });
+  };
   const deposit = (event: FormEvent) => {
     event.preventDefault(); setDepositError('');
     const amount = Number(depositAmount);
@@ -135,6 +142,7 @@ export default function LobbyPage() {
           onAddFunds={() => { setMode('home'); setDepositOpen(true); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
           onRetry={() => void lobby.refetch()}
           onJoin={requestLudoJoin}
+          onPlayAi={startAiPractice}
         />
       </div>
     ) : (

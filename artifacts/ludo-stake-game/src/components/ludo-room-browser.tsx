@@ -1,4 +1,4 @@
-import { Bell, ChevronLeft, Coins, Plus, ShieldCheck } from 'lucide-react';
+import { Bell, Bot, ChevronLeft, Coins, Plus, ShieldCheck } from 'lucide-react';
 import { Link } from 'wouter';
 import type { JoinRoomInputTierId, LobbyRoom, RoomTier } from '@workspace/api-client-react';
 import { Brand, InlineError, LoadingBlock, money } from '@/components/common';
@@ -18,6 +18,7 @@ type LudoRoomBrowserProps = {
   onAddFunds: () => void;
   onRetry: () => void;
   onJoin: (tierId: JoinRoomInputTierId, roomId?: string) => void;
+  onPlayAi: () => void;
 };
 
 export function LudoRoomBrowser({
@@ -35,6 +36,7 @@ export function LudoRoomBrowser({
   onAddFunds,
   onRetry,
   onJoin,
+  onPlayAi,
 }: LudoRoomBrowserProps) {
   return (
     <div className="ludo-room-browser">
@@ -71,6 +73,22 @@ export function LudoRoomBrowser({
             <InlineError>Room tiers are unavailable right now. <button type="button" onClick={onRetry}>Retry</button></InlineError>
           </div>
         )}
+
+        <section className="ludo-ai-practice" aria-labelledby="ludo-ai-title">
+          <div className="ludo-ai-copy">
+            <span className="ludo-ai-icon" aria-hidden="true"><Bot size={18} /></span>
+            <span><strong id="ludo-ai-title">Play with AI</strong><small>Free practice · no wallet stake</small></span>
+          </div>
+          <button
+            type="button"
+            className="ludo-ai-button"
+            onClick={onPlayAi}
+            disabled={isJoining || !!currentRoomId}
+            data-testid="button-play-with-ai"
+          >
+            {isJoining ? 'Starting…' : 'Start practice'}
+          </button>
+        </section>
 
         {isLoading && tiers.length === 0 ? (
           <div className="ludo-room-loading">

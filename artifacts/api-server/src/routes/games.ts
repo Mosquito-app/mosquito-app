@@ -1,4 +1,4 @@
-import { randomInt } from "node:crypto";
+import { randomBytes, randomInt, randomUUID } from "node:crypto";
 import { and, asc, desc, eq, inArray, ne, or, sql } from "drizzle-orm";
 import { Router, type IRouter, type Request, type Response } from "express";
 import {
@@ -82,7 +82,7 @@ async function getRoomForViewer(roomId: string, viewerId: string) {
     .where(inArray(usersTable.id, playerIds));
   const usernameById = new Map(playerRows.map((player) => [player.id, player.username]));
   const players = playerIds.map((userId, index) => ({
-    userId, username: usernameById.get(userId) ?? "Player", color: LUDO_COLORS[index],
+    userId, username: userId === room.board.aiPlayerId ? "Mosquito AI" : usernameById.get(userId) ?? "Player", color: LUDO_COLORS[index],
   }));
   const tier = getRoomTier(room.tierId);
   const poolKobo = room.stakeKobo * playerIds.length;
@@ -96,8 +96,8 @@ async function getRoomForViewer(roomId: string, viewerId: string) {
     potNaira: poolKobo / 100,
     prizeNaira: prizeKobo / 100,
     commissionNaira: commissionKobo / 100,
-    maxPotNaira: room.stakeKobo * (tier?.maxPlayers ?? 2) / 100,
-    maxPlayers: tier?.maxPlayers ?? 2,
+    maxPotNaira: room.board.aiPlayerId ? 0 : room.stakeKobo * (tier?.maxPlayers ?? 2) / 100,
+    maxPlayers: room.board.aiPlayerId ? 2 : tier?.maxPlayers ?? 2,
     playerCount: playerIds.length,
     players,
     status: room.status as RoomStatus,
@@ -348,6 +348,71 @@ router.post("/rooms", async (req, res): Promise<void> => {
     res.status(201).json(JoinRoomResponse.parse(room));
   } catch (error) {
     sendGameError(req, res, error, "Unable to reserve stake and join match");
+  }
+});
+
+router.post("/rooms/practice-ai", async (req, res): Promise<void> => {
+  const user = await getAuthenticatedUser(req);
+  if (!user) {
+    res.status(401).json({ error: "Sign in to play Ludo with AI." });
+    return;
+  }
+
+  let roomId = "";
+  try {
+    await db.transaction(async (tx) => {
+      const [lockedUser] = await tx.select({ id: usersTable.id }).from(usersTable)
+        .where(eq(usersTable.id, user.id)).for("update").limit(1);
+      if (!lockedUser) throw new GameActionError(404, "Player account not found.");
+
+      const [existingRoom] = await tx.select({ id: roomsTable.id }).from(roomsTable).where(and(
+        inArray(roomsTable.status, ["waiting", "active"]),
+        or(
+          eq(roomsTable.hostUserId, user.id),
+          eq(roomsTable.opponentUserId, user.id),
+          eq(roomsTable.thirdUserId, user.id),
+          eq(roomsTable.fourthUserId, user.id),
+        ),
+      )).limit(1);
+      if (existingRoom) throw new GameActionError(400, "Finish or leave your current match before starting AI practice.");
+
+      const botIdentity = randomUUID();
+      const [bot] = await tx.insert(usersTable).values({
+        username: `bot-${botIdentity.slice(0, 12)}`,
+        email: `bot-${botIdentity}@mosquito.invalid`,
+        passwordSalt: randomBytes(16).toString("hex"),
+        passwordHash: randomBytes(32).toString("hex"),
+      }).returning({ id: usersTable.id });
+
+      const board: LudoBoardState = {
+        ...startBoard(user.id, 2),
+        playerOrder: [user.id, bot.id],
+        joinWindowOpen: false,
+        aiPlayerId: bot.id,
+        turnDeadlineAt: deadline(),
+        matchDeadlineAt: matchDeadline(),
+      };
+      const [room] = await tx.insert(roomsTable).values({
+        tierId: "practice-ground",
+        stakeKobo: 0,
+        status: "active",
+        hostUserId: user.id,
+        opponentUserId: bot.id,
+        board,
+      }).returning({ id: roomsTable.id });
+      roomId = room.id;
+    });
+
+    publishRoomUpdate(roomId);
+    const room = await getRoomForViewer(roomId, user.id);
+    if (!room) {
+      res.status(500).json({ error: "AI practice started but the board could not be loaded." });
+      return;
+    }
+    req.log.info({ roomId }, "Started free Ludo AI practice");
+    res.status(201).json(GetRoomResponse.parse(room));
+  } catch (error) {
+    sendGameError(req, res, error, "Unable to start Ludo AI practice");
   }
 });
 

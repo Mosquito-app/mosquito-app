@@ -23,6 +23,8 @@ export type DepositStatus = "pending" | "success" | "failed";
 
 export type LudoBoardState = {
   turnUserId: string;
+  /** Internal marker used only by free practice matches against the server AI. */
+  aiPlayerId?: string;
   playerOrder?: string[];
   joinWindowOpen?: boolean;
   dice: number[] | null;

@@ -375,6 +375,22 @@ paths:
           description: Unsupported stake or insufficient sandbox balance
         "401":
           description: Not signed in
+  /rooms/practice-ai:
+    post:
+      operationId: playAiRoom
+      tags: [games]
+      summary: Start a free two-player Ludo practice match against the server AI
+      responses:
+        "201":
+          description: Active no-stake practice match
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Room"
+        "400":
+          description: Player already has an open match
+        "401":
+          description: Not signed in
   /rooms/{roomId}:
     get:
       operationId: getRoom
