@@ -301,8 +301,8 @@ export function ReferenceView(p: ViewProps) {
     {dlg === 'rules' && <Modal title="Rules" onClose={() => setDlg(null)} testid="dialog-rules"><ol className="lr-rules">
       <li>Two dice are rolled by the server each turn. Pick die 1, die 2 or both as a sum, then tap a glowing token.</li>
        <li>A token can leave base only by using a rolled 6. If both dice are selected, the other die advances it from its starting tile.</li>
-       <li>Split the dice between two tokens by choosing one die at a time. After all dice are used, the turn passes unless the roll was a double 6.</li>
-        <li>Only double 6 grants a bonus roll. It can happen up to three consecutive times; after the third, the turn passes and all moves remain.</li>
+        <li>Split the dice between two tokens by choosing one die at a time. A 6 with any other number is not a bonus roll; use the remaining die, then the turn passes.</li>
+        <li>Only an exact double 6 grants a bonus roll. It can happen up to three consecutive times; after the third, the turn passes and all moves remain.</li>
         <li>Landing on a rival token on an unprotected square sends it back to base and immediately counts your capturing token as home. Captures give no extra roll or movement.</li>
       <li>Finishing needs an exact count to 57.</li>
       <li>Each turn has a 30 second clock. The match clock is shared; most tokens home wins, then total steps. An exact tie goes to overtime.</li></ol></Modal>}

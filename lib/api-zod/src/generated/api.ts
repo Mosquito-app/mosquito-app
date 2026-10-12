@@ -834,7 +834,7 @@ export const JoinRoomResponse = zod.object({
   "dice": zod.array(zod.number().int().min(1).max(joinRoomResponseBoardDiceItemMax)).min(joinRoomResponseBoardDiceMin).max(joinRoomResponseBoardDiceMax).nullable(),
   "remainingDice": zod.array(zod.union([zod.literal(0),zod.literal(1)])).max(joinRoomResponseBoardRemainingDiceMax),
   "consecutiveDoubles": zod.number().int().min(joinRoomResponseBoardConsecutiveDoublesMin).max(joinRoomResponseBoardConsecutiveDoublesMax).describe('Number of consecutive double-six rolls in the current turn, capped at three.'),
-  "turnMessage": zod.union([zod.literal('third_double'),zod.literal('double_bonus'),zod.literal('capture_bonus'),zod.literal('six_bonus'),zod.literal('capture_plus_ten'),zod.literal('double_six_bonus'),zod.literal('double_six_limit'),zod.literal('capture_home'),zod.literal('no_moves'),zod.literal('timeout'),zod.literal(null)]).nullable(),
+  "turnMessage": zod.union([zod.literal('third_double'),zod.literal('double_bonus'),zod.literal('capture_bonus'),zod.literal('six_bonus'),zod.literal('capture_plus_ten'),zod.literal('double_six_bonus'),zod.literal('double_six_limit'),zod.literal('capture_home'),zod.literal('no_moves'),zod.literal('turn_passed'),zod.literal('timeout'),zod.literal(null)]).nullable(),
   "captureBonusPending": zod.boolean().optional().describe('Legacy compatibility field; current capture rules never apply a movement bonus.'),
   "lastMove": zod.object({
   "kind": zod.enum(['capture_home']),
@@ -951,7 +951,7 @@ export const PlayAiRoomResponse = zod.object({
   "dice": zod.array(zod.number().int().min(1).max(playAiRoomResponseBoardDiceItemMax)).min(playAiRoomResponseBoardDiceMin).max(playAiRoomResponseBoardDiceMax).nullable(),
   "remainingDice": zod.array(zod.union([zod.literal(0),zod.literal(1)])).max(playAiRoomResponseBoardRemainingDiceMax),
   "consecutiveDoubles": zod.number().int().min(playAiRoomResponseBoardConsecutiveDoublesMin).max(playAiRoomResponseBoardConsecutiveDoublesMax).describe('Number of consecutive double-six rolls in the current turn, capped at three.'),
-  "turnMessage": zod.union([zod.literal('third_double'),zod.literal('double_bonus'),zod.literal('capture_bonus'),zod.literal('six_bonus'),zod.literal('capture_plus_ten'),zod.literal('double_six_bonus'),zod.literal('double_six_limit'),zod.literal('capture_home'),zod.literal('no_moves'),zod.literal('timeout'),zod.literal(null)]).nullable(),
+  "turnMessage": zod.union([zod.literal('third_double'),zod.literal('double_bonus'),zod.literal('capture_bonus'),zod.literal('six_bonus'),zod.literal('capture_plus_ten'),zod.literal('double_six_bonus'),zod.literal('double_six_limit'),zod.literal('capture_home'),zod.literal('no_moves'),zod.literal('turn_passed'),zod.literal('timeout'),zod.literal(null)]).nullable(),
   "captureBonusPending": zod.boolean().optional().describe('Legacy compatibility field; current capture rules never apply a movement bonus.'),
   "lastMove": zod.object({
   "kind": zod.enum(['capture_home']),
@@ -1072,7 +1072,7 @@ export const GetRoomResponse = zod.object({
   "dice": zod.array(zod.number().int().min(1).max(getRoomResponseBoardDiceItemMax)).min(getRoomResponseBoardDiceMin).max(getRoomResponseBoardDiceMax).nullable(),
   "remainingDice": zod.array(zod.union([zod.literal(0),zod.literal(1)])).max(getRoomResponseBoardRemainingDiceMax),
   "consecutiveDoubles": zod.number().int().min(getRoomResponseBoardConsecutiveDoublesMin).max(getRoomResponseBoardConsecutiveDoublesMax).describe('Number of consecutive double-six rolls in the current turn, capped at three.'),
-  "turnMessage": zod.union([zod.literal('third_double'),zod.literal('double_bonus'),zod.literal('capture_bonus'),zod.literal('six_bonus'),zod.literal('capture_plus_ten'),zod.literal('double_six_bonus'),zod.literal('double_six_limit'),zod.literal('capture_home'),zod.literal('no_moves'),zod.literal('timeout'),zod.literal(null)]).nullable(),
+  "turnMessage": zod.union([zod.literal('third_double'),zod.literal('double_bonus'),zod.literal('capture_bonus'),zod.literal('six_bonus'),zod.literal('capture_plus_ten'),zod.literal('double_six_bonus'),zod.literal('double_six_limit'),zod.literal('capture_home'),zod.literal('no_moves'),zod.literal('turn_passed'),zod.literal('timeout'),zod.literal(null)]).nullable(),
   "captureBonusPending": zod.boolean().optional().describe('Legacy compatibility field; current capture rules never apply a movement bonus.'),
   "lastMove": zod.object({
   "kind": zod.enum(['capture_home']),
@@ -1193,7 +1193,7 @@ export const RollDiceResponse = zod.object({
   "dice": zod.array(zod.number().int().min(1).max(rollDiceResponseBoardDiceItemMax)).min(rollDiceResponseBoardDiceMin).max(rollDiceResponseBoardDiceMax).nullable(),
   "remainingDice": zod.array(zod.union([zod.literal(0),zod.literal(1)])).max(rollDiceResponseBoardRemainingDiceMax),
   "consecutiveDoubles": zod.number().int().min(rollDiceResponseBoardConsecutiveDoublesMin).max(rollDiceResponseBoardConsecutiveDoublesMax).describe('Number of consecutive double-six rolls in the current turn, capped at three.'),
-  "turnMessage": zod.union([zod.literal('third_double'),zod.literal('double_bonus'),zod.literal('capture_bonus'),zod.literal('six_bonus'),zod.literal('capture_plus_ten'),zod.literal('double_six_bonus'),zod.literal('double_six_limit'),zod.literal('capture_home'),zod.literal('no_moves'),zod.literal('timeout'),zod.literal(null)]).nullable(),
+  "turnMessage": zod.union([zod.literal('third_double'),zod.literal('double_bonus'),zod.literal('capture_bonus'),zod.literal('six_bonus'),zod.literal('capture_plus_ten'),zod.literal('double_six_bonus'),zod.literal('double_six_limit'),zod.literal('capture_home'),zod.literal('no_moves'),zod.literal('turn_passed'),zod.literal('timeout'),zod.literal(null)]).nullable(),
   "captureBonusPending": zod.boolean().optional().describe('Legacy compatibility field; current capture rules never apply a movement bonus.'),
   "lastMove": zod.object({
   "kind": zod.enum(['capture_home']),
@@ -1326,7 +1326,7 @@ export const MoveTokenResponse = zod.object({
   "dice": zod.array(zod.number().int().min(1).max(moveTokenResponseBoardDiceItemMax)).min(moveTokenResponseBoardDiceMin).max(moveTokenResponseBoardDiceMax).nullable(),
   "remainingDice": zod.array(zod.union([zod.literal(0),zod.literal(1)])).max(moveTokenResponseBoardRemainingDiceMax),
   "consecutiveDoubles": zod.number().int().min(moveTokenResponseBoardConsecutiveDoublesMin).max(moveTokenResponseBoardConsecutiveDoublesMax).describe('Number of consecutive double-six rolls in the current turn, capped at three.'),
-  "turnMessage": zod.union([zod.literal('third_double'),zod.literal('double_bonus'),zod.literal('capture_bonus'),zod.literal('six_bonus'),zod.literal('capture_plus_ten'),zod.literal('double_six_bonus'),zod.literal('double_six_limit'),zod.literal('capture_home'),zod.literal('no_moves'),zod.literal('timeout'),zod.literal(null)]).nullable(),
+  "turnMessage": zod.union([zod.literal('third_double'),zod.literal('double_bonus'),zod.literal('capture_bonus'),zod.literal('six_bonus'),zod.literal('capture_plus_ten'),zod.literal('double_six_bonus'),zod.literal('double_six_limit'),zod.literal('capture_home'),zod.literal('no_moves'),zod.literal('turn_passed'),zod.literal('timeout'),zod.literal(null)]).nullable(),
   "captureBonusPending": zod.boolean().optional().describe('Legacy compatibility field; current capture rules never apply a movement bonus.'),
   "lastMove": zod.object({
   "kind": zod.enum(['capture_home']),
@@ -1447,7 +1447,7 @@ export const CancelRoomResponse = zod.object({
   "dice": zod.array(zod.number().int().min(1).max(cancelRoomResponseBoardDiceItemMax)).min(cancelRoomResponseBoardDiceMin).max(cancelRoomResponseBoardDiceMax).nullable(),
   "remainingDice": zod.array(zod.union([zod.literal(0),zod.literal(1)])).max(cancelRoomResponseBoardRemainingDiceMax),
   "consecutiveDoubles": zod.number().int().min(cancelRoomResponseBoardConsecutiveDoublesMin).max(cancelRoomResponseBoardConsecutiveDoublesMax).describe('Number of consecutive double-six rolls in the current turn, capped at three.'),
-  "turnMessage": zod.union([zod.literal('third_double'),zod.literal('double_bonus'),zod.literal('capture_bonus'),zod.literal('six_bonus'),zod.literal('capture_plus_ten'),zod.literal('double_six_bonus'),zod.literal('double_six_limit'),zod.literal('capture_home'),zod.literal('no_moves'),zod.literal('timeout'),zod.literal(null)]).nullable(),
+  "turnMessage": zod.union([zod.literal('third_double'),zod.literal('double_bonus'),zod.literal('capture_bonus'),zod.literal('six_bonus'),zod.literal('capture_plus_ten'),zod.literal('double_six_bonus'),zod.literal('double_six_limit'),zod.literal('capture_home'),zod.literal('no_moves'),zod.literal('turn_passed'),zod.literal('timeout'),zod.literal(null)]).nullable(),
   "captureBonusPending": zod.boolean().optional().describe('Legacy compatibility field; current capture rules never apply a movement bonus.'),
   "lastMove": zod.object({
   "kind": zod.enum(['capture_home']),
@@ -1568,7 +1568,7 @@ export const AddAiOpponentResponse = zod.object({
   "dice": zod.array(zod.number().int().min(1).max(addAiOpponentResponseBoardDiceItemMax)).min(addAiOpponentResponseBoardDiceMin).max(addAiOpponentResponseBoardDiceMax).nullable(),
   "remainingDice": zod.array(zod.union([zod.literal(0),zod.literal(1)])).max(addAiOpponentResponseBoardRemainingDiceMax),
   "consecutiveDoubles": zod.number().int().min(addAiOpponentResponseBoardConsecutiveDoublesMin).max(addAiOpponentResponseBoardConsecutiveDoublesMax).describe('Number of consecutive double-six rolls in the current turn, capped at three.'),
-  "turnMessage": zod.union([zod.literal('third_double'),zod.literal('double_bonus'),zod.literal('capture_bonus'),zod.literal('six_bonus'),zod.literal('capture_plus_ten'),zod.literal('double_six_bonus'),zod.literal('double_six_limit'),zod.literal('capture_home'),zod.literal('no_moves'),zod.literal('timeout'),zod.literal(null)]).nullable(),
+  "turnMessage": zod.union([zod.literal('third_double'),zod.literal('double_bonus'),zod.literal('capture_bonus'),zod.literal('six_bonus'),zod.literal('capture_plus_ten'),zod.literal('double_six_bonus'),zod.literal('double_six_limit'),zod.literal('capture_home'),zod.literal('no_moves'),zod.literal('turn_passed'),zod.literal('timeout'),zod.literal(null)]).nullable(),
   "captureBonusPending": zod.boolean().optional().describe('Legacy compatibility field; current capture rules never apply a movement bonus.'),
   "lastMove": zod.object({
   "kind": zod.enum(['capture_home']),

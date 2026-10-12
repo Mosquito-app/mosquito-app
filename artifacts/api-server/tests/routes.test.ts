@@ -355,7 +355,7 @@ try {
   await fixture(roomId, { redTokens: [-1, -1, -1, -1], dice: [6, 1], remainingDice: [0, 1], hasRolled: true });
   const entered = (await request(`/rooms/${roomId}/move`, host, { tokenIndex: 0, diceIndices: [0, 1] })).data;
   assert.equal(entered.board.redTokens[0], 1); assert.equal(entered.board.turnUserId, green.id);
-  assert.equal(entered.board.turnMessage, null);
+  assert.equal(entered.board.turnMessage, "turn_passed");
   await fixture(roomId, { redTokens: [5, 10, -1, -1], greenTokens: [32, -1, -1, -1], dice: [1, 2], remainingDice: [0, 1], hasRolled: true });
   const firstCapture = (await request(`/rooms/${roomId}/move`, host, { tokenIndex: 0, diceIndices: [0] })).data;
   assert.equal(firstCapture.board.captureBonusPending, false); assert.equal(firstCapture.board.redTokens[0], 57);
@@ -377,13 +377,13 @@ try {
     const redMove = (await request(`/rooms/${roomId}/move`, host, { tokenIndex: 0, diceIndices: [0, 1] })).data;
     assert.equal(redMove.board.redTokens[0], 10);
     assert.equal(redMove.board.turnUserId, green.id); assert.equal(redMove.board.hasRolled, false);
-    assert.equal(redMove.board.turnMessage, null);
+    assert.equal(redMove.board.turnMessage, "turn_passed");
     const greenRoll = (await request(`/rooms/${roomId}/roll`, green, {})).data;
     assert.deepEqual(greenRoll.board.dice, [5, 5]);
     const greenMove = (await request(`/rooms/${roomId}/move`, green, { tokenIndex: 0, diceIndices: [0, 1] })).data;
     assert.equal(greenMove.board.greenTokens[0], 10);
     assert.equal(greenMove.board.turnUserId, host.id); assert.equal(greenMove.board.hasRolled, false);
-    assert.equal(greenMove.board.turnMessage, null);
+    assert.equal(greenMove.board.turnMessage, "turn_passed");
   } finally {
     crypto.randomInt = actualRandomInt;
     syncBuiltinESMExports();

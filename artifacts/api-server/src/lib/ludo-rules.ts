@@ -9,20 +9,31 @@ const COLOR_OFFSET: Record<LudoColor, number> = { red: 0, green: 26, yellow: 13,
 /** Keep legacy saved rooms playable without changing tokens, ownership or stakes. */
 export function normalizeBoard(board: LudoBoardState): LudoBoardState {
   const paired = Array.isArray(board.dice) && board.dice.length === 2;
+  const dice = paired ? board.dice : null;
+  const legacyBonus = ["double_six_bonus", "six_bonus", "double_bonus", "capture_bonus"].includes(board.turnMessage ?? "");
+  const invalidBonusAward = !board.hasRolled && legacyBonus && !isDoubleSix(dice);
+  const playerOrder = board.playerOrder ?? [];
+  const forfeitedUserIds = board.forfeitedUserIds ?? [];
+  const activePlayers = playerOrder.filter((id) => !forfeitedUserIds.includes(id));
+  const currentPlayerIndex = activePlayers.indexOf(board.turnUserId);
+  const repairedTurnUserId = invalidBonusAward && activePlayers.length > 1 && currentPlayerIndex >= 0
+    ? activePlayers[(currentPlayerIndex + 1) % activePlayers.length]
+    : board.turnUserId;
   return {
     ...board,
     redTokens: board.redTokens ?? [-1, -1, -1, -1],
     greenTokens: board.greenTokens ?? [-1, -1, -1, -1],
     yellowTokens: board.yellowTokens ?? [-1, -1, -1, -1],
     blueTokens: board.blueTokens ?? [-1, -1, -1, -1],
-    playerOrder: board.playerOrder ?? [],
+    playerOrder,
     joinWindowOpen: board.joinWindowOpen ?? false,
-    forfeitedUserIds: board.forfeitedUserIds ?? [],
-    dice: paired ? board.dice : null,
+    forfeitedUserIds,
+    dice,
     hasRolled: paired && board.hasRolled,
     remainingDice: paired && board.hasRolled ? board.remainingDice ?? [0, 1] : [],
-    consecutiveDoubles: Math.max(0, Math.min(3, board.consecutiveDoubles ?? 0)),
-    turnMessage: board.turnMessage ?? null,
+    turnUserId: repairedTurnUserId,
+    consecutiveDoubles: invalidBonusAward ? 0 : Math.max(0, Math.min(3, board.consecutiveDoubles ?? 0)),
+    turnMessage: invalidBonusAward ? "turn_passed" : legacyBonus && isDoubleSix(dice) ? "double_six_bonus" : board.turnMessage ?? null,
     lastMove: board.lastMove ?? null,
     captureBonusPending: false,
     matchDeadlineAt: board.matchDeadlineAt ?? null,
@@ -38,6 +49,11 @@ export function tokensFor(board: LudoBoardState, color: LudoColor) {
 /** Any six in the server roll may release a token; the six itself is consumed. */
 export function entryRollAllowed(dice: number[] | null | undefined): boolean {
   return !!dice && dice.length === 2 && dice.includes(6);
+}
+
+/** A bonus roll is earned only by the exact server-generated pair [6, 6]. */
+export function isDoubleSix(dice: number[] | null | undefined): boolean {
+  return Array.isArray(dice) && dice.length === 2 && dice[0] === 6 && dice[1] === 6;
 }
 
 export function moveDestination(position: number, values: number[], fullRoll: number[] | null = values): number | null {
@@ -56,7 +72,7 @@ export function hasLegalMove(board: LudoBoardState, color: LudoColor) {
 }
 
 export function finishRoll(board: LudoBoardState, nextPlayer: string, nextDeadline: string, noMoves = false): LudoBoardState {
-  const doubleSix = board.dice?.[0] === 6 && board.dice?.[1] === 6;
+  const doubleSix = isDoubleSix(board.dice);
   const bonusRoll = doubleSix && board.consecutiveDoubles < 3;
   const reachedDoubleSixLimit = doubleSix && board.consecutiveDoubles >= 3;
   return {
@@ -65,17 +81,17 @@ export function finishRoll(board: LudoBoardState, nextPlayer: string, nextDeadli
     captureBonusPending: false,
     consecutiveDoubles: bonusRoll ? board.consecutiveDoubles : 0,
     turnMessage: bonusRoll ? "double_six_bonus" : reachedDoubleSixLimit ? "double_six_limit" :
-      board.lastMove?.kind === "capture_home" ? "capture_home" : noMoves ? "no_moves" : null,
+      board.lastMove?.kind === "capture_home" ? "capture_home" : noMoves ? "no_moves" : "turn_passed",
     turnDeadlineAt: nextDeadline,
   };
 }
 
 /** Production callers supply crypto-generated dice; no client-supplied roll is used. */
 export function applyRoll(board: LudoBoardState, color: LudoColor, dice: [number, number], nextPlayer: string, nextDeadline: string): LudoBoardState {
-  const isDoubleSix = dice[0] === 6 && dice[1] === 6;
+  const doubleSix = isDoubleSix(dice);
   const rolled: LudoBoardState = {
     ...board, dice, remainingDice: [0, 1], hasRolled: true,
-    consecutiveDoubles: isDoubleSix ? Math.min(3, board.consecutiveDoubles + 1) : 0,
+    consecutiveDoubles: doubleSix ? Math.min(3, board.consecutiveDoubles + 1) : 0,
     captureBonusPending: false,
     lastMove: null,
     turnMessage: null, turnDeadlineAt: nextDeadline,

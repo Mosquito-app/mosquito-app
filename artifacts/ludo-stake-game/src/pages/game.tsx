@@ -86,7 +86,7 @@ export default function GamePage() {
   const anyLegal = (['d0', 'd1', 'both'] as Pick[]).some(p => valid(p) && legalFor(p).size > 0);
   const dieAvail = (i: number) => remaining.includes(i as 0 | 1);
   const msg = room.board.turnMessage;
-  const notice = msg === 'double_six_bonus' ? 'Double 6! Take another roll after using these dice.' : msg === 'double_six_limit' ? 'Third consecutive double 6: turn passed. Your moves remain.' : msg === 'no_moves' ? 'No legal move for that roll. Turn passed.' : msg === 'timeout' ? 'The turn clock ran out. Turn passed.' : '';
+  const notice = msg === 'double_six_bonus' ? 'Double 6! Take another roll after using these dice.' : msg === 'double_six_limit' ? 'Third consecutive double 6: turn passed. Your moves remain.' : msg === 'turn_passed' ? (dice?.includes(6) ? 'A 6 with another number gives no bonus roll. Turn passed.' : 'Only double 6 gives a bonus roll. Turn passed.') : msg === 'no_moves' ? 'No legal move for that roll. Turn passed.' : msg === 'timeout' ? 'The turn clock ran out. Turn passed.' : '';
   const onMove = (index: number) => { if (!sel) return; setActionError(''); move.mutate({ roomId, data: { tokenIndex: index, diceIndices: indicesFor(sel) } }, { onSuccess: patch, onError: fail }); };
   const connLabel = conn === 'live' ? 'Live' : conn === 'connecting' ? 'Connecting' : 'Reconnecting, polling 10s';
   const canPick = { d0: canMove && valid('d0'), d1: canMove && valid('d1'), both: canMove && valid('both') };

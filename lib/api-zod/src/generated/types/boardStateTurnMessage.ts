@@ -22,5 +22,6 @@ export const BoardStateTurnMessage = {
   double_six_limit: 'double_six_limit',
   capture_home: 'capture_home',
   no_moves: 'no_moves',
+  turn_passed: 'turn_passed',
   timeout: 'timeout',
 } as const;

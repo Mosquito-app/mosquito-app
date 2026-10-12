@@ -1023,7 +1023,7 @@ components:
           description: Number of consecutive double-six rolls in the current turn, capped at three.
         turnMessage:
           type: ["string", "null"]
-          enum: [third_double, double_bonus, capture_bonus, six_bonus, capture_plus_ten, double_six_bonus, double_six_limit, capture_home, no_moves, timeout, null]
+          enum: [third_double, double_bonus, capture_bonus, six_bonus, capture_plus_ten, double_six_bonus, double_six_limit, capture_home, no_moves, turn_passed, timeout, null]
         captureBonusPending:
           type: boolean
           description: Legacy compatibility field; current capture rules never apply a movement bonus.

@@ -39,11 +39,16 @@ for (let a = 1; a <= 6; a++) for (let b = 1; b <= 6; b++) {
   check(home.turnUserId, permitted ? "red" : "green");
   check(home.consecutiveDoubles, a === 6 && b === 6 ? 1 : 0);
   check(moveDestination(-1, [a, b]), permitted ? a + b - 6 : null);
+  const activeRoll = applyRoll({ ...initial(), redTokens: [10, -1, -1, -1] }, "red", [a, b], "green", nextDeadline);
+  const endOfRoll = finishRoll(activeRoll, "green", nextDeadline);
+  const isDoubleSix = a === 6 && b === 6;
+  check(endOfRoll.turnUserId, isDoubleSix ? "red" : "green");
+  check(endOfRoll.turnMessage, isDoubleSix ? "double_six_bonus" : "turn_passed");
 }
 
 const nonBonus = applyRoll({ ...initial(), redTokens: [10, -1, -1, -1] }, "red", [6, 2], "green", nextDeadline);
 check(finishRoll(nonBonus, "green", nextDeadline).turnUserId, "green");
-check(finishRoll(nonBonus, "green", nextDeadline).turnMessage, null);
+check(finishRoll(nonBonus, "green", nextDeadline).turnMessage, "turn_passed");
 for (let value = 1; value <= 5; value++) {
   const doubles = applyRoll({ ...initial(), redTokens: [10, -1, -1, -1] }, "red", [value, value], "green", nextDeadline);
   check(finishRoll(doubles, "green", nextDeadline).turnUserId, "green");
@@ -72,6 +77,15 @@ check(thirdDouble.consecutiveDoubles, 0);
 const interruptedChain = applyRoll({ ...initial(), consecutiveDoubles: 2, redTokens: [10, -1, -1, -1] }, "red", [6, 1], "green", nextDeadline);
 check(interruptedChain.consecutiveDoubles, 0);
 check(finishRoll(interruptedChain, "green", nextDeadline).turnUserId, "green");
+check(finishRoll(interruptedChain, "green", nextDeadline).turnMessage, "turn_passed");
+
+const staleBonus = normalizeBoard({
+  ...initial(), turnUserId: "red", playerOrder: ["red", "green"], dice: [6, 2],
+  remainingDice: [], hasRolled: false, consecutiveDoubles: 1, turnMessage: "six_bonus",
+});
+check(staleBonus.turnUserId, "green");
+check(staleBonus.turnMessage, "turn_passed");
+check(staleBonus.consecutiveDoubles, 0);
 
 const blocked = applyRoll(initial(), "red", [5, 5], "green", nextDeadline);
 check(blocked.turnMessage, "no_moves");
