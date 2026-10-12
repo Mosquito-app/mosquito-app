@@ -33,10 +33,9 @@ export function tokensFor(board: LudoBoardState, color: LudoColor) {
   return board[TOKEN_KEY[color]] ?? [-1, -1, -1, -1];
 }
 
-/** The six used to leave home is consumed; a second selected die moves from 0. */
+/** Any six in the server roll may release a token; the six itself is consumed. */
 export function entryRollAllowed(dice: number[] | null | undefined): boolean {
-  return !!dice && dice.length === 2 &&
-    ((dice[0] === 6 && (dice[1] === 6 || dice[1] === 1)) || (dice[1] === 6 && dice[0] === 1));
+  return !!dice && dice.length === 2 && dice.includes(6);
 }
 
 export function moveDestination(position: number, values: number[], fullRoll: number[] | null = values): number | null {
@@ -55,32 +54,22 @@ export function hasLegalMove(board: LudoBoardState, color: LudoColor) {
 }
 
 export function finishRoll(board: LudoBoardState, nextPlayer: string, nextDeadline: string, noMoves = false): LudoBoardState {
-  const doubled = board.dice !== null && board.dice[0] === board.dice[1];
+  const rolledSix = board.dice?.includes(6) ?? false;
   const capture = !!board.captureBonusPending;
-  const bonus = doubled || capture;
   return {
     ...board, hasRolled: false, remainingDice: [],
-    turnUserId: bonus ? board.turnUserId : nextPlayer,
+    turnUserId: rolledSix ? board.turnUserId : nextPlayer,
     captureBonusPending: false,
-    consecutiveDoubles: doubled ? board.consecutiveDoubles : 0,
-    turnMessage: capture ? "capture_bonus" : doubled ? "double_bonus" : noMoves ? "no_moves" : null,
+    consecutiveDoubles: 0,
+    turnMessage: rolledSix ? "six_bonus" : capture ? "capture_plus_ten" : noMoves ? "no_moves" : null,
     turnDeadlineAt: nextDeadline,
   };
 }
 
 /** Production callers supply crypto-generated dice; no client-supplied roll is used. */
 export function applyRoll(board: LudoBoardState, color: LudoColor, dice: [number, number], nextPlayer: string, nextDeadline: string): LudoBoardState {
-  const doubled = dice[0] === dice[1];
-  const count = doubled ? board.consecutiveDoubles + 1 : 0;
-  if (count >= 3) {
-    return {
-      ...board, dice, remainingDice: [], hasRolled: false, consecutiveDoubles: 0,
-      captureBonusPending: false,
-      turnUserId: nextPlayer, turnMessage: "third_double", turnDeadlineAt: nextDeadline,
-    };
-  }
   const rolled: LudoBoardState = {
-    ...board, dice, remainingDice: [0, 1], hasRolled: true, consecutiveDoubles: count,
+    ...board, dice, remainingDice: [0, 1], hasRolled: true, consecutiveDoubles: 0,
     captureBonusPending: false,
     turnMessage: null, turnDeadlineAt: nextDeadline,
   };
@@ -116,7 +105,7 @@ export function applyCaptureBonus(board: LudoBoardState, color: LudoColor, token
   captureAt(own[tokenIndex]);
   return {
     ...board, redTokens: tokens.red, greenTokens: tokens.green, yellowTokens: tokens.yellow, blueTokens: tokens.blue,
-    captureBonusPending: true, turnMessage: "capture_bonus",
+    captureBonusPending: true, turnMessage: "capture_plus_ten",
   };
 }
 

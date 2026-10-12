@@ -22,6 +22,18 @@ export type RoomView = Room;
 
 const naira = (n: number) => `\u20A6${n.toLocaleString('en-NG')}`;
 const clockText = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+const TOKEN_COLORS: Color[] = ['red', 'green', 'yellow', 'blue'];
+type TokenRows = Record<Color, number[]>;
+const positionsFor = (room: RoomView): TokenRows => ({
+  red: [...room.board.redTokens],
+  green: [...room.board.greenTokens],
+  yellow: [...(room.board.yellowTokens ?? [-1, -1, -1, -1])],
+  blue: [...(room.board.blueTokens ?? [-1, -1, -1, -1])],
+});
+const copyPositions = (positions: TokenRows): TokenRows => ({
+  red: [...positions.red], green: [...positions.green],
+  yellow: [...positions.yellow], blue: [...positions.blue],
+});
 
 const RECTS = [{ r: 0, c: 0, color: 'red' }, { r: 0, c: 9, color: 'yellow' }, { r: 9, c: 9, color: 'green' }, { r: 9, c: 0, color: 'blue' }];
 const STARTS: Record<string, string> = { '6-1': 'red', '1-8': 'yellow', '8-13': 'green', '13-6': 'blue' };
@@ -84,17 +96,80 @@ const CORNERS = [{ R: 0, C: 0, color: 'green' }, { R: 0, C: 9, color: 'yellow' }
 export interface BoardProps {
   room: RoomView; legalTokens: Set<number>; onMove: (i: number) => void; selecting: boolean;
   dice: number[] | null; rolling: boolean; sel: Pick | null; canPick: Record<Pick, boolean>; onPick: (p: Pick) => void;
+  onAnimationChange?: (active: boolean) => void;
 }
 
-export function ReferenceBoard({ room, legalTokens, onMove, dice, rolling, sel, canPick, onPick }: BoardProps) {
+export function ReferenceBoard({ room, legalTokens, onMove, dice, rolling, sel, canPick, onPick, onAnimationChange }: BoardProps) {
+  const initialPositions = positionsFor(room);
+  const [displayPositions, setDisplayPositions] = useState<TokenRows>(initialPositions);
+  const displayedRef = useRef(displayPositions);
+  const roomIdRef = useRef(room.id);
+  const timersRef = useRef<number[]>([]);
+  useEffect(() => {
+    timersRef.current.forEach(window.clearTimeout);
+    timersRef.current = [];
+    const target = positionsFor(room);
+    if (roomIdRef.current !== room.id) {
+      roomIdRef.current = room.id;
+      displayedRef.current = target;
+      setDisplayPositions(target);
+      onAnimationChange?.(false);
+      return;
+    }
+
+    const immediate = copyPositions(displayedRef.current);
+    const movements: Array<{ color: Color; index: number; steps: number[] }> = [];
+    for (const color of TOKEN_COLORS) {
+      for (let index = 0; index < target[color].length; index++) {
+        const from = immediate[color][index] ?? -1;
+        const to = target[color][index] ?? -1;
+        if (to > from) {
+          const start = from < 0 ? 0 : from;
+          immediate[color][index] = start;
+          const steps = Array.from({ length: Math.max(0, to - start) }, (_, step) => start + step + 1);
+          if (steps.length) movements.push({ color, index, steps });
+        } else {
+          // Captures return the rival token to base; other non-forward changes are
+          // state corrections and should not animate as a forward track movement.
+          immediate[color][index] = to;
+        }
+      }
+    }
+    displayedRef.current = immediate;
+    setDisplayPositions(immediate);
+
+    const totalSteps = movements.reduce((sum, movement) => sum + movement.steps.length, 0);
+    onAnimationChange?.(totalSteps > 0);
+    if (totalSteps === 0) return;
+
+    const reducedMotion = typeof window.matchMedia === 'function' &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const stepDelay = reducedMotion ? 0 : 95;
+    let stepsLeft = totalSteps;
+    for (const movement of movements) {
+      movement.steps.forEach((position, stepIndex) => {
+        const timer = window.setTimeout(() => {
+          const next = copyPositions(displayedRef.current);
+          next[movement.color][movement.index] = position;
+          displayedRef.current = next;
+          setDisplayPositions(next);
+          stepsLeft--;
+          if (stepsLeft === 0) onAnimationChange?.(false);
+        }, stepDelay * (stepIndex + 1));
+        timersRef.current.push(timer);
+      });
+    }
+    return () => {
+      timersRef.current.forEach(window.clearTimeout);
+      timersRef.current = [];
+    };
+  }, [room.id, room.board.redTokens, room.board.greenTokens, room.board.yellowTokens, room.board.blueTokens, onAnimationChange]);
+
   const trackSet = new Set(pathCells.map(([r, c]) => `${r}-${c}`));
   const lanes = new Map<string, string>();
   for (let i = 1; i <= 5; i++) { lanes.set(`7-${i}`, 'red'); lanes.set(`7-${14 - i}`, 'green'); lanes.set(`${i}-7`, 'yellow'); lanes.set(`${14 - i}-7`, 'blue'); }
-  const tokenRows: Record<Color, number[]> = {
-    red: room.board.redTokens, green: room.board.greenTokens,
-    yellow: room.board.yellowTokens, blue: room.board.blueTokens,
-  };
-  const tokens = (['red', 'green', 'yellow', 'blue'] as Color[]).flatMap(color => tokenRows[color].map((position, index) => ({ color, position, index, at: cellFor(color, position, index) })));
+  const tokenRows = roomIdRef.current === room.id ? displayPositions : initialPositions;
+  const tokens = TOKEN_COLORS.flatMap(color => tokenRows[color].map((position, index) => ({ color, position, index, at: cellFor(color, position, index) })));
   const cells = [];
   for (let R = 0; R < 15; R++) for (let C = 0; C < 15; C++) {
     const r = C, c = 14 - R, key = `${r}-${c}`;
@@ -150,6 +225,7 @@ export interface ViewProps {
   conn: 'live' | 'connecting' | string; connLabel: string;
   legalTokens: Set<number>; onMove: (i: number) => void; selecting: boolean;
   dice: number[] | null; rolling: boolean; sel: Pick | null; canPick: Record<Pick, boolean>; onPick: (p: Pick) => void;
+  onAnimationChange?: (active: boolean) => void;
   onRoll: () => void; rollDisabled: boolean; rollReady: boolean;
   turnText: string; notice: string; noticeBad: boolean; captureText: string; actionError: string; resultText: string;
   extra?: ReactNode;
@@ -199,13 +275,12 @@ export function ReferenceView(p: ViewProps) {
           </div>;
         })}
       </div>
-      <ReferenceBoard room={room} legalTokens={p.legalTokens} onMove={p.onMove} selecting={p.selecting} dice={p.dice} rolling={p.rolling} sel={p.sel} canPick={p.canPick} onPick={p.onPick} />
+      <ReferenceBoard room={room} legalTokens={p.legalTokens} onMove={p.onMove} selecting={p.selecting} dice={p.dice} rolling={p.rolling} sel={p.sel} canPick={p.canPick} onPick={p.onPick} onAnimationChange={p.onAnimationChange} />
       <div className="lr-actions">
         <button type="button" className={`lr-roll ${p.rollReady ? 'ready' : ''}`} disabled={p.rollDisabled} onClick={p.onRoll} data-testid="button-roll-dice">{p.rolling ? 'Rolling' : 'Roll'}</button>
         {p.dice && room.board.remainingDice.length === 2 && <button type="button" className={`lr-combine ${p.sel === 'both' ? 'active' : ''}`} disabled={!p.canPick.both} aria-pressed={p.sel === 'both'} onClick={() => p.onPick('both')} data-testid="button-dice-combine">Both = {bothSum}</button>}
       </div>
       <p className="lr-hint" data-testid="text-turn-hint">{p.turnText}</p>
-      {p.isActive && <div className="lr-doubles" data-testid="text-doubles">Doubles in a row <b className={room.board.consecutiveDoubles > 0 ? 'on' : ''} /><b className={room.board.consecutiveDoubles > 1 ? 'on' : ''} /> {room.board.consecutiveDoubles}/2</div>}
       {p.captureText && <div className="lr-notice" role="status" data-testid="text-capture-bonus">{p.captureText}</div>}
       {p.notice && <div className={`lr-notice ${p.noticeBad ? 'bad' : ''}`} role="status" data-testid="text-turn-notice">{p.notice}</div>}
       {p.actionError && <div className="lr-notice bad" role="alert">{p.actionError}</div>}
@@ -218,11 +293,11 @@ export function ReferenceView(p: ViewProps) {
     </nav>
     {dlg === 'rules' && <Modal title="Rules" onClose={() => setDlg(null)} testid="dialog-rules"><ol className="lr-rules">
       <li>Two dice are rolled by the server each turn. Pick die 1, die 2 or both as a sum, then tap a glowing token.</li>
-      <li>A token leaves home only on a 6-6 or 6-1 roll. A single 6 enters the token and keeps the other die; choose both to enter and advance.</li>
-      <li>Split the dice between two tokens by choosing one die at a time.</li>
-      <li>Landing on a rival token captures it and earns +10 steps plus a bonus roll after your remaining dice.</li>
+       <li>A token can leave base only by using a rolled 6. If both dice are selected, the other die advances it from its starting tile.</li>
+       <li>Split the dice between two tokens by choosing one die at a time. After all dice are used, a roll without a 6 passes the turn.</li>
+       <li>Landing on a rival token sends it back to base and advances your token +10 steps, stopping at finish. A capture alone does not grant a roll.</li>
       <li>Finishing needs an exact count to 57.</li>
-      <li>A double gives a bonus roll once both dice are used. A third double in a row forfeits the turn.</li>
+       <li>Rolling at least one 6 grants one bonus roll after the current dice are used. Doubles without a 6 never grant a bonus.</li>
       <li>Each turn has a 30 second clock. The match clock is shared; most tokens home wins, then total steps. An exact tie goes to overtime.</li></ol></Modal>}
     {dlg === 'info' && <Modal title="Match info" onClose={() => setDlg(null)} testid="dialog-match-info"><dl className="lr-info">
       <div><dt>Room</dt><dd>{room.id.slice(0, 8).toUpperCase()}</dd></div>

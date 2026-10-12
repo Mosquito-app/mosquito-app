@@ -968,12 +968,13 @@ components:
           type: integer
           minimum: 0
           maximum: 2
+          description: Deprecated compatibility field; updated gameplay keeps this at 0.
         turnMessage:
           type: ["string", "null"]
-          enum: [third_double, double_bonus, capture_bonus, no_moves, timeout, null]
+          enum: [third_double, double_bonus, capture_bonus, six_bonus, capture_plus_ten, no_moves, timeout, null]
         captureBonusPending:
           type: boolean
-          description: A capture earned a bonus roll after the current dice are consumed.
+          description: A capture applied +10 movement during the current roll; it does not itself grant an extra turn.
         hasRolled:
           type: boolean
         redTokens:

@@ -29,18 +29,12 @@ export function cellFor(color: Color, position: number, index: number): [number,
 }
 export const canMoveToken = (position: number, die: number | null) => die !== null && position >= 0 && position < 57 && position + die <= 57;
 
-/** Destination for selected die values, or null if illegal. Entry needs a full 6-6 or 6-1 roll; a single selected 6 enters at 0. */
+/** Destination for selected dice values, or null if illegal. Any rolled six can release a token. */
 export function destination(position: number, values: number[], fullRoll?: number[] | null): number | null {
   if (!values.length || position >= 57) return null;
   if (position === -1) {
-    if (!fullRoll || fullRoll.length !== 2) return null;
-    const [x, y] = fullRoll;
-    if (!((x === 6 && y === 6) || (x === 6 && y === 1) || (x === 1 && y === 6))) return null;
-    const i = values.indexOf(6);
-    if (i < 0) return null;
-    const rest = values.filter((_, k) => k !== i);
-    const d = rest.length ? rest[0] : 0;
-    return d <= 57 ? d : null;
+    if (!fullRoll || fullRoll.length !== 2 || !fullRoll.includes(6) || !values.includes(6)) return null;
+    return values.reduce((total, value) => total + value, 0) - 6;
   }
   const d = position + values.reduce((a, b) => a + b, 0);
   return d <= 57 ? d : null;

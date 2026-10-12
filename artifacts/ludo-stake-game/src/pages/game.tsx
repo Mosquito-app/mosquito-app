@@ -41,6 +41,7 @@ export default function GamePage() {
   const wallet = useGetWallet({ query: { queryKey: getGetWalletQueryKey(), enabled: !!user, retry: false } });
   const roll = useRollDice(); const move = useMoveToken(); const cancel = useCancelRoom();
   const [actionError, setActionError] = useState('');
+  const [isAnimating, setIsAnimating] = useState(false);
   const isActive = room?.status === 'active';
   const seconds = useCountdown(room?.board.turnDeadlineAt, !!isActive, room?.serverTimeAt);
   const matchSeconds = useCountdown(room?.board.matchDeadlineAt, !!isActive, room?.serverTimeAt);
@@ -73,7 +74,7 @@ export default function GamePage() {
   }[room.myColor];
   const dice = room.board.dice;
   const clockAllowsPlay = !!isActive && (room.board.isOvertime || matchSeconds !== 0) && seconds !== 0;
-  const canMove = clockAllowsPlay && !move.isPending && isMyTurn && room.board.hasRolled && !!dice && remaining.length > 0;
+  const canMove = clockAllowsPlay && !move.isPending && !isAnimating && isMyTurn && room.board.hasRolled && !!dice && remaining.length > 0;
   const defaultPick: Pick | null = remaining.length === 2 ? 'both' : remaining.length === 1 ? (remaining[0] === 0 ? 'd0' : 'd1') : null;
   const valid = (p: Pick | null) => p === 'both' ? remaining.length === 2 : p === 'd0' ? remaining.includes(0) : p === 'd1' ? remaining.includes(1) : false;
   const sel: Pick | null = valid(pick) ? pick : defaultPick;
@@ -84,12 +85,12 @@ export default function GamePage() {
   const anyLegal = (['d0', 'd1', 'both'] as Pick[]).some(p => valid(p) && legalFor(p).size > 0);
   const dieAvail = (i: number) => remaining.includes(i as 0 | 1);
   const msg = room.board.turnMessage;
-  const notice = msg === 'third_double' ? 'Third double in a row. The turn is forfeited before any movement.' : msg === 'capture_bonus' ? (isDone ? 'Capture +10. Match completed.' : room.board.hasRolled ? 'Capture +10. Remaining dice first; bonus roll next.' : 'Capture +10. Bonus roll ready.') : msg === 'double_bonus' ? 'Double rolled. Roll again after your dice are used.' : msg === 'no_moves' ? 'No legal move for that roll. Turn passed.' : msg === 'timeout' ? 'The turn clock ran out. Turn passed.' : '';
+  const notice = msg === 'six_bonus' ? 'You rolled a 6. One bonus roll is available after these dice are used.' : msg === 'capture_plus_ten' || msg === 'capture_bonus' ? 'Capture +10 applied. A capture alone does not grant an extra roll.' : msg === 'double_bonus' ? 'Legacy turn state: doubles without a 6 no longer earn bonus rolls.' : msg === 'third_double' ? 'Legacy double-forfeit state cleared by the updated rules.' : msg === 'no_moves' ? 'No legal move for that roll. Turn passed.' : msg === 'timeout' ? 'The turn clock ran out. Turn passed.' : '';
   const onMove = (index: number) => { if (!sel) return; setActionError(''); move.mutate({ roomId, data: { tokenIndex: index, diceIndices: indicesFor(sel) } }, { onSuccess: patch, onError: fail }); };
   const connLabel = conn === 'live' ? 'Live' : conn === 'connecting' ? 'Connecting' : 'Reconnecting, polling 10s';
   const canPick = { d0: canMove && valid('d0'), d1: canMove && valid('d1'), both: canMove && valid('both') };
-  const turnText = isDone ? (room.board.winnerUserId === user.id ? 'You took the table.' : 'Match complete.') : isWaiting ? 'Waiting for a second player.' : isMyTurn ? (room.board.hasRolled ? (anyLegal ? 'Pick a die in the centre, then tap a glowing token.' : 'No legal move. Waiting on the server.') : 'Your turn. Roll both dice.') : `Waiting on ${opponent || 'opponent'} to play.`;
-  const captureText = room.board.captureBonusPending && msg !== 'capture_bonus' ? 'Capture +10 earned. Bonus roll coming after your dice.' : '';
+  const turnText = isDone ? (room.board.winnerUserId === user.id ? 'You took the table.' : 'Match complete.') : isWaiting ? 'Waiting for a second player.' : isMyTurn ? (isAnimating ? 'Moving token one space at a time…' : room.board.hasRolled ? (anyLegal ? 'Pick a die in the centre, then tap a glowing token.' : 'No legal move. Waiting on the server.') : 'Your turn. Roll both dice.') : `Waiting on ${opponent || 'opponent'} to play.`;
+  const captureText = room.board.captureBonusPending ? `Capture +10 applied. ${room.board.dice?.includes(6) ? 'Your 6 also earns one bonus roll after the dice are used.' : 'Only a 6 earns a bonus roll.'}` : '';
   const winnerName = room.players.find(player => player.userId === room.board.winnerUserId)?.username ?? '—';
   const resultText = room.status === 'completed' ? `Winner: ${winnerName}` : '';
   const walletState = wallet.isLoading ? 'loading' : wallet.isError || !wallet.data ? 'error' : 'ok';
@@ -104,11 +105,11 @@ export default function GamePage() {
     matchSeconds={matchSeconds} turnSeconds={seconds}
     walletText={money(wallet.data?.balanceNaira ?? 0)} walletState={walletState} onWallet={() => setLocation('/')} onRetryWallet={() => void wallet.refetch()} onExit={() => setLocation('/')}
     conn={conn} connLabel={connLabel}
-    legalTokens={legalTokens} onMove={onMove} selecting={canMove && legalTokens.size > 0}
+     legalTokens={legalTokens} onMove={onMove} selecting={canMove && legalTokens.size > 0} onAnimationChange={setIsAnimating}
     dice={dice} rolling={roll.isPending} sel={sel} canPick={canPick} onPick={setPick}
     onRoll={() => { setActionError(''); roll.mutate({ roomId }, { onSuccess: next => { patch(next); }, onError: fail }); }}
-    rollDisabled={!clockAllowsPlay || !isMyTurn || room.board.hasRolled || roll.isPending}
-    rollReady={clockAllowsPlay && isMyTurn && !room.board.hasRolled}
-    turnText={turnText} notice={notice} noticeBad={msg === 'third_double' || msg === 'timeout'} captureText={captureText} actionError={actionError} resultText={resultText} extra={extra}
+     rollDisabled={!clockAllowsPlay || !isMyTurn || room.board.hasRolled || roll.isPending || isAnimating}
+     rollReady={clockAllowsPlay && isMyTurn && !room.board.hasRolled && !isAnimating}
+     turnText={turnText} notice={notice} noticeBad={msg === 'timeout'} captureText={captureText} actionError={actionError} resultText={resultText} extra={extra}
   />;
 }

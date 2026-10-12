@@ -637,6 +637,8 @@ export const BoardStateTurnMessage = {
   third_double: 'third_double',
   double_bonus: 'double_bonus',
   capture_bonus: 'capture_bonus',
+  six_bonus: 'six_bonus',
+  capture_plus_ten: 'capture_plus_ten',
   no_moves: 'no_moves',
   timeout: 'timeout',
 } as const;
@@ -663,13 +665,14 @@ export interface BoardState {
   /** @maxItems 2 */
   remainingDice: BoardStateRemainingDiceItem[];
   /**
+     * Deprecated compatibility field; updated gameplay keeps this at 0.
      * @minimum 0
      * @maximum 2
      */
   consecutiveDoubles: number;
   /** @nullable */
   turnMessage: BoardStateTurnMessage;
-  /** A capture earned a bonus roll after the current dice are consumed. */
+  /** A capture applied +10 movement during the current roll; it does not itself grant an extra turn. */
   captureBonusPending?: boolean;
   hasRolled: boolean;
   redTokens: number[];

@@ -31,13 +31,14 @@ export interface BoardState {
   /** @maxItems 2 */
   remainingDice: BoardStateRemainingDiceItem[];
   /**
+     * Deprecated compatibility field; updated gameplay keeps this at 0.
      * @minimum 0
      * @maximum 2
      */
   consecutiveDoubles: number;
   /** @nullable */
   turnMessage: BoardStateTurnMessage;
-  /** A capture earned a bonus roll after the current dice are consumed. */
+  /** A capture applied +10 movement during the current roll; it does not itself grant an extra turn. */
   captureBonusPending?: boolean;
   hasRolled: boolean;
   redTokens: number[];
