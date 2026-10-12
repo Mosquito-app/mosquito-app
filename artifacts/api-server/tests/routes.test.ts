@@ -232,7 +232,7 @@ try {
   const liveEnvKeys = ["NODE_ENV", "PAYSTACK_MODE", "PAYSTACK_SECRET_KEY", "PAYSTACK_PUBLIC_KEY", "PAYSTACK_LIVE_CALLBACK_URL", "REPLIT_DOMAINS"] as const;
   const previousLiveEnv = Object.fromEntries(liveEnvKeys.map(key => [key, process.env[key]]));
   try {
-    process.env["NODE_ENV"] = "production";
+    Reflect.set(process.env, "NODE_ENV", "production");
     process.env.PAYSTACK_MODE = "live";
     process.env.PAYSTACK_SECRET_KEY = "sk_live_fixture_only";
     process.env.PAYSTACK_PUBLIC_KEY = "pk_live_fixture_only";
