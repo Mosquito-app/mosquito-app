@@ -32,3 +32,9 @@ AI opponents belong in explicit, no-stake practice matches; never insert a bot i
 **Why:** A bot should help players test gameplay without impersonating a funded opponent or changing paid-room escrow expectations.
 
 **How to apply:** Keep AI practice opt-in and free, and keep paid-room matchmaking human-only.
+
+Refund a reserved Ludo stake only when the waiting room is canceled before a human match starts. Once a paid match starts, a player may forfeit and leave, but receives no refund; remaining players continue or the final opponent is settled normally.
+
+**Why:** The user explicitly said waiting-room cancellation returns the reserved stake, while leaving after the match starts forfeits it.
+
+**How to apply:** Keep cancellation and escrow settlement transactional; never return a started match's stake to the forfeiting player.

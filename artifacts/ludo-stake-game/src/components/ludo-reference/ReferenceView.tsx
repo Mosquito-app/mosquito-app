@@ -238,11 +238,12 @@ export function ReferenceView(p: ViewProps) {
   const clock = room.status === 'waiting' ? '8:00' : p.isDone ? 'ENDED' : overtime ? '0:00' : p.matchSeconds === null ? '--:--' : clockText(p.matchSeconds);
   const turnLabel = p.isDone ? p.resultText || 'Match complete' : p.isWaiting ? 'Waiting for a challenger' : p.isMyTurn ? 'Your turn' : `${p.oppName || 'Opponent'}'s turn`;
   const showTurn = p.isActive && p.turnSeconds !== null;
-  const strip = (name: string, color: Color, me: boolean, active: boolean) => {
+  const strip = (name: string, color: Color, me: boolean, active: boolean, forfeited = false) => {
     const sc = room.scores[color];
-    return <div className={`lr-player ${me ? 'me' : 'opp'} ${active ? 'on' : ''}`}>
+    return <div className={`lr-player ${me ? 'me' : 'opp'} ${active ? 'on' : ''} ${forfeited ? 'forfeited' : ''}`}>
       <span className={`lr-avatar ${DISPLAY[color]}`} aria-hidden="true">{(name || '?').slice(0, 1).toUpperCase()}</span>
       <div className="lr-pname"><b>{name || 'Waiting'}{me && <small> you</small>}</b>
+        {forfeited && <small className="lr-forfeited-label">FORFEITED</small>}
         <span className="lr-pips" aria-label={`${SEAT_LABEL[color]} seat, ${sc.tokensHome} of 4 home`}>{[0, 1, 2, 3].map(i => <i key={i} className={`${DISPLAY[color]} ${i < sc.tokensHome ? 'on' : ''}`} />)}<em>{SEAT_LABEL[color]}</em></span></div>
     </div>;
   };
@@ -271,7 +272,7 @@ export function ReferenceView(p: ViewProps) {
         {seats.map((player, index) => {
           const color = (['red', 'green', 'yellow', 'blue'] as Color[])[index];
           return <div key={player?.userId ?? `empty-${color}`} className="lr-roster-seat">
-            {strip(player?.username ?? 'Open seat', color, color === room.myColor, !!player && room.board.turnUserId === player.userId)}
+            {strip(player?.username ?? 'Open seat', color, color === room.myColor, !!player && room.board.turnUserId === player.userId, !!player && !!room.board.forfeitedUserIds?.includes(player.userId))}
           </div>;
         })}
       </div>

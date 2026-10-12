@@ -11,6 +11,7 @@ import type { RoomTier } from './roomTier';
 export interface LobbyResponse {
   /** @nullable */
   myRoomId: string | null;
+  myRoom: LobbyRoom | null;
   rooms: LobbyRoom[];
   tiers: RoomTier[];
 }

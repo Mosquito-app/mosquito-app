@@ -534,6 +534,7 @@ export interface LobbyRoom {
   maxPlayers: LobbyRoomMaxPlayers;
   status: LobbyRoomStatus;
   joinWindowOpen: boolean;
+  isAiPractice: boolean;
   players: RoomPlayer[];
   createdAt: string;
 }
@@ -583,6 +584,7 @@ export interface RoomTier {
 export interface LobbyResponse {
   /** @nullable */
   myRoomId: string | null;
+  myRoom: LobbyRoom | null;
   rooms: LobbyRoom[];
   tiers: RoomTier[];
 }
@@ -617,6 +619,7 @@ export const BoardStateEndReason = {
   all_home: 'all_home',
   timeout: 'timeout',
   overtime: 'overtime',
+  forfeit: 'forfeit',
 } as const;
 
 export type BoardStateRemainingDiceItem = typeof BoardStateRemainingDiceItem[keyof typeof BoardStateRemainingDiceItem];
@@ -649,6 +652,7 @@ export interface BoardState {
   isOvertime: boolean;
   /** @nullable */
   endReason: BoardStateEndReason;
+  forfeitedUserIds?: string[];
   turnUserId: string;
   playerOrder: string[];
   joinWindowOpen: boolean;

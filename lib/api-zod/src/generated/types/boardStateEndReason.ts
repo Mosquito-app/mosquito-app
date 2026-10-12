@@ -16,4 +16,5 @@ export const BoardStateEndReason = {
   all_home: 'all_home',
   timeout: 'timeout',
   overtime: 'overtime',
+  forfeit: 'forfeit',
 } as const;

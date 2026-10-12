@@ -17,6 +17,7 @@ export function normalizeBoard(board: LudoBoardState): LudoBoardState {
     blueTokens: board.blueTokens ?? [-1, -1, -1, -1],
     playerOrder: board.playerOrder ?? [],
     joinWindowOpen: board.joinWindowOpen ?? false,
+    forfeitedUserIds: board.forfeitedUserIds ?? [],
     dice: paired ? board.dice : null,
     hasRolled: paired && board.hasRolled,
     remainingDice: paired && board.hasRolled ? board.remainingDice ?? [0, 1] : [],

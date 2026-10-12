@@ -25,6 +25,8 @@ export type LudoBoardState = {
   turnUserId: string;
   /** Internal marker used only by free practice matches against the server AI. */
   aiPlayerId?: string;
+  /** Participants who have forfeited an active match and must be skipped. */
+  forfeitedUserIds?: string[];
   playerOrder?: string[];
   joinWindowOpen?: boolean;
   dice: number[] | null;
@@ -42,7 +44,7 @@ export type LudoBoardState = {
   // Legacy JSON boards may omit these; normalizeBoard supplies API defaults.
   matchDeadlineAt?: string | null;
   isOvertime?: boolean;
-  endReason?: "all_home" | "timeout" | "overtime" | null;
+  endReason?: "all_home" | "timeout" | "overtime" | "forfeit" | null;
 };
 
 export const usersTable = pgTable(

@@ -474,7 +474,7 @@ paths:
     post:
       operationId: cancelRoom
       tags: [games]
-      summary: Cancel a waiting room and return the reserved sandbox stake
+      summary: Cancel a waiting room, end free practice, or forfeit an active human match
       parameters:
         - name: roomId
           in: path
@@ -484,17 +484,42 @@ paths:
             format: uuid
       responses:
         "200":
-          description: Cancelled waiting room
+          description: Cancelled room, forfeiture, or updated active match
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/Room"
         "400":
-          description: Only the owner of a waiting room can cancel it
+          description: Cancellation is not allowed for this room state or participant
         "401":
           description: Not signed in
         "404":
           description: Match not found
+  /rooms/{roomId}/ai:
+    post:
+      operationId: addAiOpponent
+      tags: [games]
+      summary: Fill a free one-player Practice Ground waiting room with Mosquito AI
+      parameters:
+        - name: roomId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Practice match started with AI
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Room"
+        "400":
+          description: Only a free, single-player Practice Ground room can add AI
+        "401":
+          description: Not signed in
+        "404":
+          description: Waiting room not found
 components:
   securitySchemes:
     UnityServerKey:
@@ -845,7 +870,7 @@ components:
           description: True when recipient resolution failed and the test payout was settled locally without a bank transfer.
     LobbyRoom:
       type: object
-      required: [id, tierId, tierName, stakeNaira, potNaira, maxPotNaira, playerCount, maxPlayers, status, joinWindowOpen, players, createdAt]
+      required: [id, tierId, tierName, stakeNaira, potNaira, maxPotNaira, playerCount, maxPlayers, status, joinWindowOpen, isAiPractice, players, createdAt]
       properties:
         id:
           type: string
@@ -873,6 +898,8 @@ components:
           type: string
           enum: [waiting, active]
         joinWindowOpen:
+          type: boolean
+        isAiPractice:
           type: boolean
         players:
           type: array
@@ -919,10 +946,14 @@ components:
           enum: [red, green, yellow, blue]
     LobbyResponse:
       type: object
-      required: [rooms, tiers, myRoomId]
+      required: [rooms, tiers, myRoomId, myRoom]
       properties:
         myRoomId:
           type: ["string", "null"]
+        myRoom:
+          oneOf:
+            - $ref: "#/components/schemas/LobbyRoom"
+            - type: "null"
         rooms:
           type: array
           items:
@@ -952,7 +983,12 @@ components:
           type: boolean
         endReason:
           type: ["string", "null"]
-          enum: [all_home, timeout, overtime, null]
+          enum: [all_home, timeout, overtime, forfeit, null]
+        forfeitedUserIds:
+          type: array
+          items:
+            type: string
+            format: uuid
         turnUserId:
           type: string
         playerOrder:

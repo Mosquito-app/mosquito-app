@@ -55,8 +55,15 @@ export async function completeMatch(
 export async function resolveMatchClock(tx: Tx, room: Room, now = Date.now()) {
   const board = normalizeBoard(room.board);
   room = { ...room, board };
-  const players = roomPlayerIds(room);
-  if (room.status !== "active" || players.length < 2) return { room, changed: false };
+  const allPlayers = roomPlayerIds(room);
+  const players = allPlayers.filter(playerId => !board.forfeitedUserIds?.includes(playerId));
+  if (room.status !== "active" || players.length === 0) return { room, changed: false };
+  if (players.length === 1) {
+    return {
+      room: await completeMatch(tx, room, board, players[0], "forfeit"),
+      changed: true,
+    };
+  }
   if (!board.matchDeadlineAt) {
     // Old active rooms have no trustworthy start timestamp. Persist one grace
     // window once, rather than resetting it on reads or retroactively charging.
@@ -66,7 +73,7 @@ export async function resolveMatchClock(tx: Tx, room: Room, now = Date.now()) {
   }
   if (!board.isOvertime && Date.parse(board.matchDeadlineAt) > now) return { room, changed: false };
   const colors = players.map((id) => colorForUser(room, id)).filter((color): color is NonNullable<typeof color> => color !== null);
-  const leader = leadingColor(board, colors.length ? colors : [...LUDO_COLORS.slice(0, players.length)]);
+  const leader = players.length === 1 ? colorForUser(room, players[0]) : leadingColor(board, colors.length ? colors : [...LUDO_COLORS.slice(0, players.length)]);
   if (leader) {
     const winner = userForColor(room, leader);
     if (!winner) throw new Error("Timeout winner is not a room participant");

@@ -1916,7 +1916,7 @@ export const getCancelRoomUrl = (roomId: string,) => {
 }
 
 /**
- * @summary Cancel a waiting room and return the reserved sandbox stake
+ * @summary Cancel a waiting room, end free practice, or forfeit an active human match
  */
 export const cancelRoom = async (roomId: string, options?: Parameters<typeof customFetch>[1]): Promise<Room> => {
 
@@ -1968,7 +1968,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type CancelRoomMutationVariables = {roomId: string}
 
     /**
- * @summary Cancel a waiting room and return the reserved sandbox stake
+ * @summary Cancel a waiting room, end free practice, or forfeit an active human match
  */
 export const useCancelRoom = <TError = ErrorType<void>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof cancelRoom>>, TError,CancelRoomMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
@@ -1979,5 +1979,79 @@ export const useCancelRoom = <TError = ErrorType<void>,
         TContext
       > => {
       return useMutation(getCancelRoomMutationOptions(options));
+    }
+
+export const getAddAiOpponentUrl = (roomId: string,) => {
+
+
+
+
+  return `/api/rooms/${roomId}/ai`
+}
+
+/**
+ * @summary Fill a free one-player Practice Ground waiting room with Mosquito AI
+ */
+export const addAiOpponent = async (roomId: string, options?: Parameters<typeof customFetch>[1]): Promise<Room> => {
+
+  return customFetch<Room>(getAddAiOpponentUrl(roomId),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getAddAiOpponentMutationKey = () => ['addAiOpponent'] as const;
+
+export const getAddAiOpponentMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof addAiOpponent>>, TError,AddAiOpponentMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof addAiOpponent>>, TError,AddAiOpponentMutationVariables, TContext> => {
+
+const mutationKey = getAddAiOpponentMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof addAiOpponent>>, AddAiOpponentMutationVariables> = (props) => {
+          const {roomId} = props ?? {};
+
+          return  addAiOpponent(roomId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AddAiOpponentMutationResult = NonNullable<Awaited<ReturnType<typeof addAiOpponent>>>
+
+    export type AddAiOpponentMutationError = ErrorType<void>
+    export type AddAiOpponentMutationVariables = {roomId: string}
+
+    /**
+ * @summary Fill a free one-player Practice Ground waiting room with Mosquito AI
+ */
+export const useAddAiOpponent = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof addAiOpponent>>, TError,AddAiOpponentMutationVariables, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof addAiOpponent>>,
+        TError,
+        AddAiOpponentMutationVariables,
+        TContext
+      > => {
+      return useMutation(getAddAiOpponentMutationOptions(options));
     }
 

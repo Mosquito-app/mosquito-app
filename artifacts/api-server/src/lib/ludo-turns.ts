@@ -11,8 +11,11 @@ export const TURN_MS = 30_000;
 export const deadline = () => new Date(Date.now() + TURN_MS).toISOString();
 export function nextPlayerId(room: {
   hostUserId: string; opponentUserId: string | null; thirdUserId?: string | null; fourthUserId?: string | null;
+  board?: LudoBoardState;
 }, currentId: string) {
-  const players = roomPlayerIds(room);
+  const forfeited = new Set(room.board?.forfeitedUserIds ?? []);
+  const players = roomPlayerIds(room).filter(playerId => !forfeited.has(playerId));
+  if (players.length === 0) return room.hostUserId;
   const currentIndex = players.indexOf(currentId);
   return players[(currentIndex < 0 ? 0 : currentIndex + 1) % players.length] ?? room.hostUserId;
 }

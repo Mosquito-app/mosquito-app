@@ -139,7 +139,7 @@ async function playAiTurn(roomId: string): Promise<boolean> {
     };
     board = applyCaptureBonus(board, color, move.tokenIndex);
 
-    const participants = roomPlayerIds(room);
+    const participants = roomPlayerIds(room).filter(id => !board.forfeitedUserIds?.includes(id));
     const participantColors = participants
       .map(playerId => colorForUser(room, playerId))
       .filter((candidate): candidate is Color => candidate !== null);

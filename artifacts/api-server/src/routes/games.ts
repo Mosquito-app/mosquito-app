@@ -63,6 +63,16 @@ function startBoard(hostUserId: string, maxPlayers: number): LudoBoardState {
   };
 }
 
+async function createAiUser(tx: Parameters<Parameters<typeof db.transaction>[0]>[0]) {
+  const identity = randomUUID();
+  const [bot] = await tx.insert(usersTable).values({
+    username: `bot-${identity.slice(0, 12)}`,
+    email: `bot-${identity}@mosquito.invalid`,
+    passwordSalt: randomBytes(16).toString("hex"),
+    passwordHash: randomBytes(32).toString("hex"),
+  }).returning({ id: usersTable.id });
+  return bot.id;
+}
 
 async function getRoomForViewer(roomId: string, viewerId: string) {
   const [room] = await db
@@ -148,6 +158,31 @@ function sendGameError(
   res.status(500).json({ error: "The match could not be updated." });
 }
 
+function toLobbyRoom(room: typeof roomsTable.$inferSelect, usernameById: Map<string, string>) {
+  const tier = getRoomTier(room.tierId) ?? getRoomTier("practice-ground")!;
+  const board = normalizeBoard(room.board);
+  const ids = roomPlayerIds(room);
+  return {
+    id: room.id,
+    tierId: tier.id,
+    tierName: tier.name,
+    stakeNaira: room.stakeKobo / 100,
+    potNaira: room.stakeKobo * ids.length / 100,
+    maxPotNaira: board.aiPlayerId ? 0 : room.stakeKobo * tier.maxPlayers / 100,
+    playerCount: ids.length,
+    maxPlayers: board.aiPlayerId ? 2 : tier.maxPlayers,
+    status: room.status as RoomStatus,
+    joinWindowOpen: room.status === "waiting" || board.joinWindowOpen,
+    isAiPractice: Boolean(board.aiPlayerId),
+    players: ids.map((userId, index) => ({
+      userId,
+      username: userId === board.aiPlayerId ? "Mosquito AI" : usernameById.get(userId) ?? "Player",
+      color: LUDO_COLORS[index],
+    })),
+    createdAt: room.createdAt,
+  };
+}
+
 router.get("/lobby", async (req, res): Promise<void> => {
   const user = await getAuthenticatedUser(req);
   if (!user) {
@@ -168,12 +203,7 @@ router.get("/lobby", async (req, res): Promise<void> => {
       && roomPlayerIds(room).length < tier.maxPlayers
       && (room.status === "waiting" || normalizeBoard(room.board).joinWindowOpen);
   }).slice(0, 50);
-  const allPlayerIds = [...new Set(joinable.flatMap((room) => roomPlayerIds(room)))];
-  const playerRows = allPlayerIds.length
-    ? await db.select({ id: usersTable.id, username: usersTable.username }).from(usersTable).where(inArray(usersTable.id, allPlayerIds))
-    : [];
-  const usernameById = new Map(playerRows.map((player) => [player.id, player.username]));
-  const myRoom = await db.select({ id: roomsTable.id }).from(roomsTable).where(and(
+  const myRoomRows = await db.select().from(roomsTable).where(and(
     inArray(roomsTable.status, ["waiting", "active"]),
     or(
       eq(roomsTable.hostUserId, user.id),
@@ -181,31 +211,21 @@ router.get("/lobby", async (req, res): Promise<void> => {
       eq(roomsTable.thirdUserId, user.id),
       eq(roomsTable.fourthUserId, user.id),
     ),
+    sql`not (coalesce(${roomsTable.board}->'forfeitedUserIds', '[]'::jsonb) @> ${JSON.stringify([user.id])}::jsonb)`,
   )).limit(1);
-  const rooms = joinable.map((room) => {
-    const tier = getRoomTier(room.tierId)!;
-    const ids = roomPlayerIds(room);
-    return {
-      id: room.id,
-      tierId: tier.id,
-      tierName: tier.name,
-      stakeNaira: tier.stakeNaira,
-      potNaira: room.stakeKobo * ids.length / 100,
-      maxPotNaira: room.stakeKobo * tier.maxPlayers / 100,
-      playerCount: ids.length,
-      maxPlayers: tier.maxPlayers,
-      status: room.status as RoomStatus,
-      joinWindowOpen: room.status === "waiting" || normalizeBoard(room.board).joinWindowOpen,
-      players: ids.map((userId, index) => ({
-        userId,
-        username: usernameById.get(userId) ?? "Player",
-        color: LUDO_COLORS[index],
-      })),
-      createdAt: room.createdAt,
-    };
-  });
+  const currentRoom = myRoomRows[0];
+  const allPlayerIds = [...new Set([
+    ...joinable.flatMap((room) => roomPlayerIds(room)),
+    ...(currentRoom ? roomPlayerIds(currentRoom) : []),
+  ])];
+  const playerRows = allPlayerIds.length
+    ? await db.select({ id: usersTable.id, username: usersTable.username }).from(usersTable).where(inArray(usersTable.id, allPlayerIds))
+    : [];
+  const usernameById = new Map(playerRows.map((player) => [player.id, player.username]));
+  const rooms = joinable.map((room) => toLobbyRoom(room, usernameById));
   const payload = {
-    myRoomId: myRoom[0]?.id ?? null,
+    myRoomId: currentRoom?.id ?? null,
+    myRoom: currentRoom ? toLobbyRoom(currentRoom, usernameById) : null,
     rooms,
     tiers: ROOM_TIERS.map((tier) => ({
       id: tier.id,
@@ -376,19 +396,13 @@ router.post("/rooms/practice-ai", async (req, res): Promise<void> => {
       )).limit(1);
       if (existingRoom) throw new GameActionError(400, "Finish or leave your current match before starting AI practice.");
 
-      const botIdentity = randomUUID();
-      const [bot] = await tx.insert(usersTable).values({
-        username: `bot-${botIdentity.slice(0, 12)}`,
-        email: `bot-${botIdentity}@mosquito.invalid`,
-        passwordSalt: randomBytes(16).toString("hex"),
-        passwordHash: randomBytes(32).toString("hex"),
-      }).returning({ id: usersTable.id });
+      const botId = await createAiUser(tx);
 
       const board: LudoBoardState = {
         ...startBoard(user.id, 2),
-        playerOrder: [user.id, bot.id],
+        playerOrder: [user.id, botId],
         joinWindowOpen: false,
-        aiPlayerId: bot.id,
+        aiPlayerId: botId,
         turnDeadlineAt: deadline(),
         matchDeadlineAt: matchDeadline(),
       };
@@ -397,7 +411,7 @@ router.post("/rooms/practice-ai", async (req, res): Promise<void> => {
         stakeKobo: 0,
         status: "active",
         hostUserId: user.id,
-        opponentUserId: bot.id,
+        opponentUserId: botId,
         board,
       }).returning({ id: roomsTable.id });
       roomId = room.id;
@@ -413,6 +427,65 @@ router.post("/rooms/practice-ai", async (req, res): Promise<void> => {
     res.status(201).json(GetRoomResponse.parse(room));
   } catch (error) {
     sendGameError(req, res, error, "Unable to start Ludo AI practice");
+  }
+});
+
+router.post("/rooms/:roomId/ai", async (req, res): Promise<void> => {
+  const user = await getAuthenticatedUser(req);
+  if (!user) {
+    res.status(401).json({ error: "Sign in to add Mosquito AI." });
+    return;
+  }
+  const params = GetRoomParams.safeParse(req.params);
+  if (!params.success) {
+    res.status(400).json({ error: "Invalid room id." });
+    return;
+  }
+
+  try {
+    await db.transaction(async tx => {
+      const room = await loadLockedRoom(tx, params.data.roomId, user.id);
+      const board = normalizeBoard(room.board);
+      if (
+        room.status !== "waiting" ||
+        room.tierId !== "practice-ground" ||
+        room.stakeKobo !== 0 ||
+        room.hostUserId !== user.id ||
+        room.opponentUserId !== null ||
+        roomPlayerIds(room).length !== 1 ||
+        !board.joinWindowOpen ||
+        board.aiPlayerId
+      ) {
+        throw new GameActionError(400, "AI can only fill your free, one-player Practice Ground room.");
+      }
+
+      const botId = await createAiUser(tx);
+      const updatedBoard: LudoBoardState = {
+        ...board,
+        aiPlayerId: botId,
+        playerOrder: [user.id, botId],
+        joinWindowOpen: false,
+        turnUserId: user.id,
+        turnDeadlineAt: deadline(),
+        matchDeadlineAt: matchDeadline(),
+      };
+      await tx.update(roomsTable).set({
+        status: "active",
+        opponentUserId: botId,
+        board: updatedBoard,
+        updatedAt: new Date(),
+      }).where(eq(roomsTable.id, room.id));
+    });
+
+    publishRoomUpdate(params.data.roomId);
+    const room = await getRoomForViewer(params.data.roomId, user.id);
+    if (!room) {
+      res.status(404).json({ error: "Practice room not found." });
+      return;
+    }
+    res.json(GetRoomResponse.parse(room));
+  } catch (error) {
+    sendGameError(req, res, error, "Unable to add Mosquito AI");
   }
 });
 
@@ -453,6 +526,9 @@ router.post("/rooms/:roomId/roll", async (req, res): Promise<void> => {
       let room = await loadLockedRoom(tx, params.data.roomId, user.id);
       if (room.status !== "active") {
         throw new GameActionError(400, "This match is not active.");
+      }
+      if (room.board.forfeitedUserIds?.includes(user.id)) {
+        throw new GameActionError(400, "You forfeited this match and can no longer play.");
       }
       room = (await resolveMatchClock(tx, room)).room;
       if (room.status === "completed") return;
@@ -512,6 +588,9 @@ router.post("/rooms/:roomId/move", async (req, res): Promise<void> => {
       if (room.status !== "active" || roomPlayerIds(room).length < 2) {
         throw new GameActionError(400, "This match is not active.");
       }
+      if (room.board.forfeitedUserIds?.includes(user.id)) {
+        throw new GameActionError(400, "You forfeited this match and can no longer play.");
+      }
       room = (await resolveMatchClock(tx, room)).room;
       if (room.status === "completed") return;
       if (turnExpired(room.board)) throw new GameActionError(400, "Your turn timer expired. Refresh the board.");
@@ -551,6 +630,7 @@ router.post("/rooms/:roomId/move", async (req, res): Promise<void> => {
       board = applyCaptureBonus(board, color, selected);
       const won = tokensFor(board, color).every((tokenPosition) => tokenPosition >= 57);
       const participantColors = roomPlayerIds(room)
+        .filter(playerId => !board.forfeitedUserIds?.includes(playerId))
         .map((playerId) => colorForUser(room, playerId))
         .filter((participantColor): participantColor is NonNullable<typeof participantColor> => participantColor !== null);
       const overtimeLeader = board.isOvertime ? leadingColor(board, participantColors) : null;
@@ -597,25 +677,63 @@ router.post("/rooms/:roomId/cancel", async (req, res): Promise<void> => {
   try {
     await db.transaction(async (tx) => {
       const room = await loadLockedRoom(tx, params.data.roomId, user.id);
-      if (room.status !== "waiting" || room.hostUserId !== user.id) {
-        throw new GameActionError(400, "Only the owner can cancel a waiting room.");
+      const board = normalizeBoard(room.board);
+      if (room.status === "waiting") {
+        if (room.hostUserId !== user.id) {
+          throw new GameActionError(400, "Only the room host can cancel a waiting room.");
+        }
+        await tx.update(roomsTable)
+          .set({ status: "cancelled", updatedAt: new Date() })
+          .where(eq(roomsTable.id, room.id));
+        if (room.stakeKobo > 0) {
+          await tx.update(usersTable)
+            .set({ balanceKobo: sql`${usersTable.balanceKobo} + ${room.stakeKobo}` })
+            .where(eq(usersTable.id, user.id));
+          await tx.insert(walletTransactionsTable).values({
+            userId: user.id,
+            type: "stake_release",
+            amountKobo: room.stakeKobo,
+            description: `Sandbox stake returned — room ${room.id.slice(0, 8)}`,
+            roomId: room.id,
+          });
+        }
+      } else if (room.status === "active" && board.aiPlayerId && room.stakeKobo === 0) {
+        await tx.update(roomsTable)
+          .set({ status: "cancelled", board: { ...board, joinWindowOpen: false }, updatedAt: new Date() })
+          .where(eq(roomsTable.id, room.id));
+      } else if (room.status === "active") {
+        const forfeited = board.forfeitedUserIds ?? [];
+        if (forfeited.includes(user.id)) {
+          throw new GameActionError(400, "You have already forfeited this match.");
+        }
+        const activePlayers = roomPlayerIds(room).filter(id => id !== user.id && !forfeited.includes(id));
+        if (activePlayers.length === 0) {
+          throw new GameActionError(400, "No active opponent remains in this match.");
+        }
+        const updatedBoard: LudoBoardState = {
+          ...board,
+          forfeitedUserIds: [...forfeited, user.id],
+          joinWindowOpen: false,
+        };
+        if (board.turnUserId === user.id) {
+          updatedBoard.turnUserId = nextPlayerId({ ...room, board: updatedBoard }, user.id);
+          updatedBoard.dice = null;
+          updatedBoard.hasRolled = false;
+          updatedBoard.remainingDice = [];
+          updatedBoard.consecutiveDoubles = 0;
+          updatedBoard.captureBonusPending = false;
+          updatedBoard.turnDeadlineAt = deadline();
+        }
+        if (activePlayers.length === 1) {
+          await completeMatch(tx, room, updatedBoard, activePlayers[0], "forfeit");
+        } else {
+          await tx.update(roomsTable)
+            .set({ board: updatedBoard, updatedAt: new Date() })
+            .where(eq(roomsTable.id, room.id));
+        }
+      } else {
+        throw new GameActionError(400, "This match is already closed and cannot be cancelled.");
       }
-
-      await tx
-        .update(roomsTable)
-        .set({ status: "cancelled", updatedAt: new Date() })
-        .where(eq(roomsTable.id, room.id));
-      await tx
-        .update(usersTable)
-        .set({ balanceKobo: sql`${usersTable.balanceKobo} + ${room.stakeKobo}` })
-        .where(eq(usersTable.id, user.id));
-      await tx.insert(walletTransactionsTable).values({
-        userId: user.id,
-        type: "stake_release",
-        amountKobo: room.stakeKobo,
-        description: `Sandbox stake returned — room ${room.id.slice(0, 8)}`,
-        roomId: room.id,
-      });
     });
 
     publishRoomUpdate(params.data.roomId);
@@ -626,7 +744,7 @@ router.post("/rooms/:roomId/cancel", async (req, res): Promise<void> => {
     }
     res.json(CancelRoomResponse.parse(room));
   } catch (error) {
-    sendGameError(req, res, error, "Unable to cancel waiting room");
+    sendGameError(req, res, error, "Unable to cancel or forfeit match");
   }
 });
 

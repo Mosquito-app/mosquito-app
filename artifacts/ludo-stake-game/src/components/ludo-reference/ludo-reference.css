@@ -35,6 +35,8 @@
 .lr-avatar { width:40px; height:40px; border-radius:50%; display:grid; place-items:center; font-weight:900; font-size:18px; color:#fff; border:3px solid #fff; box-shadow:0 2px 0 #0005; }
 .lr-avatar.red { background:#c8202e; } .lr-avatar.yellow { background:#d9a006; } .lr-avatar.green { background:#1f9a55; } .lr-avatar.blue { background:#2559c8; }
 .lr-player.on .lr-avatar { box-shadow:0 0 0 3px #ffe14d,0 2px 0 #0005; }
+.lr-player.forfeited { opacity:.6; }
+.lr-forfeited-label { color:#ffd07a;font-size:9px;letter-spacing:.06em; }
 .lr-pname { display:flex; flex-direction:column; gap:3px; min-width:0; } .lr-pname b { font-size:15px; max-width:180px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; } .lr-pname small { opacity:.7; font-weight:600; }
 .lr-pips { display:flex; align-items:center; gap:4px; } .lr-pips i { width:15px; height:15px; border-radius:50%; border:2px dashed #fff8; } .lr-pips i.on.red { background:#d8202a; border:2px solid #fff; } .lr-pips i.on.yellow { background:#f7c915; border:2px solid #fff; }
 .lr-pips em { font-style:normal; font-size:10px; letter-spacing:.1em; text-transform:uppercase; opacity:.8; margin-left:4px; }

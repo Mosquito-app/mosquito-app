@@ -1,9 +1,9 @@
 import { useState, type FormEvent } from 'react';
 import { Link, useLocation } from 'wouter';
-import { ArrowDownLeft, ArrowRight, ArrowUpRight, Coins, Gamepad2, Play, RefreshCw, ShieldCheck, Sparkles, Wallet } from 'lucide-react';
+import { ArrowDownLeft, ArrowRight, ArrowUpRight, Bot, Coins, Gamepad2, Play, RefreshCw, ShieldCheck, Sparkles, Wallet } from 'lucide-react';
 import {
   getGetLobbyQueryKey, getGetRoomQueryKey, getGetWalletQueryKey, useGetCurrentUser, useGetLobby,
-  useGetWallet, useInitializeDeposit, useJoinRoom, useLogout, getGetCurrentUserQueryKey,
+  useGetWallet, useInitializeDeposit, useJoinRoom, useLogout, useCancelRoom, useAddAiOpponent, getGetCurrentUserQueryKey,
   useGetFootballLobby, useJoinFootballRoom, getGetFootballLobbyQueryKey, getGetFootballRoomQueryKey, usePlayAiRoom,
 } from '@workspace/api-client-react';
 import type { Room, FootballRoom, WalletTransaction, WalletResponse, JoinRoomInputTierId } from '@workspace/api-client-react';
@@ -60,6 +60,8 @@ export default function LobbyPage() {
   const lobby = useGetLobby({ query: { queryKey: getGetLobbyQueryKey(), enabled: !!user, refetchInterval: 10000 } });
   const footballLobby = useGetFootballLobby({ query: { queryKey: getGetFootballLobbyQueryKey(), enabled: !!user, refetchInterval: 3000 } });
   const joinFootball = useJoinFootballRoom();
+  const cancelRoom = useCancelRoom();
+  const addAiOpponent = useAddAiOpponent();
   const [mode, setMode] = useState<'home' | 'ludo' | 'football'>('home');
   const join = useJoinRoom(); const playAi = usePlayAiRoom(); const logout = useLogout(); const initialize = useInitializeDeposit();
   const [club, setClub] = useState<FootballClubId>(loadClub);
@@ -69,10 +71,12 @@ export default function LobbyPage() {
   const [depositAmount, setDepositAmount] = useState('2000');
   const [depositError, setDepositError] = useState('');
   const [roomError, setRoomError] = useState('');
+  const [roomNotice, setRoomNotice] = useState('');
   const myRoomId = lobby.data?.myRoomId ?? null;
+  const myRoom = lobby.data?.myRoom ?? null;
   const footballRoom = footballLobby.data?.myRoom;
   const currentRoomId = mode === 'football' ? footballRoom?.id ?? null : mode === 'ludo' ? myRoomId : myRoomId ?? footballRoom?.id ?? null;
-  const finding = mode === 'football' ? joinFootball.isPending : join.isPending || playAi.isPending;
+  const finding = mode === 'football' ? joinFootball.isPending : join.isPending || playAi.isPending || addAiOpponent.isPending;
   const roomsLoading = mode === 'football' ? footballLobby.isLoading : lobby.isLoading;
   const w = wallet.data;
   const selectedTier = confirming ? lobby.data?.tiers.find(tier => tier.id === confirming.tierId) : undefined;
@@ -110,9 +114,49 @@ export default function LobbyPage() {
   };
   const startAiPractice = () => {
     setRoomError('');
+    setRoomNotice('');
     playAi.mutate(undefined, {
       onSuccess: entered,
       onError: () => setRoomError('Could not start free AI practice. Please refresh the lobby and try again.'),
+    });
+  };
+  const addAiToWaitingRoom = (roomId: string) => {
+    setRoomError('');
+    setRoomNotice('');
+    addAiOpponent.mutate({ roomId }, {
+      onSuccess: entered,
+      onError: () => setRoomError('Could not add Mosquito AI. The room may have filled or already started.'),
+    });
+  };
+  const cancelOpenRoom = (roomId: string) => {
+    const room = lobby.data?.myRoom;
+    if (!room || room.id !== roomId) return;
+    const prompt = room.status === 'waiting'
+      ? 'Cancel this waiting room? Any reserved test stake will be returned to your Mosquito Wallet.'
+      : room.isAiPractice
+        ? 'End this free AI practice match? No wallet balance will change.'
+        : room.stakeNaira === 0
+          ? 'Leave this free practice match? No wallet balance will change.'
+        : 'Forfeit and leave this match? Your entry stake will not be refunded. In a two-player match, the other player wins; in larger rooms, the remaining players continue.';
+    if (!window.confirm(prompt)) return;
+    setRoomError('');
+    setRoomNotice('');
+    cancelRoom.mutate({ roomId }, {
+      onSuccess: result => {
+        queryClient.setQueryData(getGetRoomQueryKey(result.id), result);
+        void queryClient.invalidateQueries({ queryKey: getGetLobbyQueryKey() });
+        void queryClient.invalidateQueries({ queryKey: getGetWalletQueryKey() });
+        setRoomNotice(room.status === 'waiting'
+          ? 'Waiting room canceled. Your reserved stake was returned.'
+          : room.isAiPractice
+            ? 'Free AI practice ended. Your wallet balance is unchanged.'
+            : room.stakeNaira === 0
+              ? 'You left the free practice match. Your wallet balance is unchanged.'
+            : result.status === 'completed'
+              ? 'Forfeit recorded. Your stake was not refunded; the opponent won and the match was settled.'
+              : 'Forfeit recorded. Your stake was not refunded; the remaining players can continue.');
+      },
+      onError: () => setRoomError('Could not cancel this room. Refresh the lobby and check its current status.'),
     });
   };
   const deposit = (event: FormEvent) => {
@@ -129,13 +173,17 @@ export default function LobbyPage() {
       <div className="page-content page-in ludo-room-page">
         <LudoRoomBrowser
           username={user.username}
+          currentUserId={user.id}
           availableBalance={w?.balanceNaira ?? user.balanceNaira}
           tiers={lobby.data?.tiers ?? []}
           rooms={lobby.data?.rooms ?? []}
+          currentRoom={myRoom}
           isLoading={lobby.isLoading}
           isError={lobby.isError}
           roomError={roomError}
+          roomNotice={roomNotice}
           isJoining={finding}
+          isCancelling={cancelRoom.isPending}
           currentRoomId={myRoomId}
           resumeRoomHref={myRoomId ? `/game/${myRoomId}` : undefined}
           onBack={() => { setMode('home'); setRoomError(''); }}
@@ -143,6 +191,8 @@ export default function LobbyPage() {
           onRetry={() => void lobby.refetch()}
           onJoin={requestLudoJoin}
           onPlayAi={startAiPractice}
+          onAddAiOpponent={addAiToWaitingRoom}
+          onCancelRoom={cancelOpenRoom}
         />
       </div>
     ) : (
@@ -170,7 +220,9 @@ export default function LobbyPage() {
           </form>}
         </section>
 
-        {myRoomId && <div className="resume-banner" data-testid="banner-resume"><div><span className="pulse-dot" /> You have an open table.</div><Link href={`/game/${myRoomId}`} className="primary-btn" data-testid="link-resume-room"><Play size={15} /> Resume table</Link></div>}
+        {myRoomId && <div className="resume-banner lobby-match-banner" data-testid="banner-resume"><div><span className="pulse-dot" /> You have an open table.</div><div className="lobby-match-actions">{myRoom?.status === 'waiting' && myRoom.tierId === 'practice-ground' && myRoom.players[0]?.userId === user.id && <button type="button" className="lobby-ai-button" onClick={() => addAiToWaitingRoom(myRoom.id)} disabled={addAiOpponent.isPending || cancelRoom.isPending}><Bot size={14} /> {addAiOpponent.isPending ? 'Adding AI…' : 'Add AI Opponent'}</button>}<Link href={`/game/${myRoomId}`} className="primary-btn" data-testid="link-resume-room"><Play size={15} /> Resume table</Link><button type="button" className="lobby-cancel-button" onClick={() => cancelOpenRoom(myRoomId)} disabled={cancelRoom.isPending}>{cancelRoom.isPending ? 'Working…' : myRoom?.status === 'waiting' ? 'Cancel & refund' : myRoom?.isAiPractice ? 'End practice' : myRoom?.stakeNaira ? 'Forfeit match' : 'Leave practice'}</button></div></div>}
+        {roomNotice && <div className="lobby-success-banner" role="status">{roomNotice}</div>}
+        {roomError && mode === 'home' && <div className="error-banner"><InlineError>{roomError}</InlineError></div>}
         {footballRoom && <div className="resume-banner" data-testid="banner-resume-football"><div><span className="pulse-dot" /> Your 11v11 football room is {footballRoom.status}.</div><Link href={`/football/${footballRoom.id}`} className="primary-btn" data-testid="link-resume-football"><Play size={15} /> Resume football</Link></div>}
 
         {mode === 'home' ? (

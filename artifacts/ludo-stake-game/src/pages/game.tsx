@@ -61,6 +61,7 @@ export default function GamePage() {
   if (roomQuery.isLoading) return <Shell user={user}><div className="page-content"><LoadingBlock label="Setting the board" /></div></Shell>;
   if (roomQuery.isError || !room) return <Shell user={user}><div className="page-content"><div className="room-error"><div className="section-overline">TABLE NOT FOUND</div><h1>This board went quiet.</h1><p>It may have closed, or the link is out of date.</p><div className="wd-actions"><button className="quiet-btn" onClick={() => void roomQuery.refetch()} data-testid="button-retry-room">Retry</button><button className="primary-btn" onClick={() => setLocation('/')} data-testid="button-back-lobby">Back to lobby <ArrowRight size={16} /></button></div></div></div></Shell>;
   const isHost = room.hostUserId === user.id;
+  const didForfeit = room.board.forfeitedUserIds?.includes(user.id) ?? false;
   const opponents = room.players.filter(player => player.userId !== user.id).map(player => player.username);
   const opponent = opponents.join(', ');
   const isMyTurn = room.board.turnUserId === user.id;
@@ -89,7 +90,7 @@ export default function GamePage() {
   const onMove = (index: number) => { if (!sel) return; setActionError(''); move.mutate({ roomId, data: { tokenIndex: index, diceIndices: indicesFor(sel) } }, { onSuccess: patch, onError: fail }); };
   const connLabel = conn === 'live' ? 'Live' : conn === 'connecting' ? 'Connecting' : 'Reconnecting, polling 10s';
   const canPick = { d0: canMove && valid('d0'), d1: canMove && valid('d1'), both: canMove && valid('both') };
-  const turnText = isDone ? (room.board.winnerUserId === user.id ? 'You took the table.' : 'Match complete.') : isWaiting ? 'Waiting for a second player.' : isMyTurn ? (isAnimating ? 'Moving token one space at a time…' : room.board.hasRolled ? (anyLegal ? 'Pick a die in the centre, then tap a glowing token.' : 'No legal move. Waiting on the server.') : 'Your turn. Roll both dice.') : `Waiting on ${opponent || 'opponent'} to play.`;
+  const turnText = didForfeit ? 'You forfeited this match. Your stake will not be refunded.' : isDone ? (room.board.winnerUserId === user.id ? 'You took the table.' : 'Match complete.') : isWaiting ? 'Waiting for a second player.' : isMyTurn ? (isAnimating ? 'Moving token one space at a time…' : room.board.hasRolled ? (anyLegal ? 'Pick a die in the centre, then tap a glowing token.' : 'No legal move. Waiting on the server.') : 'Your turn. Roll both dice.') : `Waiting on ${opponent || 'opponent'} to play.`;
   const captureText = room.board.captureBonusPending ? `Capture +10 applied. ${room.board.dice?.includes(6) ? 'Your 6 also earns one bonus roll after the dice are used.' : 'Only a 6 earns a bonus roll.'}` : '';
   const winnerName = room.players.find(player => player.userId === room.board.winnerUserId)?.username ?? '—';
   const resultText = room.status === 'completed' ? `Winner: ${winnerName}` : '';

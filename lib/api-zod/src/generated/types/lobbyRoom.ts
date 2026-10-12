@@ -26,6 +26,7 @@ export interface LobbyRoom {
   maxPlayers: LobbyRoomMaxPlayers;
   status: LobbyRoomStatus;
   joinWindowOpen: boolean;
+  isAiPractice: boolean;
   players: RoomPlayer[];
   createdAt: Date;
 }

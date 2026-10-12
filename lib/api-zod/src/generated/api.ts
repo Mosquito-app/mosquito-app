@@ -665,6 +665,10 @@ export const VerifyWithdrawalResponse = zod.object({
 /**
  * @summary List available two-player matches and stake counts
  */
+export const getLobbyResponseMyRoomOneStakeNairaMin = 0;
+
+export const getLobbyResponseMyRoomOnePlayerCountMax = 4;
+
 export const getLobbyResponseRoomsItemStakeNairaMin = 0;
 
 export const getLobbyResponseRoomsItemPlayerCountMax = 4;
@@ -675,6 +679,25 @@ export const getLobbyResponseTiersItemStakeNairaMin = 0;
 
 export const GetLobbyResponse = zod.object({
   "myRoomId": zod.string().nullable(),
+  "myRoom": zod.union([zod.object({
+  "id": zod.string().uuid(),
+  "tierId": zod.enum(['oga-chairman', 'big-doings', 'senior-man', 'sharp-guy', 'quick-clash', 'street-king', 'board-master', 'area-hustler', 'practice-ground']),
+  "tierName": zod.string(),
+  "stakeNaira": zod.number().int().min(getLobbyResponseMyRoomOneStakeNairaMin),
+  "potNaira": zod.number().int(),
+  "maxPotNaira": zod.number().int(),
+  "playerCount": zod.number().int().min(1).max(getLobbyResponseMyRoomOnePlayerCountMax),
+  "maxPlayers": zod.union([zod.literal(2),zod.literal(4)]),
+  "status": zod.enum(['waiting', 'active']),
+  "joinWindowOpen": zod.boolean(),
+  "isAiPractice": zod.boolean(),
+  "players": zod.array(zod.object({
+  "userId": zod.string().uuid(),
+  "username": zod.string(),
+  "color": zod.enum(['red', 'green', 'yellow', 'blue'])
+})),
+  "createdAt": zod.coerce.date()
+}),zod.null()]),
   "rooms": zod.array(zod.object({
   "id": zod.string().uuid(),
   "tierId": zod.enum(['oga-chairman', 'big-doings', 'senior-man', 'sharp-guy', 'quick-clash', 'street-king', 'board-master', 'area-hustler', 'practice-ground']),
@@ -686,6 +709,7 @@ export const GetLobbyResponse = zod.object({
   "maxPlayers": zod.union([zod.literal(2),zod.literal(4)]),
   "status": zod.enum(['waiting', 'active']),
   "joinWindowOpen": zod.boolean(),
+  "isAiPractice": zod.boolean(),
   "players": zod.array(zod.object({
   "userId": zod.string().uuid(),
   "username": zod.string(),
@@ -798,7 +822,8 @@ export const JoinRoomResponse = zod.object({
   "board": zod.object({
   "matchDeadlineAt": zod.coerce.date().nullable(),
   "isOvertime": zod.boolean(),
-  "endReason": zod.union([zod.literal('all_home'),zod.literal('timeout'),zod.literal('overtime'),zod.literal(null)]).nullable(),
+  "endReason": zod.union([zod.literal('all_home'),zod.literal('timeout'),zod.literal('overtime'),zod.literal('forfeit'),zod.literal(null)]).nullable(),
+  "forfeitedUserIds": zod.array(zod.string().uuid()).optional(),
   "turnUserId": zod.string(),
   "playerOrder": zod.array(zod.string().uuid()),
   "joinWindowOpen": zod.boolean(),
@@ -906,7 +931,8 @@ export const PlayAiRoomResponse = zod.object({
   "board": zod.object({
   "matchDeadlineAt": zod.coerce.date().nullable(),
   "isOvertime": zod.boolean(),
-  "endReason": zod.union([zod.literal('all_home'),zod.literal('timeout'),zod.literal('overtime'),zod.literal(null)]).nullable(),
+  "endReason": zod.union([zod.literal('all_home'),zod.literal('timeout'),zod.literal('overtime'),zod.literal('forfeit'),zod.literal(null)]).nullable(),
+  "forfeitedUserIds": zod.array(zod.string().uuid()).optional(),
   "turnUserId": zod.string(),
   "playerOrder": zod.array(zod.string().uuid()),
   "joinWindowOpen": zod.boolean(),
@@ -1018,7 +1044,8 @@ export const GetRoomResponse = zod.object({
   "board": zod.object({
   "matchDeadlineAt": zod.coerce.date().nullable(),
   "isOvertime": zod.boolean(),
-  "endReason": zod.union([zod.literal('all_home'),zod.literal('timeout'),zod.literal('overtime'),zod.literal(null)]).nullable(),
+  "endReason": zod.union([zod.literal('all_home'),zod.literal('timeout'),zod.literal('overtime'),zod.literal('forfeit'),zod.literal(null)]).nullable(),
+  "forfeitedUserIds": zod.array(zod.string().uuid()).optional(),
   "turnUserId": zod.string(),
   "playerOrder": zod.array(zod.string().uuid()),
   "joinWindowOpen": zod.boolean(),
@@ -1130,7 +1157,8 @@ export const RollDiceResponse = zod.object({
   "board": zod.object({
   "matchDeadlineAt": zod.coerce.date().nullable(),
   "isOvertime": zod.boolean(),
-  "endReason": zod.union([zod.literal('all_home'),zod.literal('timeout'),zod.literal('overtime'),zod.literal(null)]).nullable(),
+  "endReason": zod.union([zod.literal('all_home'),zod.literal('timeout'),zod.literal('overtime'),zod.literal('forfeit'),zod.literal(null)]).nullable(),
+  "forfeitedUserIds": zod.array(zod.string().uuid()).optional(),
   "turnUserId": zod.string(),
   "playerOrder": zod.array(zod.string().uuid()),
   "joinWindowOpen": zod.boolean(),
@@ -1254,7 +1282,8 @@ export const MoveTokenResponse = zod.object({
   "board": zod.object({
   "matchDeadlineAt": zod.coerce.date().nullable(),
   "isOvertime": zod.boolean(),
-  "endReason": zod.union([zod.literal('all_home'),zod.literal('timeout'),zod.literal('overtime'),zod.literal(null)]).nullable(),
+  "endReason": zod.union([zod.literal('all_home'),zod.literal('timeout'),zod.literal('overtime'),zod.literal('forfeit'),zod.literal(null)]).nullable(),
+  "forfeitedUserIds": zod.array(zod.string().uuid()).optional(),
   "turnUserId": zod.string(),
   "playerOrder": zod.array(zod.string().uuid()),
   "joinWindowOpen": zod.boolean(),
@@ -1276,7 +1305,7 @@ export const MoveTokenResponse = zod.object({
 
 
 /**
- * @summary Cancel a waiting room and return the reserved sandbox stake
+ * @summary Cancel a waiting room, end free practice, or forfeit an active human match
  */
 export const CancelRoomParams = zod.object({
   "roomId": zod.coerce.string().uuid()
@@ -1366,7 +1395,8 @@ export const CancelRoomResponse = zod.object({
   "board": zod.object({
   "matchDeadlineAt": zod.coerce.date().nullable(),
   "isOvertime": zod.boolean(),
-  "endReason": zod.union([zod.literal('all_home'),zod.literal('timeout'),zod.literal('overtime'),zod.literal(null)]).nullable(),
+  "endReason": zod.union([zod.literal('all_home'),zod.literal('timeout'),zod.literal('overtime'),zod.literal('forfeit'),zod.literal(null)]).nullable(),
+  "forfeitedUserIds": zod.array(zod.string().uuid()).optional(),
   "turnUserId": zod.string(),
   "playerOrder": zod.array(zod.string().uuid()),
   "joinWindowOpen": zod.boolean(),
@@ -1374,6 +1404,119 @@ export const CancelRoomResponse = zod.object({
   "dice": zod.array(zod.number().int().min(1).max(cancelRoomResponseBoardDiceItemMax)).min(cancelRoomResponseBoardDiceMin).max(cancelRoomResponseBoardDiceMax).nullable(),
   "remainingDice": zod.array(zod.union([zod.literal(0),zod.literal(1)])).max(cancelRoomResponseBoardRemainingDiceMax),
   "consecutiveDoubles": zod.number().int().min(cancelRoomResponseBoardConsecutiveDoublesMin).max(cancelRoomResponseBoardConsecutiveDoublesMax).describe('Deprecated compatibility field; updated gameplay keeps this at 0.'),
+  "turnMessage": zod.union([zod.literal('third_double'),zod.literal('double_bonus'),zod.literal('capture_bonus'),zod.literal('six_bonus'),zod.literal('capture_plus_ten'),zod.literal('no_moves'),zod.literal('timeout'),zod.literal(null)]).nullable(),
+  "captureBonusPending": zod.boolean().optional().describe('A capture applied +10 movement during the current roll; it does not itself grant an extra turn.'),
+  "hasRolled": zod.boolean(),
+  "redTokens": zod.array(zod.number().int()),
+  "greenTokens": zod.array(zod.number().int()),
+  "yellowTokens": zod.array(zod.number().int()),
+  "blueTokens": zod.array(zod.number().int()),
+  "winnerUserId": zod.string().nullable()
+}),
+  "createdAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Fill a free one-player Practice Ground waiting room with Mosquito AI
+ */
+export const AddAiOpponentParams = zod.object({
+  "roomId": zod.coerce.string().uuid()
+})
+
+export const addAiOpponentResponseScoresRedTokensHomeMin = 0;
+export const addAiOpponentResponseScoresRedTokensHomeMax = 4;
+
+export const addAiOpponentResponseScoresRedTotalProgressMin = 0;
+export const addAiOpponentResponseScoresRedTotalProgressMax = 232;
+
+export const addAiOpponentResponseScoresGreenTokensHomeMin = 0;
+export const addAiOpponentResponseScoresGreenTokensHomeMax = 4;
+
+export const addAiOpponentResponseScoresGreenTotalProgressMin = 0;
+export const addAiOpponentResponseScoresGreenTotalProgressMax = 232;
+
+export const addAiOpponentResponseScoresYellowTokensHomeMin = 0;
+export const addAiOpponentResponseScoresYellowTokensHomeMax = 4;
+
+export const addAiOpponentResponseScoresYellowTotalProgressMin = 0;
+export const addAiOpponentResponseScoresYellowTotalProgressMax = 232;
+
+export const addAiOpponentResponseScoresBlueTokensHomeMin = 0;
+export const addAiOpponentResponseScoresBlueTokensHomeMax = 4;
+
+export const addAiOpponentResponseScoresBlueTotalProgressMin = 0;
+export const addAiOpponentResponseScoresBlueTotalProgressMax = 232;
+
+export const addAiOpponentResponseStakeNairaMin = 0;
+
+export const addAiOpponentResponsePlayerCountMax = 4;
+
+export const addAiOpponentResponseBoardDiceItemMax = 6;
+
+export const addAiOpponentResponseBoardDiceMin = 2;
+export const addAiOpponentResponseBoardDiceMax = 2;
+
+export const addAiOpponentResponseBoardRemainingDiceMax = 2;
+
+export const addAiOpponentResponseBoardConsecutiveDoublesMin = 0;
+export const addAiOpponentResponseBoardConsecutiveDoublesMax = 2;
+
+
+
+export const AddAiOpponentResponse = zod.object({
+  "serverTimeAt": zod.coerce.date(),
+  "scores": zod.object({
+  "red": zod.object({
+  "tokensHome": zod.number().int().min(addAiOpponentResponseScoresRedTokensHomeMin).max(addAiOpponentResponseScoresRedTokensHomeMax),
+  "totalProgress": zod.number().int().min(addAiOpponentResponseScoresRedTotalProgressMin).max(addAiOpponentResponseScoresRedTotalProgressMax)
+}),
+  "green": zod.object({
+  "tokensHome": zod.number().int().min(addAiOpponentResponseScoresGreenTokensHomeMin).max(addAiOpponentResponseScoresGreenTokensHomeMax),
+  "totalProgress": zod.number().int().min(addAiOpponentResponseScoresGreenTotalProgressMin).max(addAiOpponentResponseScoresGreenTotalProgressMax)
+}),
+  "yellow": zod.object({
+  "tokensHome": zod.number().int().min(addAiOpponentResponseScoresYellowTokensHomeMin).max(addAiOpponentResponseScoresYellowTokensHomeMax),
+  "totalProgress": zod.number().int().min(addAiOpponentResponseScoresYellowTotalProgressMin).max(addAiOpponentResponseScoresYellowTotalProgressMax)
+}),
+  "blue": zod.object({
+  "tokensHome": zod.number().int().min(addAiOpponentResponseScoresBlueTokensHomeMin).max(addAiOpponentResponseScoresBlueTokensHomeMax),
+  "totalProgress": zod.number().int().min(addAiOpponentResponseScoresBlueTotalProgressMin).max(addAiOpponentResponseScoresBlueTotalProgressMax)
+})
+}),
+  "id": zod.string(),
+  "tierId": zod.union([zod.literal('oga-chairman'),zod.literal('big-doings'),zod.literal('senior-man'),zod.literal('sharp-guy'),zod.literal('quick-clash'),zod.literal('street-king'),zod.literal('board-master'),zod.literal('area-hustler'),zod.literal('practice-ground'),zod.literal(null)]).nullable(),
+  "tierName": zod.string(),
+  "stakeNaira": zod.number().int().min(addAiOpponentResponseStakeNairaMin),
+  "potNaira": zod.number().int(),
+  "prizeNaira": zod.number().int(),
+  "commissionNaira": zod.number().int(),
+  "maxPotNaira": zod.number().int(),
+  "maxPlayers": zod.union([zod.literal(2),zod.literal(4)]),
+  "playerCount": zod.number().int().min(1).max(addAiOpponentResponsePlayerCountMax),
+  "players": zod.array(zod.object({
+  "userId": zod.string().uuid(),
+  "username": zod.string(),
+  "color": zod.enum(['red', 'green', 'yellow', 'blue'])
+})),
+  "status": zod.enum(['waiting', 'active', 'completed', 'cancelled']),
+  "hostUserId": zod.string(),
+  "hostUsername": zod.string(),
+  "opponentUserId": zod.string().nullable(),
+  "opponentUsername": zod.string().nullable(),
+  "myColor": zod.enum(['red', 'green', 'yellow', 'blue']),
+  "board": zod.object({
+  "matchDeadlineAt": zod.coerce.date().nullable(),
+  "isOvertime": zod.boolean(),
+  "endReason": zod.union([zod.literal('all_home'),zod.literal('timeout'),zod.literal('overtime'),zod.literal('forfeit'),zod.literal(null)]).nullable(),
+  "forfeitedUserIds": zod.array(zod.string().uuid()).optional(),
+  "turnUserId": zod.string(),
+  "playerOrder": zod.array(zod.string().uuid()),
+  "joinWindowOpen": zod.boolean(),
+  "turnDeadlineAt": zod.coerce.date().nullable(),
+  "dice": zod.array(zod.number().int().min(1).max(addAiOpponentResponseBoardDiceItemMax)).min(addAiOpponentResponseBoardDiceMin).max(addAiOpponentResponseBoardDiceMax).nullable(),
+  "remainingDice": zod.array(zod.union([zod.literal(0),zod.literal(1)])).max(addAiOpponentResponseBoardRemainingDiceMax),
+  "consecutiveDoubles": zod.number().int().min(addAiOpponentResponseBoardConsecutiveDoublesMin).max(addAiOpponentResponseBoardConsecutiveDoublesMax).describe('Deprecated compatibility field; updated gameplay keeps this at 0.'),
   "turnMessage": zod.union([zod.literal('third_double'),zod.literal('double_bonus'),zod.literal('capture_bonus'),zod.literal('six_bonus'),zod.literal('capture_plus_ten'),zod.literal('no_moves'),zod.literal('timeout'),zod.literal(null)]).nullable(),
   "captureBonusPending": zod.boolean().optional().describe('A capture applied +10 movement during the current roll; it does not itself grant an extra turn.'),
   "hasRolled": zod.boolean(),

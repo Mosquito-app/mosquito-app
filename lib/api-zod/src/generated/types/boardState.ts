@@ -15,6 +15,7 @@ export interface BoardState {
   isOvertime: boolean;
   /** @nullable */
   endReason: BoardStateEndReason;
+  forfeitedUserIds?: string[];
   turnUserId: string;
   playerOrder: string[];
   joinWindowOpen: boolean;

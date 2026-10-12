@@ -6,12 +6,16 @@ import { Brand, InlineError, LoadingBlock, money } from '@/components/common';
 type LudoRoomBrowserProps = {
   username: string;
   availableBalance: number;
+  currentUserId: string;
   tiers: RoomTier[];
   rooms: LobbyRoom[];
+  currentRoom: LobbyRoom | null;
   isLoading: boolean;
   isError: boolean;
   roomError: string;
+  roomNotice: string;
   isJoining: boolean;
+  isCancelling: boolean;
   currentRoomId: string | null;
   resumeRoomHref?: string;
   onBack: () => void;
@@ -19,17 +23,23 @@ type LudoRoomBrowserProps = {
   onRetry: () => void;
   onJoin: (tierId: JoinRoomInputTierId, roomId?: string) => void;
   onPlayAi: () => void;
+  onAddAiOpponent: (roomId: string) => void;
+  onCancelRoom: (roomId: string) => void;
 };
 
 export function LudoRoomBrowser({
   username,
   availableBalance,
+  currentUserId,
   tiers,
   rooms,
+  currentRoom,
   isLoading,
   isError,
   roomError,
+  roomNotice,
   isJoining,
+  isCancelling,
   currentRoomId,
   resumeRoomHref,
   onBack,
@@ -37,6 +47,8 @@ export function LudoRoomBrowser({
   onRetry,
   onJoin,
   onPlayAi,
+  onAddAiOpponent,
+  onCancelRoom,
 }: LudoRoomBrowserProps) {
   return (
     <div className="ludo-room-browser">
@@ -61,13 +73,27 @@ export function LudoRoomBrowser({
         <h1 className="ludo-room-visually-hidden">Choose a Ludo room</h1>
 
         {currentRoomId && (
-          <div className="ludo-room-resume" data-testid="banner-resume">
+          <div className="ludo-room-resume ludo-room-resume-expanded" data-testid="banner-resume">
             <span><i /> You already have an open table.</span>
-            {resumeRoomHref && <Link href={resumeRoomHref}>Resume table <ChevronLeft size={15} /></Link>}
+            <div className="ludo-room-resume-actions">
+              {resumeRoomHref && <Link href={resumeRoomHref}>Resume table <ChevronLeft size={15} /></Link>}
+              {currentRoom?.status === 'waiting' && currentRoom.tierId === 'practice-ground' &&
+                currentRoom.playerCount === 1 && currentRoom.players[0]?.userId === currentUserId && (
+                  <button type="button" className="ludo-room-ai-link" onClick={() => onAddAiOpponent(currentRoom.id)} disabled={isJoining || isCancelling}>
+                    <Bot size={14} /> {isJoining ? 'Adding AI…' : 'Add AI Opponent'}
+                  </button>
+                )}
+              {currentRoom && (
+                <button type="button" className="ludo-room-cancel" onClick={() => onCancelRoom(currentRoom.id)} disabled={isJoining || isCancelling}>
+                  {isCancelling ? 'Working…' : currentRoom.status === 'waiting' ? 'Cancel & refund' : currentRoom.isAiPractice ? 'End practice' : currentRoom.stakeNaira > 0 ? 'Forfeit match' : 'Leave practice'}
+                </button>
+              )}
+            </div>
           </div>
         )}
 
         {roomError && <div className="ludo-room-error"><InlineError>{roomError}</InlineError></div>}
+        {roomNotice && <div className="ludo-room-notice" role="status">{roomNotice}</div>}
         {isError && (
           <div className="ludo-room-error">
             <InlineError>Room tiers are unavailable right now. <button type="button" onClick={onRetry}>Retry</button></InlineError>
