@@ -1,8 +1,17 @@
 {
-  "rewrites": [
+  "builds": [
     {
-      "source": "/(.*)",
-      "destination": "/index.html"
+      "src": "artifacts/ludo-stake-game/package.json",
+      "use": "@vercel/static-build",
+      "config": {
+        "distDir": "artifacts/ludo-stake-game/dist"
+      }
+    }
+  ],
+  "routes": [
+    {
+      "src": "/(.*)",
+      "dest": "/artifacts/ludo-stake-game/index.html"
     }
   ]
 }
